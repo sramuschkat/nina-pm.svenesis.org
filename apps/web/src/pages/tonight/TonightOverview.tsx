@@ -98,7 +98,12 @@ export function KpiTiles({
     if (r.bodies.moon.altDeg > 0 && (!moonMax || r.bodies.moon.altDeg > moonMax.alt))
       moonMax = { alt: r.bodies.moon.altDeg, t: r.t };
   const w = rig.weather;
-  const result = plan.result;
+  // Eine Quelle (07.10.2026): laufende Nacht mit gespeichertem Plan → Ziele und Frames von der Rig, sonst die Rechnung.
+  const fromRig = plan.rigNight ?? null;
+  const header = fromRig
+    ? { targets: fromRig.targets, frames: fromRig.frames }
+    : (plan.result?.header ?? null);
+  const current = rig.night === rig.currentNight;
   const lastSeen = rig.instances
     .map((i) => i.lastSeenAt)
     .filter((x): x is string => x !== null)
@@ -169,9 +174,9 @@ export function KpiTiles({
       <li className={styles.kpi}>
         <span className={styles.kpiLabel}>{t('tonight.kpi.plan')}</span>
         <span className={styles.kpiValue}>
-          {result
-            ? result.header.targets > 0
-              ? t('tonight.kpi.targets', { n: result.header.targets })
+          {header
+            ? header.targets > 0
+              ? t('tonight.kpi.targets', { n: header.targets })
               : t('tonight.kpi.nothing')
             : plan.isError
               ? '–'
@@ -179,9 +184,12 @@ export function KpiTiles({
         </span>
         <span className={styles.kpiSub}>
           {[
-            result && result.header.frames > 0
-              ? t('tonight.kpi.frames', { n: result.header.frames })
+            header && header.frames > 0
+              ? t(plan.deliveryOff && current ? 'tonight.kpi.framesIfOn' : 'tonight.kpi.frames', {
+                  n: header.frames,
+                })
               : '',
+            fromRig && fromRig.saved > 0 ? t('tonight.kpi.saved', { n: fromRig.saved }) : '',
             nina,
           ]
             .filter(Boolean)
@@ -260,48 +268,54 @@ export function TonightTimeline({
   flush();
   // Plan aus der Simulation: Projektblöcke, Flips, Flats.
   const result = plan.result;
-  // Ist + Plan (AP-53c): Erledigtes blass, Geplantes kräftig, Lücken schwach rot mit Grund.
+  // Ist + Plan (AP-53c): Erledigtes blass, Geplantes kräftig, Lücken schwach rot mit Grund – unabhängig davon, ob die
+  // Rechnung im Browser schon fertig bzw. gelungen ist (07.10.2026).
   const actual = plan.actual ?? null;
   const planBlocks = actual ? actual.blocks : (result?.chart.blocks ?? []);
-  const planLane: TimelineSegment[] = result
-    ? [
-        ...planBlocks.map((b) => ({
-          fromUtc: b.fromUtc,
-          toUtc: b.toUtc,
-          color: b.color ?? 'var(--npm-chart-series-1)',
-          label: b.label,
-          title: `${b.label} (${hm(b.fromUtc)}–${hm(b.toUtc)})`,
-          ...(b.tense === 'past' ? { opacity: 0.4 } : {}),
-        })),
-        ...(actual?.gaps ?? [])
-          .filter((g) => g.kind !== 'flip')
-          .map((g) => ({
-            fromUtc: g.fromUtc,
-            toUtc: g.toUtc,
-            color: 'var(--npm-chart-now)',
-            opacity: 0.35,
-            title: `${t(`simulator.gap.${g.kind}`, { count: g.count ?? 1 })} (${hm(g.fromUtc)}–${hm(g.toUtc)})`,
+  const planLane: TimelineSegment[] =
+    result || actual
+      ? [
+          ...planBlocks.map((b) => ({
+            fromUtc: b.fromUtc,
+            toUtc: b.toUtc,
+            color: b.color ?? 'var(--npm-chart-series-1)',
+            label: b.label,
+            title: `${b.label} (${hm(b.fromUtc)}–${hm(b.toUtc)})`,
+            ...(b.tense === 'past' ? { opacity: 0.4 } : {}),
           })),
-        ...(result.plan.flatsNotAfterUtc
-          ? [
-              {
-                fromUtc: unix(result.plan.flatsNotBeforeUtc),
-                toUtc: unix(result.plan.flatsNotAfterUtc),
-                color: 'var(--npm-chart-dark)',
-                label: t('tonight.lane.flats'),
-              },
-            ]
-          : []),
-      ]
-    : [];
-  // Nur Flips (keine Jetzt-Marke); mit Ist nur die kommenden.
-  const flips = (result?.chart.markers ?? [])
-    .filter((m) => m.kind === 'flip' && (!actual || m.atUtc > nowUtc))
-    .map((m) => ({
-      atUtc: m.atUtc,
-      color: 'var(--npm-chart-meridian)',
-      title: t('tonight.lane.flip', { time: hm(m.atUtc) }),
-    }));
+          ...(actual?.gaps ?? [])
+            .filter((g) => g.kind !== 'flip')
+            .map((g) => ({
+              fromUtc: g.fromUtc,
+              toUtc: g.toUtc,
+              color: 'var(--npm-chart-now)',
+              opacity: 0.35,
+              title: `${t(`simulator.gap.${g.kind}`, { count: g.count ?? 1 })} (${hm(g.fromUtc)}–${hm(g.toUtc)})`,
+            })),
+          ...(result?.plan.flatsNotAfterUtc
+            ? [
+                {
+                  fromUtc: unix(result.plan.flatsNotBeforeUtc),
+                  toUtc: unix(result.plan.flatsNotAfterUtc),
+                  color: 'var(--npm-chart-dark)',
+                  label: t('tonight.lane.flats'),
+                },
+              ]
+            : []),
+        ]
+      : [];
+  // Nur Flips (keine Jetzt-Marke); mit gespeichertem Plan dessen kommende Flips, sonst die der Rechnung (mit Ist nur
+  // die kommenden).
+  const flipTimes = plan.rigNight
+    ? plan.rigNight.flips.map(unix)
+    : (result?.chart.markers ?? [])
+        .filter((m) => m.kind === 'flip' && (!actual || m.atUtc > nowUtc))
+        .map((m) => m.atUtc);
+  const flips = flipTimes.map((at) => ({
+    atUtc: at,
+    color: 'var(--npm-chart-meridian)',
+    title: t('tonight.lane.flip', { time: hm(at) }),
+  }));
   const filterLane: TimelineSegment[] = (
     actual ? actual.filterBars : (result?.chart.filterBars ?? [])
   ).map((f) => ({
@@ -376,13 +390,21 @@ export function TonightTimeline({
     },
   ];
   return (
-    <NightTimeline
-      fromUtc={win.from}
-      toUtc={win.to}
-      timeZone={zone}
-      nowUtc={nowUtc}
-      lanes={lanes}
-      label={t('tonight.timeline')}
-    />
+    <>
+      <NightTimeline
+        fromUtc={win.from}
+        toUtc={win.to}
+        timeZone={zone}
+        nowUtc={nowUtc}
+        lanes={lanes}
+        label={t('tonight.timeline')}
+      />
+      {plan.computeError && actual ? (
+        // Nur die Rechnung ab jetzt fehlt; Ist und gespeicherter Plan stehen oben (07.10.2026).
+        <p className={styles.muted} role="status">
+          {t('tonight.lane.computeError')}
+        </p>
+      ) : null}
+    </>
   );
 }

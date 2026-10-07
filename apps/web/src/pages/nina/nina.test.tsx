@@ -44,7 +44,7 @@ vi.mock('../../api/client', () => ({
               ]
             : kind === 'sites'
               ? [
-                  { id: ID(1), name: 'Starfront' },
+                  { id: ID(1), name: 'Starfront', timeZone: 'America/Chicago' },
                   { id: ID(4), name: 'Garten' },
                 ]
               : [],
@@ -388,6 +388,19 @@ describe('S-41 An NINA ausgeliefert', () => {
     expect(screen.getByText('An NINA ausliefern ist für Rig B ausgeschaltet.')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Rig Rig A · Nacht 18./19.09.' })).toBeTruthy();
     await expectNoSeriousA11y();
+  });
+
+  it('heute Nacht abgearbeitet: „letzte bis“ in Standortzeit mit Kürzel, nicht Mandantenzeit (NT-03, 07.10.2026)', async () => {
+    state.deliveries[ID(500)] = delivery(ID(500), {
+      items: [item(1, { doneTonight: { acquired: 12, untilUtc: '2026-09-19T10:30:00Z' } })],
+    });
+    renderAt('/nina/ausgeliefert', <DeliveryPage />);
+    const card = (await screen.findByRole('article', { name: 'Ziel 1' })) as HTMLElement;
+    expect(
+      await within(card).findByText(
+        'Heute Nacht abgearbeitet · 12 Aufnahmen · letzte bis 05:30 CDT',
+      ),
+    ).toBeTruthy();
   });
 
   it('Filter Standort und Sortierung nach Name; Gruppieren nach Status', async () => {

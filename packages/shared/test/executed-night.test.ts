@@ -214,6 +214,37 @@ describe('executedNight', () => {
     ).toBe(false);
   });
 
+  it('Plugin vor 0.4.13: Anfahren/Autofokus vor der ersten Aufnahme ist kein Leerlauf – Beginn laut gespeichertem Plan', () => {
+    // 07.10.2026: der aus Aufnahmen abgeleitete Block begann erst mit der ersten Aufnahme; Slew + Autofokus davor stand
+    // als rote Lücke „Leerlauf“ da.
+    const opts = {
+      night: '2026-10-06',
+      sessions: 1,
+      events: [],
+      lights: [
+        light(at('01:00:00'), 'R', 30, B_TRANSIT, P_TRANSIT),
+        light(at('03:00:00'), 'R', 30, B_TRANSIT, P_TRANSIT),
+        light(at('03:09:00'), 'OIII', 600, B_IC, P_IC),
+        light(at('04:00:00'), 'OIII', 600, B_IC, P_IC),
+      ],
+      running: false,
+      now: at('09:00:00'),
+      names,
+    };
+    // Ohne Plan: 6 min Leerlauf zwischen 03:00:30 und 03:09.
+    expect(executedNight(opts).gaps).toEqual([expect.objectContaining({ kind: 'idle' })]);
+    const n = executedNight({
+      ...opts,
+      blockStarts: new Map([
+        [B_IC, at('03:01:00')],
+        // Weit vor der ersten Aufnahme bzw. im vorigen Block: höchstens 20 min, nie vor dessen Ende.
+        [B_TRANSIT, at('00:00:00')],
+      ]),
+    });
+    expect(n.blocks.map((b) => b.startUtc)).toEqual([at('00:40:00'), at('03:01:00')]);
+    expect(n.gaps).toEqual([]);
+  });
+
   it('Safety-Pause und übersprungene Blöcke benennen die Lücke', () => {
     const B2 = '77777777-7777-4777-8777-777777777777';
     const n = executedNight({

@@ -52,6 +52,13 @@ import { Person } from '../../lib/member';
 export const TONIGHT_PATH = '/heute-nacht';
 export const TONIGHT_KEY = ['tonight'] as const;
 
+/** Zeile ohne Frames im Rest: läuft an der Rig, noch geplant (gespeicherter Plan) bzw. abgearbeitet (07.10.2026). */
+const DONE_TEXT = {
+  running: 'tonight.runningTonight',
+  planned: 'tonight.plannedTonight',
+  done: 'tonight.doneTonight',
+} as const;
+
 export function TonightPage() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -173,12 +180,19 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
   const colorOf = (short: string) =>
     (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
   const sky = useNightSky(site, rig);
-  const plan = useNightPlan(rig.rigId, rig.night);
-  const timelineId = useId();
   const current = rig.night === rig.currentNight;
+  // Laufende Nacht und Nachtfenster vom Server: läuft die Session nach Fensterende noch, bleibt die Nacht „laufend“.
+  const plan = useNightPlan(rig.rigId, rig.night, { current, window: rig.nightWindow });
+  const timelineId = useId();
   return (
     <>
       {current ? null : <p className={styles.futureNote}>{t('tonight.futureNote')}</p>}
+      {plan.deliveryOff ? (
+        // Rig-Schalter „An NINA ausliefern“ aus (07.10.2026): die Rechnung zeigt nur, was das Rig eingeschaltet täte.
+        <p className={styles.futureNote} role="status">
+          {t('tonight.deliveryOff')}
+        </p>
+      ) : null}
       <KpiTiles rig={rig} sky={sky} plan={plan} />
       <section className={styles.card} aria-labelledby={timelineId}>
         <div className={styles.cardHead}>
@@ -316,22 +330,39 @@ function RigCard({
   timeZone: string;
 }) {
   const { t, i18n } = useTranslation();
-  // Laufende Nacht: Frames aus dem live gerechneten Plan (wie Zeitleiste, Simulator und NINA, mit Transits); die
-  // gespeicherte Prognose wird nur einmal je Standortnacht gerechnet und kennt spätere Freigaben nicht (07.10.2026).
+  // Laufende Nacht (eine Quelle, Entscheidung Sven 07.10.2026): mit gespeichertem Plan Frames aus dessen offenem Rest
+  // (was die Rig ausführt), sonst aus dem ab jetzt gerechneten Plan (wie Zeitleiste und Simulator, mit Transits); die
+  // gespeicherte Prognose wird nur einmal je Standortnacht gerechnet und kennt spätere Freigaben nicht.
   // Künftige Nächte (Nachtwahl) bleiben bei der Prognose.
-  const live =
-    rig.night === rig.currentNight && plan.result
-      ? tonightProjects(
-          plan.projects as unknown as Parameters<typeof tonightProjects>[0],
-          rig.rigId,
-          rig.night,
-          nightUsage(plan.result.plan),
-        )
-      : null;
-  // Ohne Zeile in der Rechnung ab jetzt (07.10.2026): läuft an der Rig (gespeicherter Plan) bzw. heute Nacht abgearbeitet
+  const fromRig = plan.rigNight ?? null;
+  const usage =
+    rig.night !== rig.currentNight
+      ? null
+      : fromRig
+        ? nightUsage({ blocks: fromRig.blocks } as unknown as Parameters<typeof nightUsage>[0])
+        : plan.result
+          ? nightUsage(plan.result.plan)
+          : null;
+  const states = new Map((plan.done ?? []).map((d) => [d.projectId, d]));
+  const live = usage
+    ? tonightProjects(
+        plan.projects as unknown as Parameters<typeof tonightProjects>[0],
+        rig.rigId,
+        rig.night,
+        usage,
+        new Set(states.keys()),
+      )
+    : null;
+  // Ohne Frames im Rest (07.10.2026): läuft an der Rig, im gespeicherten Plan noch geplant bzw. heute Nacht abgearbeitet
   // (ausgegraut) – unter den geplanten.
-  type Row = TonightRig['projects'][number] & { readonly done?: DoneCard };
-  const planned = live?.projects ?? rig.projects;
+  type Row = TonightRig['projects'][number] & {
+    readonly done?: DoneCard;
+    readonly state?: DoneCard['state'];
+  };
+  const planned = (live?.projects ?? rig.projects).map((p) => ({
+    ...p,
+    ...(states.get(p.projectId) ? { state: states.get(p.projectId)?.state } : {}),
+  }));
   const rows: Row[] = [
     ...planned,
     ...(live ? (plan.done ?? []) : [])
@@ -375,6 +406,9 @@ function RigCard({
         <>
           <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>{' '}
           <CommentCount count={comments(p.projectId)} />
+          {!p.done && p.state === 'running' ? (
+            <span className={styles.muted}> · {t('tonight.runningTag')}</span>
+          ) : null}
         </>
       ),
     },
@@ -406,7 +440,7 @@ function RigCard({
       cell: (p) =>
         p.done ? (
           <span className={styles.muted}>
-            {t(p.done.running ? 'tonight.runningTonight' : 'tonight.doneTonight', {
+            {t(DONE_TEXT[p.done.state], {
               n: p.done.exposures,
               from: hm(p.done.fromUtc),
               to: p.done.toUtc ? hm(p.done.toUtc) : '…',
@@ -484,7 +518,7 @@ function RigCard({
             rowKey={(p) => p.projectId}
             rowLabel={(p) => p.name}
             rowProps={(p) =>
-              p.done && !p.done.running ? { className: styles.rowDone, 'data-done': 'true' } : {}
+              p.done?.state === 'done' ? { className: styles.rowDone, 'data-done': 'true' } : {}
             }
             label={t('tonight.plannedLabel', { rig: rig.rigName })}
             empty={t('tonight.noProjects')}

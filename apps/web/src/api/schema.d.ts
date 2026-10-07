@@ -17812,6 +17812,7 @@ export interface components {
             executed: components["schemas"]["ExecutedNight"];
             storedPlan: components["schemas"]["StoredPlan"];
             firstPlan: components["schemas"]["StoredPlan"];
+            endedBlockIds?: string[];
         };
         PlanInput: {
             /** @enum {string} */

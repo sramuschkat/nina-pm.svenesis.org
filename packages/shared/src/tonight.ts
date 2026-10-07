@@ -42,13 +42,15 @@ export function tonightLines(
 
 /**
  * Freigegebene, aktive Projekte des Rigs mit Frames in der Nacht oder mit einer nur heute abgeschalteten Zeile,
- * nach erwarteten Frames absteigend; die übrigen aktiven Projekte zählen als `idle`.
+ * nach erwarteten Frames absteigend; die übrigen aktiven Projekte zählen als `idle` – außer denen in `shown`, die die
+ * Seite schon anders zeigt (läuft an der Rig, abgearbeitet; sonst doppelt gezählt, 07.10.2026).
  */
 export function tonightProjects(
   projects: readonly Project[],
   rigId: string,
   night: string,
   stored: TonightStoredNight | undefined,
+  shown: ReadonlySet<string> = new Set(),
 ): { projects: Planned[]; idle: number } {
   const active = projects.filter(
     (p) =>
@@ -63,7 +65,7 @@ export function tonightProjects(
     const lines = tonightLines(p, night, stored?.lineFrames);
     const frames = lines.reduce((s, l) => s + l.frames, 0);
     if (frames === 0 && !lines.some((l) => l.disabledTonight)) {
-      idle += 1;
+      if (!shown.has(p.id)) idle += 1;
       continue;
     }
     planned.push({

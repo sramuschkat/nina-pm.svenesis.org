@@ -5,7 +5,7 @@
  * das Projekt auf *Pausiert* – nur über den `ConfirmDialog`. Die Liste kommt je Rig aus derselben Regel
  * wie `GET /nina/v1/targets` (`GET /web/v1/rigs/{id}/delivery`).
  */
-import { formatNightKey } from '@nina-pm/shared';
+import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -247,6 +247,16 @@ function DeliveryCard({ card }: { card: Card }) {
   const canRemove = useCan('project.status');
   const { item, rig } = card;
   const zone = me?.tenant?.timeZone ?? 'Europe/Berlin';
+  // „Heute Nacht abgearbeitet … letzte bis“ ist ein Nachtereignis: Standortzeit des Rigs mit Kürzel wie „Heute Nacht“
+  // und Simulator (NT-03; vorher Mandantenzeit, 07.10.2026).
+  const rigList = useEquipmentList('rigs');
+  const siteList = useEquipmentList('sites');
+  const siteId = (rigList.data ?? []).find((r) => r.id === rig.rigId)?.siteId;
+  const siteZone = (siteList.data ?? []).find((x) => x.id === siteId)?.timeZone ?? null;
+  const nightTime = (atUtc: string) =>
+    siteZone
+      ? `${formatZonedTime(atUtc, siteZone)} ${formatTzAbbr(atUtc, siteZone)}`
+      : formatDateTime(atUtc, zone, i18n.language);
   // Filterfarben für die Filter-Chips (wie Projektliste und Simulator, 30.09.2026).
   const filterList = useEquipmentList('filters');
   const colorOf = (id: string | null) =>
@@ -269,7 +279,7 @@ function DeliveryCard({ card }: { card: Card }) {
           // Heute Nacht abgearbeitet: NINA erhält das Projekt nicht mehr (07.10.2026).
           <span className={styles.doneTag}>
             {t('nina.delivery.doneTonight', {
-              time: formatDateTime(item.doneTonight.untilUtc, zone, i18n.language),
+              time: nightTime(item.doneTonight.untilUtc),
               n: item.doneTonight.acquired,
             })}
           </span>

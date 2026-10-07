@@ -8,6 +8,9 @@
  * Eine Eingabe-Quelle (AP-53c, FA-SIM-05): Mit `server` rechnet der Simulator mit der Engine-Eingabe des Servers
  * (`GET /simulations/input`, dieselbe Funktion wie `POST /plan`); nur mit eigenen Entwürfen (Was-wäre-wenn) baut er sie
  * selbst. Läuft die Nacht bzw. ist sie mit Session vorbei, zeigt er Ist + Plan (`actual-view.ts`, FA-SIM-10).
+ * Eine Quelle (Entscheidung Sven 07.10.2026): Läuft die Nacht und hat die Rig einen gespeicherten Plan, kommen Zielkarten,
+ * „Nicht zugeteilt“, Kopfzahlen und Flips aus dessen offenem Rest plus Ist (`rig-night.ts`); die Rechnung ab jetzt nur
+ * noch für Was-wäre-wenn und Nächte ohne gespeicherten Plan (und für die Gründe unter „Nicht zugeteilt“).
  */
 import { planNight, unixFromIso, type NightPlan, type PlanInput } from '@nina-pm/engine';
 import {
@@ -25,6 +28,7 @@ import { CHART_SERIES_COUNT } from '@nina-pm/ui-tokens';
 import type { NightChartProps } from '../../components/night-chart';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { actualView, type ActualProtocolRow, type ActualView } from './actual-view';
+import { rigNight, type RigNight, type RigProjectState } from './rig-night';
 
 type BuildArgs = Parameters<typeof buildPlanInput>;
 
@@ -64,6 +68,8 @@ export interface SimulationRequest {
     readonly executed: ExecutedNight | null;
     readonly storedPlan: StoredPlan | null;
     readonly firstPlan: StoredPlan | null;
+    /** Vom Plugin beendete bzw. übersprungene Blöcke (nicht mehr „geplant“). */
+    readonly endedBlockIds?: readonly string[] | undefined;
   } | null;
 }
 
@@ -74,13 +80,21 @@ export interface TargetCard extends Omit<SimCard, 'projectIndex' | 'lines'> {
   readonly createdBy: string | null;
   readonly color: string;
   readonly lines: readonly (SimCard['lines'][number] & { readonly color: string })[];
+  /**
+   * Laufende Nacht mit gespeichertem Plan (07.10.2026): `running` = Block läuft an der Rig, `planned` = späterer Block;
+   * sonst (Rechnung) `null`.
+   */
+  readonly state: 'running' | 'planned' | null;
+  /** Gespeicherte Aufnahmen der Nacht bisher (Ist); ohne Ist 0. */
+  readonly doneExposures: number;
 }
 
 export type UnallocatedProject = SimUnallocated;
 
 /**
- * Projekt mit Ist dieser Nacht ohne Zielkarte in der Rechnung ab jetzt (07.10.2026): läuft an der Rig (gespeicherter
- * Plan) oder heute Nacht abgearbeitet (fertig, pausiert, Transit vorbei, ausgegraut) – statt „Nicht zugeteilt“.
+ * Projekt ohne Zielkarte (07.10.2026): läuft an der Rig bzw. ist im gespeicherten Plan noch geplant, steht aber nicht
+ * (mehr) in der Eingabe – oder ist heute Nacht abgearbeitet (fertig, pausiert, Transit vorbei, ausgegraut) – statt
+ * „Nicht zugeteilt“.
  */
 export interface DoneCard {
   readonly projectId: string;
@@ -88,8 +102,8 @@ export interface DoneCard {
   readonly createdBy: string | null;
   readonly color: string;
   readonly transit: boolean;
-  /** Läuft an der Rig (laufender Block oder offener Block im gespeicherten Plan); sonst abgearbeitet. */
-  readonly running: boolean;
+  /** `running`: Block läuft an der Rig; `planned`: späterer Block im gespeicherten Plan; `done`: abgearbeitet. */
+  readonly state: RigProjectState;
   readonly exposures: number;
   readonly fromUtc: string;
   readonly toUtc: string | null;
@@ -113,6 +127,11 @@ export interface SimulationResult {
   /** Heute Nacht abgearbeitet, nicht mehr im Rest-Plan: ausgegraut nach den Zielkarten. */
   readonly doneCards: readonly DoneCard[];
   readonly unallocated: readonly UnallocatedProject[];
+  /**
+   * Laufende Nacht aus gespeichertem Plan + Ist (07.10.2026): Karten, Kopfzahlen und Flips von der Rig; die Gründe unter
+   * „Nicht zugeteilt“ stammen aus der Rechnung ab jetzt.
+   */
+  readonly fromStored: boolean;
   readonly protocol: readonly ProtocolRow[];
   /** Filter-Kurzname je Zeile (Diagnose je Zeile). */
   readonly lineNames: Readonly<Record<string, string>>;
@@ -188,12 +207,10 @@ function storedInfo(p: StoredPlan): Omit<StoredPlan, 'blocks'> {
 }
 
 /**
- * Projekte dieser Nacht ohne Zielkarte in der Rechnung ab jetzt (07.10.2026) – Simulator-Zielkarten und Tabelle „Plan für
- * diese Nacht“:
- * - **läuft an der Rig** (`running`): laufender Ist-Block oder offener Block im gespeicherten Plan – den führt das Plugin
- *   aus, auch wenn die Rechnung ab jetzt nichts mehr zuteilt (IC 1795 um 06:04 CDT: 10 min dunkel, „unter der
- *   Mindestzeit“, die Rig belichtete aber noch SII);
- * - **abgearbeitet**: belichtet, aber nicht mehr geplant (fertig, pausiert, Transit vorbei).
+ * Projekte dieser Nacht mit Ist ohne Zielkarte in der Rechnung ab jetzt (Was-wäre-wenn bzw. ohne gespeicherten Plan;
+ * mit gespeichertem Plan gilt `rig-night.ts`):
+ * - **läuft an der Rig** (`running`): laufender Ist-Block bzw. der jetzt laufende Block des gespeicherten Plans;
+ * - **abgearbeitet** (`done`): belichtet, aber nicht mehr geplant (fertig, pausiert, Transit vorbei).
  */
 export function doneTonight(
   executedBlocks: readonly ExecutedNight['blocks'][number][],
@@ -214,7 +231,7 @@ export function doneTonight(
       createdBy: creators.get(b.projectId) ?? null,
       color: colorOfProject(b.projectId),
       transit: (cur?.transit ?? false) || b.kind === 'transit',
-      running: false,
+      state: 'done',
       exposures: (cur?.exposures ?? 0) + b.exposures,
       fromUtc: cur && cur.fromUtc < b.startUtc ? cur.fromUtc : b.startUtc,
       toUtc,
@@ -223,24 +240,35 @@ export function doneTonight(
   for (const [projectId, until] of running) {
     const c = by.get(projectId);
     // Noch nicht begonnene Blöcke des gespeicherten Plans zeigt die Grafik; eine Karte gibt es erst mit Ist.
-    if (c) by.set(projectId, { ...c, running: true, toUtc: until });
+    if (c) by.set(projectId, { ...c, state: 'running', toUtc: until });
   }
   // Ohne gespeicherte Aufnahme nur Transits und Laufendes; sonst wäre ein bloß angefahrenes Ziel „abgearbeitet“.
-  // Laufendes vor Abgearbeitetem, jeweils nach Beginn.
-  return [...by.values()]
-    .filter((c) => c.exposures > 0 || c.transit || c.running)
-    .sort((a, b) => Number(b.running) - Number(a.running) || a.fromUtc.localeCompare(b.fromUtc));
+  return sortDone(
+    [...by.values()].filter((c) => c.exposures > 0 || c.transit || c.state !== 'done'),
+  );
 }
+
+const STATE_ORDER: Record<RigProjectState, number> = { running: 0, planned: 1, done: 2 };
+
+/** Laufendes vor Geplantem vor Abgearbeitetem, jeweils nach Beginn. */
+const sortDone = (cards: DoneCard[]) =>
+  cards.sort(
+    (a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || a.fromUtc.localeCompare(b.fromUtc),
+  );
 
 const maxIso = (a: string | undefined, b: string) => (a !== undefined && a > b ? a : b);
 
 /**
- * Projekte, an denen die Rig noch arbeitet, mit dem Ende ihres letzten offenen Blocks im gespeicherten Plan (`null`, wenn
- * nur ein laufender Ist-Block bekannt ist): laufender Ist-Block oder ein noch nicht beendeter Block des gespeicherten Plans.
+ * Projekte, an denen die Rig gerade arbeitet, mit dem Ende ihres jetzt laufenden Blocks im gespeicherten Plan (`null`,
+ * wenn nur ein laufender Ist-Block bekannt ist). Nur der **jetzt** laufende Block zählt – ein späterer Block macht ein
+ * Projekt nicht zu „läuft an der Rig“ (07.10.2026).
  */
 export function stillRunning(
   executed: ExecutedNight | null | undefined,
-  stored: { readonly blocks: readonly { projectId: string; endUtc: string }[] } | null | undefined,
+  stored:
+    | { readonly blocks: readonly { projectId: string; startUtc: string; endUtc: string }[] }
+    | null
+    | undefined,
   nowMs: number,
 ): Map<string, string | null> {
   const ids = new Map<string, string | null>(
@@ -248,9 +276,21 @@ export function stillRunning(
   );
   if (Number.isFinite(nowMs))
     for (const b of stored?.blocks ?? [])
-      if (Date.parse(b.endUtc) > nowMs)
+      if (Date.parse(b.startUtc) <= nowMs && Date.parse(b.endUtc) > nowMs)
         ids.set(b.projectId, maxIso(ids.get(b.projectId) ?? undefined, b.endUtc));
   return ids;
+}
+
+/** Belichtungen je Projekt und Filter wie die Engine (`summary.plannedFrames`: `expose`, auch Bonus). */
+function plannedFramesOf(blocks: NightPlan['blocks']): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  for (const b of blocks)
+    for (const e of b.entries) {
+      if (e.cmd !== 'expose') continue;
+      const perProject = (out[b.projectId] ??= {});
+      perProject[e.filter] = (perProject[e.filter] ?? 0) + 1;
+    }
+  return out;
 }
 
 export function simulate(req: SimulationRequest): SimulationResult {
@@ -285,7 +325,27 @@ export function simulate(req: SimulationRequest): SimulationResult {
     nowMs < Date.parse(whole.nightWindow.endUtc);
   const fromNowUtc = running ? new Date(nowMs).toISOString().replace(/\.\d{3}Z$/, 'Z') : null;
   const planInput: PlanInput = fromNowUtc ? { ...input, startAtUtc: fromNowUtc } : input;
-  const plan = fromNowUtc ? planNight(planInput) : whole;
+  const computed = fromNowUtc ? planNight(planInput) : whole;
+  // Eine Quelle (07.10.2026): laufende Nacht mit gespeichertem Plan → offener Rest der Revision + Ist.
+  const live: RigNight | null =
+    server && running
+      ? rigNight({
+          executed: server.executed,
+          stored: server.storedPlan,
+          endedBlockIds: server.endedBlockIds,
+          nowMs,
+        })
+      : null;
+  // Gezeigter Plan: Rest der Revision (Diagnosen der Rechnung nur für Projekte ohne Block und ohne Ist) bzw. Rechnung.
+  const plan: NightPlan = live
+    ? {
+        ...computed,
+        blocks: live.blocks,
+        summary: { targets: live.targets, plannedFrames: plannedFramesOf(live.blocks) },
+        diagnostics: computed.diagnostics.filter((d) => !live.projects.has(d.projectId)),
+        warnings: [],
+      }
+    : computed;
   const site = { latDeg: req.site.latitudeDeg, lonDeg: req.site.longitudeDeg };
   const projects = input.projects;
   const names = new Map([
@@ -336,8 +396,10 @@ export function simulate(req: SimulationRequest): SimulationResult {
     label: f.filter,
     count: f.count,
   }));
+  // Flips: mit gespeichertem Plan dessen kommende `meridian_flip`-Einträge, sonst die der Rechnung.
+  const flips = live ? live.flips.map((at) => ({ atUtc: Date.parse(at) / 1000 })) : view.flips;
   const markers = [
-    ...view.flips.map((f) => ({ atUtc: f.atUtc, kind: 'flip' as const, label: 'Flip' })),
+    ...flips.map((f) => ({ atUtc: f.atUtc, kind: 'flip' as const, label: 'Flip' })),
     ...(fromNowUtc ? [{ atUtc: nowMs / 1000, kind: 'now' as const, label: '' }] : []),
   ];
   // Ist + Plan (AP-53c): laufende Nacht bzw. vergangene mit Session – Erledigtes blass, Kommendes kräftig.
@@ -355,6 +417,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
       ? actualView({
           executed: req.server.executed,
           stored: server ? req.server.storedPlan : null,
+          endedBlockIds: req.server.endedBlockIds,
           first: req.server.firstPlan,
           nowMs,
           running,
@@ -377,26 +440,50 @@ export function simulate(req: SimulationRequest): SimulationResult {
       }
     : { ...base, series: base.series ?? [], markers, blocks, filterBars };
 
-  const cards: TargetCard[] = view.cards.map(({ projectIndex, ...c }) => ({
-    ...c,
-    createdBy: creators.get(c.projectId) ?? null,
-    color: colorOf(projectIndex),
-    lines: c.lines.map((l) => ({ ...l, color: filterColor(l.filter) })),
-  }));
-  const doneCards = doneTonight(
-    req.server?.executed?.blocks ?? [],
-    new Set(cards.map((c) => c.projectId)),
-    stillRunning(req.server?.executed, req.server?.storedPlan, nowMs),
-    names,
-    creators,
-    colorOfProject,
-  );
-  const isDone = new Set(doneCards.map((c) => c.projectId));
+  const cards: TargetCard[] = view.cards.map(({ projectIndex, ...c }) => {
+    const rig = live?.projects.get(c.projectId);
+    return {
+      ...c,
+      createdBy: creators.get(c.projectId) ?? null,
+      color: colorOf(projectIndex),
+      lines: c.lines.map((l) => ({ ...l, color: filterColor(l.filter) })),
+      state: rig ? (rig.state === 'running' ? 'running' : 'planned') : null,
+      doneExposures: rig?.exposures ?? 0,
+    };
+  });
+  const carded = new Set(cards.map((c) => c.projectId));
+  const doneCards = live
+    ? sortDone(
+        [...live.projects.values()]
+          .filter((p) => !carded.has(p.projectId))
+          .map((p) => ({
+            projectId: p.projectId,
+            name: names.get(p.projectId) || p.title || p.projectId,
+            createdBy: creators.get(p.projectId) ?? null,
+            color: colorOfProject(p.projectId),
+            transit: p.transit,
+            state: p.state,
+            exposures: p.exposures,
+            fromUtc: p.fromUtc,
+            toUtc: p.toUtc,
+          })),
+      )
+    : doneTonight(
+        req.server?.executed?.blocks ?? [],
+        carded,
+        stillRunning(req.server?.executed, req.server?.storedPlan, nowMs),
+        names,
+        creators,
+        colorOfProject,
+      );
+  // Mit gespeichertem Plan: „Nicht zugeteilt“ nur, was weder offen geplant noch belichtet ist.
+  const isDone = new Set([...doneCards.map((c) => c.projectId), ...(live?.projects.keys() ?? [])]);
   return {
     plan,
     chart,
     cards,
     doneCards,
+    fromStored: live !== null,
     unallocated: [
       ...view.unallocated.filter((u) => !isDone.has(u.projectId)),
       ...req.projects
@@ -409,7 +496,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
     ],
     protocol: actual ? actual.protocol : view.protocol,
     lineNames: view.lineNames,
-    header: view.header,
+    header: live ? { ...view.header, targets: live.targets, frames: live.frames } : view.header,
     fromNowUtc,
     actual,
     source: {

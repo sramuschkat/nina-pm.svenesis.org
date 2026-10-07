@@ -25,6 +25,14 @@ describe('tonightProjects', () => {
     expect(r.idle).toBeGreaterThanOrEqual(1);
   });
 
+  it('„weitere aktive Projekte ohne Frames“ zählt nicht, was als läuft/abgearbeitet schon dasteht (07.10.2026)', () => {
+    const usage = { lineFrames: { [l1?.id ?? '']: 12 }, projectHours: { [NGC7000]: 1 } };
+    const all = tonightProjects(projects, rig.id, '2026-09-17', usage);
+    const shown = tonightProjects(projects, rig.id, '2026-09-17', usage, new Set([NGC281]));
+    expect(shown.projects).toEqual(all.projects);
+    expect(shown.idle).toBe(all.idle - 1);
+  });
+
   it('ohne gespeicherte Nacht: nichts geplant; „nur heute aus“ hält das Projekt in der Liste', () => {
     expect(tonightProjects(projects, rig.id, '2026-09-17', undefined).projects).toEqual([]);
     const off = projects.map((p) =>

@@ -231,12 +231,18 @@ describe('simulate', () => {
       ['IC 1795', false, 6],
     ]);
     expect(r.cards.map((c) => c.projectId)).toEqual(base.cards.map((c) => c.projectId));
-    // stillRunning: offener Block im gespeicherten Plan (mit dessen Ende) bzw. laufender Ist-Block (ohne Ende).
-    const stored = { blocks: [{ projectId: PAUSED, endUtc: '2026-09-18T10:00:00Z' }] };
+    // stillRunning: jetzt laufender Block im gespeicherten Plan (mit dessen Ende) bzw. laufender Ist-Block (ohne Ende).
+    const stored = {
+      blocks: [
+        { projectId: PAUSED, startUtc: '2026-09-18T08:00:00Z', endUtc: '2026-09-18T10:00:00Z' },
+        // Späterer Block (07.10.2026): macht das Projekt nicht zu „läuft an der Rig“.
+        { projectId: SLEWED, startUtc: '2026-09-18T10:00:00Z', endUtc: '2026-09-18T11:00:00Z' },
+      ],
+    };
     expect(stillRunning(null, stored, Date.parse('2026-09-18T09:00:00Z'))).toEqual(
       new Map([[PAUSED, '2026-09-18T10:00:00Z']]),
     );
-    expect(stillRunning(null, stored, Date.parse('2026-09-18T10:00:00Z'))).toEqual(new Map());
+    expect(stillRunning(null, stored, Date.parse('2026-09-18T11:00:00Z'))).toEqual(new Map());
     const running = {
       night: '2026-09-17',
       sessions: 1,
@@ -315,9 +321,14 @@ describe('simulate', () => {
       }),
     );
     expect(r.unallocated.some((u) => u.projectId === id)).toBe(false);
-    expect(r.doneCards).toEqual([
-      expect.objectContaining({ projectId: id, running: true, exposures: 18, toUtc: blockEnd }),
-    ]);
+    // Eine Quelle (07.10.2026): Zielkarte aus dem gespeicherten Plan, Zustand „läuft an der Rig“, Ist bisher.
+    expect(r.fromStored).toBe(true);
+    expect(r.cards.find((c) => c.projectId === id)).toMatchObject({
+      state: 'running',
+      doneExposures: 18,
+      toUtc: blockEnd,
+    });
+    expect(r.doneCards).toEqual([]);
   });
 
   it('Zielkarte nennt das Mondprofil der Zeile (Name, Abstand, Breite) statt „LA“; Protokoll übersetzt Namen', () => {
@@ -471,5 +482,189 @@ describe('simulate', () => {
     expect(r.actual?.outline.length).toBe(whole.plan.blocks.length);
     expect(r.source.stored).toMatchObject({ revision: 3, stale: true, staleCause: 'targets' });
     expect(r.actual?.counters).toEqual({ saved: 2, skipped: 0, failed: 0 });
+  });
+});
+
+/**
+ * Eine Quelle (Entscheidung Sven 07.10.2026): In der laufenden Nacht mit gespeichertem Plan kommen Zielkarten,
+ * „Nicht zugeteilt“, Kopfzahlen und Flips aus dem offenen Rest der Revision plus Ist – nicht aus der Rechnung ab jetzt.
+ */
+describe('laufende Nacht aus gespeichertem Plan + Ist', () => {
+  const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const serverInput = buildPlanInput(rig, projects, moonProfiles, nights, {
+    night: '2026-09-17',
+    site: STARFRONT,
+    autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+  }) as PlanInput;
+  // 10 min vor Nachtende teilt die Rechnung ab jetzt nichts mehr zu (unter der Mindestzeit).
+  const end = Date.parse(simulate(request()).plan.nightWindow.endUtc);
+  const nowMs = end - 10 * 60_000;
+  const late = simulate(request({ nowUtc: iso(nowMs) }));
+  const pid = late.unallocated[0]?.projectId ?? '';
+  const project = serverInput.projects.find((p) => p.id === pid);
+  const lineId = project?.panels[0]?.lines[0]?.id ?? '';
+  const block = (id: string, from: number, to: number, entries: unknown[]) => ({
+    id,
+    kind: 'regular',
+    projectId: pid,
+    panelId: null,
+    transitObservationId: null,
+    startUtc: iso(from),
+    endUtc: iso(to),
+    twilightEndUtc: null,
+    raDeg: project?.raDeg ?? 0,
+    decDeg: project?.decDeg ?? 0,
+    rotationDeg: 0,
+    rotationMode: 'fixed_camera',
+    meridianFlip: null,
+    entries,
+  });
+  const expose = (seq: number, at: number) => ({
+    seq,
+    cmd: 'expose',
+    atUtc: iso(at),
+    exposureLineId: lineId,
+    filter: 'Ha',
+    exposureS: 60,
+    gain: 100,
+    offset: 20,
+    binning: 1,
+    readoutMode: null,
+    bonus: false,
+    lastOfNight: false,
+  });
+  const B_SKIPPED = '0190c3f4-0000-7000-8000-0000000000a1';
+  const B_LATER = '0190c3f4-0000-7000-8000-0000000000a2';
+  const stored = (blocks: unknown[]): StoredPlan => ({
+    nightPlanId: '0190c3f4-0000-7000-8000-0000000000a0',
+    revision: 7,
+    reason: 'refresh',
+    createdAtUtc: iso(nowMs - 3_600_000),
+    stale: false,
+    staleCause: null,
+    blocks: blocks as StoredPlan['blocks'],
+  });
+  const executed = (over: Partial<ExecutedNight> = {}): ExecutedNight => ({
+    night: '2026-09-17',
+    sessions: 1,
+    blocks: [],
+    segments: [],
+    events: [],
+    gaps: [],
+    counters: { saved: 0, skipped: 0, failed: 0 },
+    ...over,
+  });
+  const run = (plan: StoredPlan, ex: ExecutedNight | null, endedBlockIds?: string[]) =>
+    simulate(
+      request({
+        nowUtc: iso(nowMs),
+        server: {
+          input: serverInput,
+          inputHash: 'sha256:abc',
+          projectNames: {},
+          executed: ex,
+          storedPlan: plan,
+          firstPlan: plan,
+          ...(endedBlockIds ? { endedBlockIds } : {}),
+        },
+      }),
+    );
+  // Späterer Block im gespeicherten Plan: 2 Belichtungen und ein Flip ab jetzt.
+  const later = block(B_LATER, nowMs + 2 * 60_000, end - 60_000, [
+    { seq: 1, cmd: 'slew_center', atUtc: iso(nowMs + 2 * 60_000), durationS: 60 },
+    expose(2, nowMs + 3 * 60_000),
+    { seq: 3, cmd: 'meridian_flip', atUtc: iso(nowMs + 4 * 60_000), durationS: 60 },
+    expose(4, nowMs + 5 * 60_000),
+    { seq: 5, cmd: 'end', atUtc: iso(end - 60_000) },
+  ]);
+
+  it('Projekt im gespeicherten Plan ohne Ist: Zielkarte „geplant“ statt „Nicht zugeteilt“; Kopfzahlen und Flips vom Plan', () => {
+    expect(pid).not.toBe('');
+    const r = run(stored([later]), executed());
+    expect(r.fromStored).toBe(true);
+    expect(r.unallocated.some((u) => u.projectId === pid)).toBe(false);
+    expect(r.cards.map((c) => [c.projectId, c.state])).toEqual([[pid, 'planned']]);
+    expect(r.cards[0]?.lines.find((l) => l.lineId === lineId)?.tonight).toBe(2);
+    // Ziele · Frames aus dem Rest der Revision; Flips aus deren meridian_flip-Einträgen.
+    expect(r.header).toMatchObject({ targets: 1, frames: 2 });
+    expect(r.chart.markers?.filter((m) => m.kind === 'flip').map((m) => m.atUtc)).toEqual([
+      (nowMs + 4 * 60_000) / 1000,
+    ]);
+    // Filterleiste, Protokoll und Karte zählen dieselben Belichtungen.
+    const bars = (r.chart.filterBars ?? []).filter((f) => f.tense === 'planned');
+    expect(bars.reduce((n, f) => n + (f.count ?? 0), 0)).toBe(2);
+    expect(r.protocol.filter((x) => x.cmd === 'expose').map((x) => x.no)).toEqual([1, 2]);
+  });
+
+  it('übersprungener bzw. leer beendeter Block bleibt nicht „geplant“; „läuft“ nur der jetzt laufende Block', () => {
+    const skipped = block(B_SKIPPED, nowMs - 5 * 60_000, nowMs + 60_000, [
+      expose(1, nowMs + 30_000),
+    ]);
+    // Ohne Ist: der jetzt laufende Block läuft an der Rig.
+    expect(run(stored([skipped]), executed()).cards[0]?.state).toBe('running');
+    // block_skipped im Ist: weder Karte noch Block im Diagramm; die Gründe kommen aus der Rechnung.
+    const ev = executed({
+      events: [
+        {
+          kind: 'block_skipped',
+          atUtc: iso(nowMs - 4 * 60_000),
+          blockId: B_SKIPPED,
+          projectId: pid,
+          code: 'center_failed',
+          durationS: null,
+          revision: null,
+        },
+      ],
+    });
+    const r = run(stored([skipped]), ev);
+    expect(r.cards).toEqual([]);
+    expect(r.chart.blocks?.some((b) => b.id === B_SKIPPED)).toBe(false);
+    expect(r.unallocated.map((u) => u.projectId)).toContain(pid);
+    // Leer beendet (block_end ohne Belichtung, nur über endedBlockIds bekannt): ebenso.
+    expect(run(stored([skipped]), executed(), [B_SKIPPED]).cards).toEqual([]);
+    // Ist-Block eines späteren Blocks: frühere Blöcke des Plans sind vorbei.
+    const moved = run(
+      stored([skipped, later]),
+      executed({
+        blocks: [
+          {
+            blockId: B_LATER,
+            nightPlanId: null,
+            projectId: pid,
+            panelId: null,
+            title: 'X',
+            kind: 'regular',
+            startUtc: iso(nowMs - 60_000),
+            endUtc: null,
+            endReason: null,
+            exposures: 0,
+            running: true,
+          },
+        ],
+      }),
+    );
+    expect(moved.chart.blocks?.filter((b) => b.tense === 'planned').map((b) => b.id)).toEqual([
+      B_LATER,
+    ]);
+    expect(moved.cards[0]?.state).toBe('running');
+  });
+
+  it('Was-wäre-wenn (eigene Entwürfe) rechnet weiter selbst', () => {
+    const r = simulate(
+      request({
+        nowUtc: iso(nowMs),
+        selection: 'given',
+        server: {
+          input: serverInput,
+          inputHash: 'sha256:abc',
+          projectNames: {},
+          executed: executed(),
+          storedPlan: stored([later]),
+          firstPlan: null,
+        },
+      }),
+    );
+    expect(r.fromStored).toBe(false);
+    expect(r.cards.every((c) => c.state === null)).toBe(true);
   });
 });

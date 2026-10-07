@@ -19,6 +19,11 @@ export interface NightActual {
   names: ReadonlyMap<string, string>;
   storedPlan: StoredPlan | null;
   firstPlan: StoredPlan | null;
+  /**
+   * Blöcke, die das Plugin beendet bzw. übersprungen hat (`block_end`, `block_skipped`) – auch leere, die im Ist nur als
+   * Lücke stehen. Das Web zeigt sie nicht mehr als „geplant“ (07.10.2026); nur `GET /web/v1/simulations/input`.
+   */
+  endedBlockIds: string[];
 }
 
 export async function nightActual(
@@ -38,9 +43,21 @@ export async function nightActual(
   const names = new Map([...o.names, ...(await d.repos.projects().names(missing))]);
 
   const blockKinds = new Map<string, 'regular' | 'transit'>();
+  // Geplanter Beginn je Block: Plugin vor 0.4.13 meldet keinen block_start (Anfahren/Autofokus sonst „Leerlauf“).
+  const blockStarts = new Map<string, string>();
   for (const p of [plans.first, plans.latest])
-    for (const b of (p?.blocks ?? []) as { id?: string; kind?: string }[])
-      if (b.id) blockKinds.set(b.id, b.kind === 'transit' ? 'transit' : 'regular');
+    for (const b of (p?.blocks ?? []) as { id?: string; kind?: string; startUtc?: string }[])
+      if (b.id) {
+        blockKinds.set(b.id, b.kind === 'transit' ? 'transit' : 'regular');
+        if (typeof b.startUtc === 'string') blockStarts.set(b.id, b.startUtc);
+      }
+  const endedBlockIds = [
+    ...new Set(
+      actual.events
+        .filter((e) => (e.kind === 'block_end' || e.kind === 'block_skipped') && e.blockId)
+        .map((e) => e.blockId as string),
+    ),
+  ];
 
   const executed =
     actual.sessions.length === 0
@@ -65,6 +82,7 @@ export async function nightActual(
           now: isoUtc(o.now),
           names,
           blockKinds,
+          blockStarts,
         });
 
   // „Rig plant noch mit Rev. n“ nur für Nächte, die noch laufen bzw. kommen.
@@ -97,5 +115,6 @@ export async function nightActual(
     names,
     storedPlan: view(plans.latest, true),
     firstPlan: view(plans.first, false),
+    endedBlockIds,
   };
 }
