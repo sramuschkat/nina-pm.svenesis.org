@@ -461,6 +461,48 @@ public sealed class BlockExecutorTests
     }
 
     [Fact]
+    public async Task Ungeplanter_Flip_vor_dem_Plan_Flip_kein_Warten_auf_den_Meridian()
+    {
+        // Rig-Nacht 06./07.10.2026 (IC 1795): NINA flippte vor der ersten Belichtung, der Plan sah danach „warten bis
+        // Meridian“ und den Flip vor. Das Plugin wartete bis zur Flipzeit + Verzug: 03:22–03:43 CDT untätig.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            // Vor dem Flip 10 min auf den Meridian warten (Pause vor dem Meridian + frühestens danach), wie die Engine plant.
+            var wait = new Entries
+            {
+                Seq = 100, Cmd = EntriesCmd.Wait, AtUtc = T("2026-09-18T07:47:58Z"), DurationS = 600,
+            };
+            var flipAt = b.Entries.FindIndex(e => e.Cmd == EntriesCmd.Meridian_flip);
+            b.Entries.Insert(flipAt, wait);
+            var shift = TimeSpan.FromSeconds(600);
+            foreach (var e in b.Entries.Skip(flipAt + 1))
+            {
+                e.AtUtc += shift;
+                if (e.UntilUtc is { } u) e.UntilUtc = u + shift;
+            }
+            b.EndUtc += shift;
+        });
+        nina.Pier = "west";
+        nina.FlipDuringExposure = 1;
+        nina.FlipDurationS = 1300;
+
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240), DownloadS: 3));
+
+        Assert.Contains(sink.Lines, l => l.Contains("WAIT_SKIPPED") && l.Contains("reason=flipped") && l.Contains("plannedS=600"));
+        Assert.DoesNotContain("flip", nina.Calls);
+        // Nach Flip (1300 s) und Zentrieren folgt die zweite Belichtung ohne Warten – vorher erst nach Flipzeit + Verzug.
+        var exposes = nina.Calls.Where(c => c.StartsWith("expose:", StringComparison.Ordinal)).ToList();
+        var center = nina.Calls.FindIndex(c => c == "center-no-rotate");
+        var second = nina.Calls.FindIndex(c => c == exposes[1]);
+        Assert.True(center > 0 && second > center);
+        Assert.DoesNotContain(nina.Calls.Skip(center).Take(second - center), c => c.StartsWith("delay:", StringComparison.Ordinal));
+        // Keine Belichtung verworfen: die frei gewordene Planzeit gleicht den Flip aus.
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("SKIPPED_TIMEAWARE"));
+        Assert.Equal("expose:8@2026-09-18T08:11:08.000Z", exposes[1]);
+    }
+
+    [Fact]
     public async Task Pier_Seite_unbekannt_ohne_PA_Sprung_meldet_flip_undetected()
     {
         var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");

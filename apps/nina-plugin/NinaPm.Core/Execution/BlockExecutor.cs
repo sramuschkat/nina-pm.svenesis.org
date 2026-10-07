@@ -151,6 +151,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         run.Offset = o < TimeSpan.Zero ? TimeSpan.Zero : o;
     }
 
+    /// <summary>Geplanter Eintrag entfällt, weil seine Arbeit schon getan ist: seine Dauer verkürzt den Verzug (nie negativ).</summary>
+    private void Credit(Run run, double plannedS) => Overrun(run, clock.UtcNow, plannedS);
+
     /// <summary>
     /// Ein Block. <see cref="BlockRunOptions.InBlockCheck"/> (execution.md §3.2) läuft alle 15 min vor einer Belichtung
     /// mit dem anstehenden Eintrag; liefert er einen Grund (<c>target_removed</c>, <c>transit_interrupt</c>), endet der
@@ -369,8 +372,16 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             var target = step.EntryIndex!.Value;
             // Nicht-Belichtungen zwischen der letzten und der gewählten Belichtung; übersprungene Belichtungen nehmen
             // ihre Zwischen-Einträge mit (nur Filterwechsel und der Flip bleiben wirksam).
+            var offsetBefore = run.Offset;
             for (var i = cursor + 1; i < target; i++)
                 await RunNonExposureAsync(run, i, target, skip: step.Skipped.Count > 0 && i < step.Skipped[^1], token).ConfigureAwait(false);
+            if (step.Kind == PlaybackKind.Wait && run.Offset != offsetBefore)
+            {
+                // Der Verzug hat sich geändert (z. B. Flip schon erledigt, geplante Zeit frei): Wartezeit neu bestimmen,
+                // nicht mit dem alten Verzug warten (Rig-Nacht 06./07.10.2026).
+                cursor = target - 1;
+                continue;
+            }
             if (Playback.Repeats(entries[target]) && !run.SeriesFilterSet)
             {
                 // Filter der Transit-Zeile einmal vor der Serie (§5), noch im Vorlauf; danach kein Filterwechsel.
@@ -493,7 +504,13 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// </summary>
     private async Task FlipAsync(Run run, Entries entry, CancellationToken token)
     {
-        if (run.Flipped) return;
+        if (run.Flipped)
+        {
+            // NINA hat schon geflippt; die Flipdauer steckt im Verzug. Die geplante Flipzeit ist damit frei (Rig-Nacht
+            // 06./07.10.2026: sonst doppelt gezählt, 20 min Leerlauf nach dem Flip).
+            Credit(run, entry.DurationS ?? 0);
+            return;
+        }
         var block = run.Block;
         var flip = run.Options.Flip;
         var started = clock.UtcNow;
@@ -550,10 +567,22 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 // Nach dem Flip nur Zentrieren, auch bei einem älteren Plan mit slew_center_rotate (NT-E4).
                 await RecenterAfterFlipAsync(run, e.DurationS ?? 0, token).ConfigureAwait(false);
                 break;
+            case EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate when run.Flipped:
+                // Nach einem ungeplanten Flip schon vor der nächsten Belichtung zentriert (Zeit im Verzug): geplante Zeit frei.
+                Credit(run, e.DurationS ?? 0);
+                break;
             case EntriesCmd.Wait when !skip:
                 var until = e.AtUtc.AddSeconds(e.DurationS ?? 0);
                 var flip = block.Entries.Skip(index + 1).Take(nextExpose - index - 1)
                     .FirstOrDefault(x => x.Cmd == EntriesCmd.Meridian_flip);
+                if (flip is not null && run.Flipped)
+                {
+                    // Warten auf den Meridian vor einem Flip, den NINA schon ausgeführt hat: entfällt, die geplante Zeit
+                    // ist frei. Sonst wartete das Plugin bis Flipzeit + Verzug (Rig-Nacht 06./07.10.2026: 03:22–03:43 CDT).
+                    log.Event("WAIT_SKIPPED", ("block", block.Id), ("reason", "flipped"), ("plannedS", e.DurationS ?? 0));
+                    Credit(run, e.DurationS ?? 0);
+                    break;
+                }
                 if (flip is not null && flip.AtUtc < until) until = flip.AtUtc;
                 // Planuhr: der Plan ist um den Verzug verschoben (zeitgeführt, §4.2).
                 if ((run.Options.Mode ?? Mode) == PlaybackMode.TimeAware) until += run.Offset;
