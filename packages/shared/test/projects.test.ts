@@ -148,4 +148,19 @@ describe('isDeliverable (TK 6.3)', () => {
     expect(isDeliverable(off, '2026-09-17')).toBe(false);
     expect(isDeliverable(off, '2026-09-18')).toBe(true);
   });
+  it('Exoplanet: nur mit Transit der Nacht; Transit-Zeile „nur heute aus“ → nicht ausliefern (Analyse 07.10.2026)', () => {
+    const exo = { ...base, projectType: 'exoplanet' as const, hasLockedTransit: true };
+    expect(isDeliverable(exo, '2026-09-17')).toBe(true);
+    expect(isDeliverable({ ...exo, hasLockedTransit: false }, '2026-09-17')).toBe(false);
+    // Transitreihe unabhängig vom Planungsbedarf (A-21): auch mit erreichtem Soll.
+    expect(
+      isDeliverable({ ...exo, lines: [{ ...line(10, 10), enabled: true }] }, '2026-09-17'),
+    ).toBe(true);
+    const off = { ...exo, lines: [{ ...line(10), enabled: true, disabledForNight: '2026-09-17' }] };
+    expect(isDeliverable(off, '2026-09-17')).toBe(false);
+    expect(isDeliverable({ ...off, hasLockedTransit: true }, '2026-09-18')).toBe(true);
+    expect(isDeliverable({ ...exo, lines: [{ ...line(10), enabled: false }] }, '2026-09-17')).toBe(
+      false,
+    );
+  });
 });

@@ -2,8 +2,9 @@
  * S-61 Session-Detail (FK 14.3; FA-AUS-01…03, FA-AUS-06, FA-AUS-07, FA-AUS-22; NT-03, NT-E2, NT-E3;
  * AP-15): Seitenkopf (`PageHeader` mit Brotkrumen, Stilsystem AP-26d) mit Status, Beginn–Ende in
  * Standortzeit mit Kürzel, Frames und Integration; Aktionen *Korrektur erfassen* und *Als geprüft
- * markieren* (Admin, Hauptaktion rechts); Reiter in einer Karte. Reiter Soll/Ist je Zeile (Soll aus der
- * ersten Planrevision), Aufnahmen (Kennzeichen *Temperaturabweichung* und *Einstellungen abweichend*
+ * markieren* (Admin, Hauptaktion rechts); Reiter in einer Karte. Reiter Soll/Ist je Zeile (Soll = erste
+ * Planrevision der Session ohne Bonus, Transit-Serie als Zeitfenster; Ist = Aufnahmen dieser Session –
+ * Entscheidung Sven 07.10.2026), Aufnahmen (Kennzeichen *Temperaturabweichung* und *Einstellungen abweichend*
  * mit Filter, nicht zugeordnete zuordnen), Ereignisse, Flats, Protokoll (AP-30, `SessionLogPanel`).
  * Plangrafik, Kennzahlen und Transits folgen mit ihren Paketen (R2/R3/R4).
  */
@@ -178,9 +179,11 @@ export function SessionDetailPage() {
                     onDone={() => setCorrectLine(null)}
                   />
                 ) : null}
+                <p className={styles.muted}>{t('sessions.plan.definition')}</p>
                 <PlanTable
                   rows={d.rows}
                   hasPlan={s.planRevision !== null}
+                  siteTimeZone={s.siteTimeZone}
                   onCorrect={setCorrectLine}
                 />
               </>
@@ -204,13 +207,51 @@ export function SessionDetailPage() {
   );
 }
 
+/**
+ * Soll-Zelle (07.10.2026): Anzahl ohne Bonus; Transit-Serie als Zeitfenster statt Anzahl; Zeilen, die erst
+ * eine spätere Planrevision der Session eingeplant hat, mit Hinweis *später eingeplant*.
+ */
+function PlannedCell({
+  row,
+  hasPlan,
+  siteTimeZone,
+}: {
+  row: NightSessionLineRow;
+  hasPlan: boolean;
+  siteTimeZone: string;
+}) {
+  const { t } = useTranslation();
+  if (row.plannedSeries)
+    return (
+      <span title={t('sessions.plan.seriesHint')}>
+        {row.planned ? `${row.planned} + ` : ''}
+        {t('sessions.plan.series')}{' '}
+        <SiteTime atUtc={row.plannedSeries.fromUtc} siteTimeZone={siteTimeZone} />
+        {' – '}
+        <SiteTime atUtc={row.plannedSeries.untilUtc} siteTimeZone={siteTimeZone} />
+      </span>
+    );
+  if (row.planned === null) return <>{hasPlan ? '–' : t('sessions.detail.noPlan')}</>;
+  if (!row.plannedLater) return <>{row.planned}</>;
+  return (
+    <>
+      <span className={styles.pill} title={t('sessions.plan.plannedLaterHint')}>
+        {t('sessions.plan.plannedLater')}
+      </span>{' '}
+      {row.planned}
+    </>
+  );
+}
+
 function PlanTable({
   rows,
   hasPlan,
+  siteTimeZone,
   onCorrect,
 }: {
   rows: readonly NightSessionLineRow[];
   hasPlan: boolean;
+  siteTimeZone: string;
   onCorrect: (lineId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -242,7 +283,8 @@ function PlanTable({
       sortValue: (r) => r.planned,
       priority: 2,
       align: 'end',
-      cell: (r) => r.planned ?? (hasPlan ? '–' : t('sessions.detail.noPlan')),
+      nowrap: true,
+      cell: (r) => <PlannedCell row={r} hasPlan={hasPlan} siteTimeZone={siteTimeZone} />,
     },
     {
       id: 'acquired',
@@ -352,9 +394,11 @@ function CorrectionForm({
   const client = useQueryClient();
   const [lineId, setLineId] = useState(initialLine);
   const row = rows.find((r) => r.exposureLineId === lineId) ?? rows[0];
-  const min = row?.rejectedIndividual ?? 0;
+  // Die Korrektur gilt je Zeile und Nacht (FA-AUS-06): Untergrenze und Startwert aus den Nachtwerten,
+  // nicht aus den Werten dieser Session (07.10.2026).
+  const min = row?.night.rejectedIndividual ?? 0;
   const startValue = (r: NightSessionLineRow | undefined) =>
-    Math.max(r?.rejectedIndividual ?? 0, r?.rejectedCorrection ?? 0);
+    Math.max(r?.night.rejectedIndividual ?? 0, r?.night.rejectedCorrection ?? 0);
   const [rejected, setRejected] = useState(startValue(row));
   const [reason, setReason] = useState('');
   const [comment, setComment] = useState('');
@@ -410,7 +454,7 @@ function CorrectionForm({
             type="number"
             className={styles.input}
             min={min}
-            max={row?.acquired ?? undefined}
+            max={row?.night.acquired ?? undefined}
             value={rejected}
             aria-describedby="correction-min"
             onChange={(e) => setRejected(Math.max(0, Math.trunc(Number(e.target.value) || 0)))}

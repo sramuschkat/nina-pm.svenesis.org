@@ -33,7 +33,7 @@ planNight(PlanInput)
 | Planungsbedarf je Zeile | `effRemaining = max(0, Geplant + ⌈Geplant × overshootPct/100⌉ − Akzeptiert − pending_l)` (FK 8.4). **`pending_l` (verbindlich, NT-20):** Das Plugin sendet `pendingCaptures = [{exposureLineId, transitObservationId?, captureIds: [...]}]` – die IDs seiner noch **nicht mit 2xx quittierten** Light-Meldungen (Dead-Letter-Aufnahmen zählen nicht). Der Server zählt je Zeile nur die IDs, die **noch nicht** in `capture` stehen (`pending_l = |captureIds \ capture.id|`), und gibt der Engine die Zahl; so wird eine Aufnahme, deren Meldung schon angekommen ist, nicht doppelt abgezogen. Einträge mit `transitObservationId` betreffen nur die Transitzählung, nicht den Planungsbedarf (A-21) |
 | Overhead je Belichtung | produktiv `ov = downloadS + ditherShare + filterShare + afShare` mit `ditherShare = (ditherEnabled ∧ ditherEvery > 0) ? ditherSettleS/ditherEvery : 0`, `filterShare = (filterSwitchEnabled ∧ filterSwitchEvery > 0) ? filterChangeS/filterSwitchEvery : 0`, `afShare = (afEveryMin > 0) ? afDurationS · (exposureS + downloadS)/(afEveryMin·60) : 0` (A-4). **Der Autofokus steckt ausschließlich hier** – `fix` enthält ihn nicht (sonst doppelt, ENG5-11). Kompatibilität: `ov = 0` |
 | Arbeitssekunden je Zeile | Kompatibilität: `effRemaining × exposureS`; produktiv: `effRemaining × (exposureS + ov)` |
-| Blockfixkosten `fix` | produktiv `fix = slewCenterS + (flipEnabled ∧ tM ≠ null ? flipDurationS : 0)` – Slew/Zentrieren je Block und ein erwarteter Meridian-Flip je Nacht; **ohne Autofokus** (der steckt in `ov`). Kompatibilität 0 (A-16). Die Flip-Annahme ist eine bewusste Überschätzung: ob der Flip wirklich in einen Block der Einheit fällt, steht erst nach dem Malen fest. Einen **Pierseitenwechsel beim Blockwechsel** (NT-27) rechnet erst der Walk (§8), nicht `fix` |
+| Blockfixkosten `fix` | produktiv `fix = slewCenterS + (flipEnabled ∧ flipErwartet ? flipDurationS : 0)` – Slew/Zentrieren je Block und ein erwarteter Meridian-Flip je Nacht; **ohne Autofokus** (der steckt in `ov`). Kompatibilität 0 (A-16). **`flipErwartet` (Entscheidung Sven 07.10.2026):** `tM ≠ null ∧ tM ≥ Planstart` (`startAtS`, sonst Nachtbeginn) ∧ `tM` in der nutzbaren Zeit der Einheit (`[erster, letzter + 1)` `CanImage`-Slot ab dem Planstart, × 300 s) ∧ ¬`tonight.flipDoneByPanel[unitId]` – vorher zählte jeder Durchgang im Nachtfenster, auch vor dem Planstart, in der Dämmerung oder nach einem schon erledigten Flip; das machte `MinChunk` eines Restpostens um `flipDurationS` zu groß. Die Flip-Annahme bleibt eine bewusste Überschätzung: ob der Flip wirklich in einen Block der Einheit fällt, steht erst nach dem Malen fest. Einen **Pierseitenwechsel beim Blockwechsel** (NT-27) rechnet erst der Walk (§8), nicht `fix` |
 | Erwartete Pierseite | beim Slew auf Panel `p` zur Zeit `t`: `pierSide(p, t) = west`, wenn `LHA_p(t) < 0` (Ziel östlich des Meridians, Stundenwinkel wie `flip-rotation.md` §1.1), sonst `east`; nach einem `meridian_flip` im Block gilt `east` (NT-34; Zuordnung zu ASCOM `pierWest`/`pierEast` in `execution.md`). Pierseite am Blockende = Seite beim letzten Slew bzw. `east` nach dem Flip. Ohne `flipEnabled` wird keine Pierseite berechnet |
 | Erwartete Blockzahl | `nBlocks_i = 1 + ((|{s : MoonDown ∧ UsableSlot}| > 0 ∧ moonUpUsableSlotCount(r) > 0) ? 1 : 0)` – aus den Matrixgrößen (§4), also **vor** dem Malen berechenbar; nur für den Bedarf (A-16) |
 | MinChunk | Mindestzeit am Ziel in s; `MinChunkSlots = max(1, ⌈MinChunk/300⌉)`. **Validierung** (Anwendung, nicht Engine): `MinChunk ≥ max(exposureS aktiver Zeilen) + ov + fix`, sonst Warnung `min_time_too_small` beim Speichern (FA-PRJ-03); die Engine rechnet mit dem gespeicherten Wert weiter (ENG-15) |
@@ -47,7 +47,7 @@ Parameter mit Wert **0 bedeuten „aus“**: `ditherEvery = 0`, `afEveryMin = 0`
 1. **Nutzbar** `CanImage[s]` = Sonne (geometrisch) < Dämmerungsgrenze des Projekts **und** scheinbare Zielhöhe ≥ Mindesthöhe des Projekts **und** Nacht ≥ Startdatum. Kein Horizontprofil (FA-STO-02).
    - **Filterzuordnung (verbindlich, NT-E1):** Hat das Rig ein Filterrad, nimmt eine Zeile nur teil, wenn `targets` für sie einen bestätigten `ninaFilterName` liefert. Zeilen mit `ninaFilterName = null` (nicht zugeordnet oder nach `filter_wheel_changed` unbestätigt) zählen **nicht** zur Restarbeit (`TierWorkSec`, `work_i`) und werden nie gewählt; Diagnose `filter_not_found` **mit `lineId`** (§12). Hat ein Projekt dadurch keine Zeile mit Arbeit mehr, entfällt es wie ohne Restarbeit. Rigs ohne Filterrad (OSC) sind nicht betroffen.
    - **Koordinaten:** Kompatibilität – Projektzentrum für alle Panels (SS 262). Produktiv – Panel-Einheiten nutzen die Panel-Koordinaten; Projekt-Einheiten (Panels nicht getrennt) rechnen Höhe, Dämmerung und Mondabstand **je Panel** mit dessen Koordinaten (Entscheidung Sven 28.09.2026 nach der Astronomie-Prüfung – vorher Projektzentrum, Randpanels großer Mosaike lagen dadurch bis zu einige Grad unter der Mindesthöhe): `CanImage` der Einheit = ODER über die Panels, `pick` wählt nur Panels mit eigenem `CanImage` über **alle** Slots der Belichtung samt Download (nicht nur im Startslot; Slots außerhalb der Einheitenmaske regelt die Nachtende-Kulanz), die Zeilen-Masken gelten je Panel; `TierSafe` und `UsableSlot` zählen nur Zeilen, deren Panel im Slot selbst nutzbar ist (Nr. 4, §4); Slew und `tM` wie bisher je Panel (A-19, ENGINE_VERSION 0.8.0).
-2. **Aussortieren:** längster zusammenhängender nutzbarer Lauf < `min(Mindestzeit, Restarbeit + fix)` (produktiv) bzw. < Mindestzeit (Kompatibilität) → Einheit nimmt heute nicht teil (Diagnose `below_min_time` bzw. `not_visible`, `start_date`) (A-16).
+2. **Aussortieren:** längster zusammenhängender nutzbarer Lauf < `min(Mindestzeit, Restarbeit + fix)` (produktiv) bzw. < Mindestzeit (Kompatibilität) → Einheit nimmt heute nicht teil (Diagnose `below_min_time` bzw. `not_visible`, `start_date`) (A-16). Ausgenommen ist die **fortgesetzte Einheit** einer Neuplanung, solange sie im Slot von `startAtS` nutzbar ist (§5.5, A-32).
 3. **Zeilen-Sicherheit** `ESsafe[l][s]` = `moonSafe(profil, slot)` aus `moon.md` (A-2); „Kein Mond“ ⇔ `MoonDown[s]` (A-3). Zeilen ohne Mondvermeidung: immer sicher.
 4. **Mond-Stufen** je Projekt über alle aktiven Zeilen aller Panels:
    - Stufe 0 = Zeilen ohne Mondvermeidung (existiert immer).
@@ -55,13 +55,13 @@ Parameter mit Wert **0 bedeuten „aus“**: `ditherEvery = 0`, `afEveryMin = 0`
    - Gruppen aufsteigend nach `R`; Gleichstand: produktiv Profil-ID, Kompatibilität Reihenfolge des ersten Auftretens (Dictionary-Einfügeordnung, SE 121).
    - `TierSafe[t][s]`: Stufe 0 immer; `requiresMoonDown` → `MoonDown[s]`; sonst `MoonDown[s] ∨ ESsafe[rep][s]`. Kompatibilität: `rep` = erste Zeile der Stufe in Panel-, dann Zeilenreihenfolge (SS). **Produktiv (A-28):** `TierSafe[t][s] = MoonDown[s] ∨ ∃ Zeile der Stufe mit Arbeit und `ESsafe[l][s]`` – die Stufe ist sicher, sobald **eine** Zeile mit Restarbeit dort belichten darf; `pick` prüft die Zeile ohnehin einzeln (§9). Bei Panel-Einheiten mit Panel-Koordinaten (A-19) werden die Masken je Panel gerechnet, also gilt die Stufe je Panel-Einheit (ENG-16). **Mosaik ohne Panel-Einheiten mit Masken je Panel (A-19):** `TierSafe[t][s] = ∃ Zeile der Stufe mit Arbeit, deren Panel `CanImage[s]` hat, ∧ `ESsafe[l][s]`` – für **alle** Stufen einschließlich Stufe 0 und ohne eigenen `MoonDown`-Zweig (Mond unten steckt in `ESsafe`); Stellen, die sonst „Stufe 0 ∨ `MoonDown[s]` ∨ `TierSafe`“ prüfen (`UsableSlot`, Vorfilter und beide Phasen von §6), prüfen dann nur `TierSafe`. Sonst malte `paint` Slots, in denen kein Panel belichten kann.
 5. **Restarbeit je Stufe** `TierWorkSec[t]` = Σ Arbeitssekunden der Zeilen der Stufe (bei Panel-Einheiten nur Zeilen des Panels). Einheit ohne Restarbeit entfällt.
-6. **Transit-Einheit:** Fenster aus `transit.md` (nur `locked` für diese Nacht und dieses Rig); ohne Fenster heute → entfällt.
+6. **Transit-Einheit:** Fenster aus `transit.md` (nur `locked` für diese Nacht und dieses Rig); ohne Fenster heute → entfällt. Produktiv entfällt sie auch, wenn ihre Transit-Zeile in der Einheit nicht aktiv ist (`enabled = false`, z. B. „nur heute aus“, FA-FOL-05) oder fehlt (Diagnose `no_need`; Analyse 07.10.2026, Engine 0.17.0) – sonst belichtete A-21 die abgeschaltete Zeile bis Fensterende.
 
 ## 4. Matrix
 
 Je Einheit `r`:
 - `TierMoonUpSafeSlots[t]` = |{ s : CanImage ∧ ¬MoonDown ∧ TierSafe[t][s] }|
-- `MinChunk` = Mindestzeit; ist `Σ TierWorkSec + fix < Mindestzeit` → `MinChunk = Σ TierWorkSec + fix` (Kompatibilität ohne `fix`; Projektende/Restposten).
+- `MinChunk` = Mindestzeit; ist `Σ TierWorkSec + fix < Mindestzeit` → `MinChunk = Σ TierWorkSec + fix` (Kompatibilität ohne `fix`; Projektende/Restposten). Fortgesetzte Einheit (§5.5, A-32): zusätzlich `MinChunk ≤ Lauf · 300`, `Lauf` = zusammenhängende `UsableSlot` ab dem Slot von `startAtS`.
 - `UsableSlot[s]` = CanImage ∧ ∃t: TierWorkSec[t] > 0 ∧ (t = 0 ∨ MoonDown[s] ∨ TierSafe[t][s])
 - `FirstUsableSlot`, `LastUsableSlot`, `TotalUsableSlots` (über CanImage), `MoonDownSlots`, `PeakAltitude` (max. Höhe in CanImage-Slots)
 - `IsConstrained` = TotalUsableSlots × 300 < 2 × MinChunk
@@ -80,6 +80,7 @@ prefilter:  für jede Einheit
     laIn = min(RemainingLaSec, safe·300); nonLaIn = min(NonLa, max(0, safe·300 − laIn))
     accessible = laIn + nonLaIn + min(NonLa − nonLaIn, unsafe·300)
     accessible < MinChunk → TierWorkSec := 0, PreFiltered (Diagnose prefiltered)
+    (fortgesetzte Einheit, §5.5/A-32: nie vorgefiltert, solange accessible > 0; ebenso in §6)
 pass0  (exklusiv): jeder freie Slot mit genau EINEM Kandidaten (¬PreFiltered, TotalWork>0, UsableSlot[s] ← A-6; Kompatibilität CanImage)
         → zuteilen; hint = MoonDown ? LaPreferred : (MoonSafe ? Any : NonLaPreferred); decrementWork(r, 300, hint)
 pass0b (Anker verlängern): je Einheit, je eigenem Lauf < MinChunkSlots: erst nach hinten, dann nach vorne in freie Slots
@@ -171,6 +172,15 @@ Stellen, an denen der Text oben zwei Lesarten zulässt oder sich selbst widerspr
 5. **Einheiten ohne Arbeit (§3.5, A-25):** Produktiv entfällt jede Einheit ohne Restarbeit (Diagnose `no_need`), außer Transit-Einheiten mit Fenster, die bis Fensterende belichten (A-21).
 6. **Mosaik-Gruppen (A-15):** Die Gruppe steht in der Reihenfolge ihrer Gruppenschlüssel (Minimum/Summe wie in §5.2, letzter Tie-Break Projekt-ID). Pass 3a mit Gruppen: Fenster der Gruppe = [kleinster erster, größter letzter nutzbarer Slot der Panels], `accessible_P` = Summe; die Reserve wird wie in `fairShare` auf die Panels verteilt.
 7. **Transitkonflikt (A-20):** Ein späterer Transit gilt als überlappend, sobald ein Slot seines Fensters oder Vorlaufs schon für einen anderen Transit gesperrt ist. Bei Neuplanung zählen vergangene Slots (vor `startAtS`) nicht: weder die eigenen der laufenden Transit-Einheit (Vorlauf, begonnene Serie) noch die eines schon vergangenen Transits (0.8.0 – vorher brach eine Neuplanung mitten im Transit dessen Rest als `transit_conflict` ab).
+
+### 5.5 Fortsetzung bei Neuplanung (A-32, Entscheidung Sven 07.10.2026)
+Anlass: Rig-Nacht 06./07.10.2026 – Neuplanung um 06:04 Ortszeit mit 10–20 min Dunkelheit, das Rig arbeitete an IC 1795 (SII 600 s, 5 Aufnahmen offen), Mindestzeit 30 min. Der Vorfilter verwarf die Einheit („erreichbare Zeit unter der Mindestzeit“, `prefiltered`), der Plan war leer, und die letzte Dunkelzeit blieb ungenutzt.
+- **Fortgesetzte Einheit** = `tonight.currentUnitId`, sofern ein Eintrag in `tonight.pastBlocks` dieser Einheit höchstens **300 s vor `startAtS`** endet (`toS ≥ startAtS − 300`; dieselbe Grenze wie „kein Leerlauf“ beim Wegfall des Slews, `execution.md` §3.2). Auslegung: Das Plugin setzt `currentUnitId` bei jedem Blockbeginn und löscht es nie; ohne die Blockzeit gälte auch eine Einheit als fortgesetzt, deren letzter Block Stunden zurückliegt.
+- Für sie gilt die **Mindestzeit nicht, solange das Ziel nutzbar ist** (sichtbar, dunkel, Mond-/Stufenbedingungen: `UsableSlot` im Slot von `startAtS`): `MinChunk = min(MinChunk, Lauf · 300)` mit `Lauf` = zusammenhängende `UsableSlot` ab dem Slot von `startAtS` (§4); der Vorfilter (§5, §6) verwirft sie nicht, solange erreichbare Arbeit > 0 ist; das Aussortieren (§3 Nr. 2) entfällt. Die Restzeit wird genutzt, der Walk belichtet wie sonst bis Blockende bzw. mit Nachtende-Kulanz.
+- Ist das Ziel im Slot von `startAtS` nicht mehr nutzbar, gilt die Mindestzeit wie bisher. Andere Einheiten sind nicht betroffen.
+- Der Plan enthält für den Fortsetzungsblock weiterhin `slew_center`; ob er entfällt, entscheidet das Plugin (`execution.md` §3.2). Ein Wegfall schon in der Planung ist ein eigenes Folgethema.
+- Bekannte Grenze: Das verkleinerte `MinChunk` gilt für die ganze Einheit in diesem Plan; hat sie nach einer Lücke später in der Nacht einen weiteren Lauf, kann dort ein Block unter der Mindestzeit entstehen (selten, z. B. Mondstufen; die nächste Neuplanung rechnet ohne Fortsetzung).
+- Kompatibilitätsmodus: aus (`tonight` wird ignoriert, A-11).
 
 ## 6. Strategie manuelle Priorität (`paintGreedy`)
 ```
@@ -364,7 +374,7 @@ Panel gewechselt → Panel-Zeiten der Einheit zurücksetzen
 | A-13 | Sortierschlüssel ohne Zieltermin | zusätzlich `due_soonest` | FA-SCH-03 |
 | A-14 | `accessible` in Pass 3 vor 3a eingefroren → 3a-Reserve doppelt | nach 3a neu berechnet | keine Überbuchung |
 | A-15 | Panel-Einheiten konkurrieren einzeln | gemeinsamer Bedarf je Projekt (§5.2) | Fairness Mosaik vs. Einzelfeld |
-| A-16 | Restposten ohne Blockfixkosten; Aussortieren mit voller Mindestzeit | `fix` = Slew + fälliger AF + erwarteter Flip, in MinChunk, Aussortieren **und** Bedarf (`d_i = work + nBlocks·fix`) | Restposten werden fertig, Plan nicht überbucht |
+| A-16 | Restposten ohne Blockfixkosten; Aussortieren mit voller Mindestzeit | `fix` = Slew + fälliger AF + erwarteter Flip, in MinChunk, Aussortieren **und** Bedarf (`d_i = work + nBlocks·fix`). **Flip nur, wenn der Meridian nach dem Planstart in der nutzbaren Zeit der Einheit liegt und nicht schon geflippt wurde** (§2 `flipErwartet`, Entscheidung Sven 07.10.2026, Engine 0.17.0) | Restposten werden fertig, Plan nicht überbucht |
 | A-17 | Blockanfang-Ersatz prüft nur `CanImage[s]`, auch Transit/vorgefiltert | CanImage in allen übertragenen Slots; Transit/vorgefiltert ausgeschlossen | keine Belichtung unter Mindesthöhe |
 | A-18 | Kein Slew nach Leerlauf auf derselben Einheit | Slew/Zentrieren nach jedem Leerlauf | Montierung kann geparkt/abgedriftet sein |
 | A-19 | Masken am Projektzentrum; Panel-Lock mit Listenposition | Panel-Einheiten mit Panel-Koordinaten; Panel-Index | Genauigkeit bei großen Mosaiken |
@@ -379,18 +389,19 @@ Panel gewechselt → Panel-Zeiten der Einheit zurücksetzen
 | A-28 | Stufenmaske über eine Repräsentant-Zeile | Stufe sicher, wenn **eine** Zeile mit Arbeit sicher ist | keine Totzeit durch unsichere Zeilen |
 | A-29 | Leeres `pick` mitten im Block lässt die Slots zugeteilt | Rest des Laufs wird freigegeben, `idle_gap` | keine stille Totzeit |
 | A-31 | Restriktivität `A × (1 + 100/(maxIllum+1))` – ignoriert die Profilbreite `W`, Stufenordnung nicht monoton | `restrictiveness = A · W · arctan(14,77/W)` aus `moon.md`, zweites Kriterium `maxIllum` aufsteigend | richtige Stufenordnung (AST-M3: zwei zulässige Profile wurden vertauscht, das strengere fiel in `moon_blocked`) |
+| A-32 | Kein Neuplanen in der Nacht (A-11); Mindestzeit gilt immer | Fortgesetzte Einheit einer Neuplanung (`currentUnitId` mit Block bis ≤ 300 s vor `startAtS`) ohne Mindestzeit, solange im Slot von `startAtS` nutzbar: `MinChunk ≤ Lauf ab startAtS`, kein Vorfilter, kein Aussortieren (§5.5; Entscheidung Sven 07.10.2026, Engine 0.17.0) | Rest der Nacht wird genutzt statt leerem Plan (Rig-Nacht 06./07.10.2026, IC 1795) |
 | A-30 | *(entfällt)* | — | harter Blockschluss (A-7), einzige Ausnahme Nachtende-Kulanz A-24 (NT-18) |
 
 ## 11. Tests
 
 ### 11.1 Kompatibilitätsmodus (Schalter)
-**Ein** Feld steuert den Modus: `PlanInput.mode = 'productive' | 'compat'` (kein zweites `compat`-Feld; TK 8.2, Soll-Plan-Format). `mode: 'compat'` setzt **alle** Abweichungen A-1…A-31 auf das Original-Verhalten:
+**Ein** Feld steuert den Modus: `PlanInput.mode = 'productive' | 'compat'` (kein zweites `compat`-Feld; TK 8.2, Soll-Plan-Format). `mode: 'compat'` setzt **alle** Abweichungen A-1…A-32 auf das Original-Verhalten:
 
 | Abweichung | im Kompatibilitätsmodus |
 |---|---|
 | A-1, A-2, A-3 | Astronomie wird nicht genutzt (Grid liefert Masken), `MoonDown` ≤ 0 |
 | A-4 | `ov = 0`, `fix = 0`; Overhead-**Einträge** (`Slew`, `Filter`, `Dither`) werden wie im Original protokolliert, verbrauchen aber **keine Zeit** (die Uhr läuft nur um `exposureS`, SE 2023) – genau das setzt der Log-Adapter §11.2 voraus |
-| A-5, A-6, A-7, A-13, A-14, A-15, A-16, A-17, A-18, A-20, A-21, A-22, A-26, A-27, A-28, A-29, A-31 | aus (Original) |
+| A-5, A-6, A-7, A-13, A-14, A-15, A-16, A-17, A-18, A-20, A-21, A-22, A-26, A-27, A-28, A-29, A-31, A-32 | aus (Original) |
 | A-8 | ohne Wirkung (toter Code im Original, kein Verhaltensunterschied) |
 | A-9 | Einheitenreihenfolge = Grid, Prioritäts-Gleichstand nach `projectName` **ordinal ohne Groß-/Kleinschreibung** (`StringComparer.OrdinalIgnoreCase`, `TargetInstructionSet.cs:1048–1053`), Tier-Gleichstand nach erstem Auftreten, Laufsortierung mit Start-Tie-Break wie im Patch |
 | A-10, A-11 | `tonight` wird ignoriert, `startAtUtc` nur als Uhrstart (kein `existing` aus `pastBlocks`) |

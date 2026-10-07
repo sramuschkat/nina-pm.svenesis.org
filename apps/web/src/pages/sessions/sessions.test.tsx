@@ -124,14 +124,15 @@ const detail = (): NightSessionDetail => ({
       filterShortName: 'Ha',
       exposureS: 300,
       planned: 17,
+      plannedSeries: null,
+      plannedLater: false,
       acquired: 16,
       rejected: 1,
-      rejectedIndividual: 1,
-      rejectedCorrection: 0,
       accepted: 15,
       bonus: 0,
       bonusRejected: 0,
       integrationS: 4500,
+      night: { acquired: 16, rejected: 1, rejectedIndividual: 1, rejectedCorrection: 0 },
     },
   ],
   captures: [
@@ -428,7 +429,11 @@ describe('S-61 Session-Detail', () => {
     expect(screen.getByText('1 h 20 min Belichtung / 6 h 59 min nutzbare Dunkelzeit')).toBeTruthy();
     expect(screen.getByText('Autofokus 4 min · Flip 3 min · sonstiger 5 h 38 min')).toBeTruthy();
     expect(screen.getByText('94,1 %')).toBeTruthy();
-    expect(screen.getByText('16 von 17 geplanten Frames (erster Plan)')).toBeTruthy();
+    expect(
+      screen.getByText(
+        '16 von 17 geplanten Frames (erster Plan ohne Bonus, Transit-Serien nur in der Zeit)',
+      ),
+    ).toBeTruthy();
     const reasons = screen.getByRole('table', { name: 'Abweichungsgründe' });
     expect(within(reasons).getByRole('row', { name: /Meridian-Flip/ }).textContent).toContain(
       '3 min',
@@ -460,14 +465,17 @@ describe('S-61 Session-Detail', () => {
     const d = detail();
     const first = d.rows[0] as NightSessionDetail['rows'][number];
     d.rows = [
-      { ...first, rejected: 5, rejectedIndividual: 0, rejectedCorrection: 5 },
+      {
+        ...first,
+        rejected: 5,
+        night: { acquired: 16, rejected: 5, rejectedIndividual: 0, rejectedCorrection: 5 },
+      },
       {
         ...first,
         exposureLineId: ID(21),
         filterShortName: 'OIII',
         rejected: 0,
-        rejectedIndividual: 0,
-        rejectedCorrection: 0,
+        night: { acquired: 16, rejected: 0, rejectedIndividual: 0, rejectedCorrection: 0 },
       },
     ];
     state.detail = d;
@@ -486,6 +494,72 @@ describe('S-61 Session-Detail', () => {
         comment: null,
       }),
     );
+  });
+
+  it('Soll/Ist-Begriffe (07.10.2026): Erklärung, Transit-Serie als Zeitfenster, „später eingeplant“, Korrektur mit Nachtwerten', async () => {
+    const d = detail();
+    const first = d.rows[0] as NightSessionDetail['rows'][number];
+    d.rows = [
+      // Ist dieser Session 4, die Nacht hat über zwei Sessions 10 mit 3 einzeln verworfenen.
+      {
+        ...first,
+        acquired: 4,
+        rejected: 0,
+        accepted: 4,
+        night: { acquired: 10, rejected: 3, rejectedIndividual: 3, rejectedCorrection: 0 },
+      },
+      {
+        ...first,
+        projectName: 'HAT-P-32 b',
+        exposureLineId: ID(21),
+        filterShortName: 'V',
+        planned: 0,
+        plannedSeries: { fromUtc: '2026-09-18T04:10:00Z', untilUtc: '2026-09-18T06:40:00Z' },
+        acquired: 70,
+        accepted: 70,
+        rejected: 0,
+      },
+      {
+        ...first,
+        projectName: 'M 31',
+        exposureLineId: ID(22),
+        filterShortName: 'L',
+        planned: 0,
+        plannedLater: true,
+        acquired: 6,
+        accepted: 6,
+        rejected: 0,
+      },
+    ];
+    state.detail = d;
+    renderAt(`/auswertung/sessions/${ID(1)}`);
+    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
+    expect(
+      screen.getAllByText(
+        'Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.',
+      ),
+    ).toHaveLength(1);
+    const table = screen.getByRole('table', { name: 'Soll/Ist' });
+    const soll = (name: RegExp) =>
+      within(within(table).getByRole('row', { name })).getAllByRole('cell')[3]?.textContent;
+    expect(soll(/HAT-P-32 b/)).toBe('Serie 23:10 CDT – 01:40 CDT');
+    expect(soll(/M 31/)).toBe('später eingeplant 0');
+    expect(soll(/NGC 281/)).toBe('17');
+    // Korrektur gilt je Zeile und Nacht: Untergrenze aus den Nachtwerten, nicht aus der Session.
+    fireEvent.click(
+      within(within(table).getByRole('row', { name: /NGC 281/ })).getByRole('button', {
+        name: 'Korrektur',
+      }),
+    );
+    const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
+    expect([input.min, input.max, input.value]).toEqual(['3', '10', '3']);
+    // Kennzahlen zeigen dieselbe Erklärung.
+    fireEvent.click(screen.getByRole('tab', { name: 'Kennzahlen' }));
+    expect(
+      screen.getByText(
+        'Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.',
+      ),
+    ).toBeTruthy();
   });
 
   it('ohne Recht auf eine Zeile (API: canCorrect = false) kein „Korrektur erfassen“, kein Verwerfen', async () => {

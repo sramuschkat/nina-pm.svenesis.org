@@ -619,10 +619,21 @@ export interface SettleResult {
  * (Discord „Transit verpasst“) und kurz darauf *beobachtet*.
  */
 export const TRANSIT_SETTLE_GRACE_MS = 30 * 60_000;
+/**
+ * Höchstens so lange nach Fensterende wartet *verpasst* auf Meldungen, die noch im Postausgang des Plugins liegen
+ * (transit.md §8, Analyse 07.10.2026): der Postausgang wiederholt mit Pausen bis 60 min (`OutboxSender.BackoffMinutes`),
+ * eine beendete Session meldet bis 6 h nach (`CLOSE_AFTER_END_MS`). Danach gilt die Beobachtung in jedem Fall als
+ * abgeschlossen.
+ */
+export const TRANSIT_SETTLE_MAX_MS = 6 * 3_600_000;
 /** Nachmeldungen werden 14 Tage nach Fensterende noch gezählt (FA-EXO-21). */
 const LATE_CAPTURES_MS = 14 * 86_400_000;
 
-/** Aufnahmen einer Beobachtung je Session; verknüpfte zählen die ihrer primären (FA-EXO-33a). */
+/**
+ * Aufnahmen einer Beobachtung je Session; verknüpfte zählen die ihrer primären (FA-EXO-33a). Es zählen nur
+ * **gespeicherte, nicht verworfene Lights** (Analyse 07.10.2026): abgebrochene bzw. fehlgeschlagene Belichtungen und
+ * verworfene Aufnahmen machen aus einem verpassten Transit keinen beobachteten.
+ */
 async function transitCaptures(
   db: Db,
   tenantId: string,
@@ -633,10 +644,52 @@ async function transitCaptures(
     .select(['sessionId', (eb) => eb.fn.countAll<string>().as('n')])
     .where('tenantId', '=', tenantId)
     .where('transitObservationId', '=', o.primaryObservationId ?? o.id)
+    .where('frameType', '=', 'light')
+    .where('result', '=', 'saved')
+    .where('rejected', '=', false)
     .groupBy('sessionId')
     .orderBy('sessionId')
     .execute();
   return { captures, count: captures.reduce((s, c) => s + Number(c.n), 0) };
+}
+
+/**
+ * Liegen für die Nacht der Beobachtung am Rig des Projekts noch Meldungen beim Plugin (transit.md §8, Analyse
+ * 07.10.2026)? Ja, wenn eine Session der Nacht
+ * - beendet ist und `outbox_pending > 0` gemeldet hat (Abschluss-PATCH), oder
+ * - noch läuft bzw. verwaist ist und im Offline-Modus steht bzw. ihre Instanz im letzten Heartbeat `outboxPending > 0`
+ *   meldet.
+ * Dann wartet *verpasst* (höchstens bis `TRANSIT_SETTLE_MAX_MS`), statt Discord „Transit verpasst“ zu senden und kurz
+ * darauf *beobachtet*.
+ */
+async function outboxPendingForNight(
+  db: Db,
+  tenantId: string,
+  projectId: string,
+  night: string,
+): Promise<boolean> {
+  const rows = await db
+    .selectFrom('project as p')
+    .innerJoin('session as s', (j) =>
+      j.onRef('s.tenantId', '=', 'p.tenantId').onRef('s.rigId', '=', 'p.rigId'),
+    )
+    .leftJoin('ninaInstance as i', (j) =>
+      j.onRef('i.id', '=', 's.ninaInstanceId').onRef('i.tenantId', '=', 's.tenantId'),
+    )
+    .select(['s.status', 's.outboxPending', 's.offlineSince', 'i.lastState'])
+    .where('p.tenantId', '=', tenantId)
+    .where('p.id', '=', projectId)
+    .where('s.night', '=', night)
+    .limit(20)
+    .execute();
+  return rows.some((r) => {
+    if (r.status === 'completed' || r.status === 'aborted') return (r.outboxPending ?? 0) > 0;
+    if (r.offlineSince !== null) return true;
+    const state = (typeof r.lastState === 'string' ? JSON.parse(r.lastState) : r.lastState) as {
+      outboxPending?: unknown;
+    } | null;
+    return typeof state?.outboxPending === 'number' && state.outboxPending > 0;
+  });
 }
 
 /**
@@ -795,6 +848,12 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
         };
         if (count === 0) {
           if (o.status === 'missed') return null;
+          // Meldungen noch im Postausgang des Plugins: weiter warten, höchstens bis Fensterende + 6 h (transit.md §8).
+          if (
+            ms(o.windowEndUtc) > now.getTime() - TRANSIT_SETTLE_MAX_MS &&
+            (await outboxPendingForNight(trx, d.tenantId, o.projectId, String(o.night)))
+          )
+            return null;
           await trx
             .updateTable('transitObservation')
             .set({ status: 'missed' })

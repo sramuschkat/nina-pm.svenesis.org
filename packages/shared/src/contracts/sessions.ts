@@ -54,7 +54,11 @@ export const NightSessionList = z
   .object({ items: z.array(NightSession) })
   .meta({ id: 'NightSessionList' });
 
-/** Soll/Ist je Zeile in der Nacht der Session (FA-AUS-03); Soll aus der ersten Planrevision. */
+/**
+ * Soll/Ist je Zeile der Session (FA-AUS-03). Entscheidung Sven 07.10.2026: **Soll** = Belichtungen des ersten
+ * Plans dieser Session (niedrigste Revision) **ohne Bonus**, **Ist** = gespeicherte Lights **dieser** Session
+ * (nicht der ganzen Nacht über mehrere Sessions); Bonus-Aufnahmen nur in *Bonus* und *Bonus verworfen*.
+ */
 export const NightSessionLineRow = z
   .object({
     projectId: Uuid,
@@ -70,18 +74,41 @@ export const NightSessionLineRow = z
     exposureLineId: Uuid,
     filterShortName: z.string(),
     exposureS: z.number().min(0),
-    /** Geplante Frames dieses Projekts und Filters laut erstem Plan der Session; `null` = ohne Plan. */
+    /**
+     * Geplante Frames dieser Zeile laut erstem Plan der Session ohne Bonus-Einträge; `0`, wenn die Zeile
+     * dort nicht (oder nur als Transit-Serie) vorkommt; `null` = Session ohne Plan.
+     */
     planned: z.number().int().min(0).nullable(),
+    /** Transit-Serie im ersten Plan (`expose_series`): Soll ist das Zeitfenster, keine Anzahl. */
+    plannedSeries: z.object({ fromUtc: UtcInstant, untilUtc: UtcInstant }).nullable(),
+    /** Nicht im ersten Plan, aber in einer späteren Revision dieser Session eingeplant. */
+    plannedLater: z.boolean(),
+    /** Gespeicherte Lights dieser Session ohne Bonus (einschließlich verworfener). */
     acquired: z.number().int().min(0),
-    /** Verworfen in der Nacht = max(Korrektur, einzeln verworfene) (FA-AUS-06). */
+    /**
+     * Verworfen in dieser Session: einzeln verworfene Aufnahmen der Session plus ihr Anteil an einer
+     * Korrektur der Nacht (FA-AUS-06), der über die einzeln verworfenen hinausgeht – den Überhang tragen
+     * die Sessions der Nacht nach Beginn, jede höchstens bis zu ihren nicht verworfenen Aufnahmen.
+     */
     rejected: z.number().int().min(0),
-    rejectedIndividual: z.number().int().min(0),
-    rejectedCorrection: z.number().int().min(0),
     accepted: z.number().int().min(0),
+    /** Bonus-Aufnahmen dieser Session (einschließlich verworfener). */
     bonus: z.number().int().min(0),
-    /** Einzeln verworfene Bonus-Aufnahmen (FA-AUS-20, FK 8.4). */
+    /** Einzeln verworfene Bonus-Aufnahmen dieser Session (FA-AUS-20, FK 8.4). */
     bonusRejected: z.number().int().min(0),
+    /** Gemeldete Belichtung nicht verworfener Lights dieser Session (mit Bonus, NT-E3). */
     integrationS: z.number(),
+    /**
+     * Werte der Zeile in der ganzen Nacht (alle Sessions) – Grundlage für *Korrektur erfassen*, die je
+     * Zeile und Nacht gilt (FA-AUS-06): Untergrenze = einzeln verworfene der Nacht.
+     */
+    night: z.object({
+      acquired: z.number().int().min(0),
+      /** Verworfen der Nacht = max(Korrektur, einzeln verworfene). */
+      rejected: z.number().int().min(0),
+      rejectedIndividual: z.number().int().min(0),
+      rejectedCorrection: z.number().int().min(0),
+    }),
   })
   .meta({ id: 'NightSessionLineRow' });
 export type NightSessionLineRow = z.infer<typeof NightSessionLineRow>;
@@ -172,7 +199,11 @@ export const NightSessionKpis = z
     safetyPauseS: z.number().min(0),
     blockChanges: z.number().int().min(0),
     filterChanges: z.number().int().min(0),
-    /** Plan-Treue gegen den ersten Plan der Session (FA-AUS-09); `null` ohne Plan. */
+    /**
+     * Plan-Treue gegen den ersten Plan der Session (FA-AUS-09); `null` ohne Plan. Gleiche Begriffe wie
+     * der Reiter Soll/Ist (07.10.2026): Frames = Belichtungen ohne Bonus; Transit-Serien zählen nur in
+     * der Zeit (Soll = Zeitfenster), nicht in den Frames; Ist = Lights dieser Session ohne Bonus.
+     */
     plan: z
       .object({
         plannedFrames: z.number().int().min(0),

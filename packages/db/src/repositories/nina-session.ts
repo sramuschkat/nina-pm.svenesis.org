@@ -7,10 +7,11 @@
  * - Statusübergänge: running → completed | aborted | stale; einziger Rückweg stale → running.
  */
 import { dedupeKeys, ProblemError } from '@nina-pm/shared';
-import type { Kysely, Selectable, Transaction } from 'kysely';
+import { sql, type Kysely, type Selectable, type Transaction } from 'kysely';
 import { withTx } from '../tx';
 import type { Database, RigLeaseTable, SessionTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { bindPlanAtSessionStart } from './night-plan-binding';
 import { STALE_AFTER_SESSION_END_MS } from './session-ops';
 
 export type SessionRow = Selectable<SessionTable>;
@@ -339,19 +340,44 @@ export class NinaSessionRepository extends TenantRepo {
           lastHeartbeatAt: now,
         })
         .execute();
+      // Plan an die Session binden – ungebunden direkt, an eine andere Session gebunden (Neustart vor der Dämmerung mit
+      // gleicher Eingabe) als Kopie; Revisionen, die unter der noch unbekannten Session gespeichert wurden, bleiben und
+      // werden nach Zeit gezählt (Analyse 07.10.2026).
       if (planId)
-        await trx
-          .updateTable('nightPlan')
-          .set({ sessionId: input.id })
-          .where('id', '=', planId)
-          .where('tenantId', '=', this.tenantId)
-          .where('sessionId', 'is', null)
-          .execute();
+        await bindPlanAtSessionStart(
+          trx,
+          this.tenantId,
+          this.rigId,
+          planId,
+          input.id,
+          input.startedAt,
+        );
+      await this.syncSessionEnd(trx, input.id, sessionEnd);
       if (input.offlinePlan)
         await this.saveOfflinePlan(trx, input.id, input.night, input.offlinePlan, now);
       const session = (await this.session(input.id, trx)) as SessionRow;
       return { session, created: true, lease: { untilUtc: until, leaseLost: false } };
     });
+  }
+
+  /** `session_end_utc` und Berichtsfrist aus der letzten Revision der Session (NT-09), falls abweichend. */
+  private async syncSessionEnd(trx: Tx, sessionId: string, current: Date | null): Promise<void> {
+    const last = await trx
+      .selectFrom('nightPlan')
+      .select(sql<string | null>`summary->>'sessionEndUtc'`.as('sessionEndUtc'))
+      .where('tenantId', '=', this.tenantId)
+      .where('sessionId', '=', sessionId)
+      .orderBy('revision', 'desc')
+      .limit(1)
+      .executeTakeFirst();
+    const end = last?.sessionEndUtc ? new Date(last.sessionEndUtc) : null;
+    if (!end || end.getTime() === current?.getTime()) return;
+    await trx
+      .updateTable('session')
+      .set({ sessionEndUtc: end, reportDueAt: new Date(end.getTime() + 2 * 3_600_000) })
+      .where('tenantId', '=', this.tenantId)
+      .where('id', '=', sessionId)
+      .execute();
   }
 
   /**

@@ -15,7 +15,7 @@ import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 import { LATE_REPORT_MS, leaseReleasedAt, type SessionRow } from './nina-session';
-import { CLOSE_AFTER_END_MS } from './session-ops';
+import { CLOSE_AFTER_END_MS, LATE_LIGHT_AFTER_END_MS } from './session-ops';
 
 type Tx = Transaction<Database>;
 
@@ -143,7 +143,9 @@ export class NinaIngestRepository extends TenantRepo {
    * Hält die Session gerade die Lease? Sonst werden Meldungen markiert (NT-14). Ausnahme (Rig-Nacht 06.10.2026,
    * `execution.md` §8 NIN5-7): Eine Session, die mit `outboxPending > 0` abgeschlossen wurde, meldet ihre Outbox
    * innerhalb von 6 h nach – das ist kein Konflikt, solange keine andere Session die Lease des Rigs hält und die
-   * Session nicht per Admin-Freigabe ausgeschlossen wurde (M5).
+   * Session nicht per Admin-Freigabe ausgeschlossen wurde (M5). Ebenso Aufnahmen, die bis `LATE_LIGHT_AFTER_END_MS`
+   * (10 min) nach dem Ende ankommen, auch mit `outboxPending = 0` – die letzte Belichtung wird oft erst nach dem
+   * Abschluss-PATCH gespeichert und gesendet (Analyse 07.10.2026).
    */
   private async holdsLease(
     trx: Tx,
@@ -160,11 +162,13 @@ export class NinaIngestRepository extends TenantRepo {
       (x.offlineUntil !== null && new Date(x.offlineUntil) > now) ||
       (x.leaseUntil !== null && new Date(x.leaseUntil) > now);
     if (l && l.activeSessionId === session.id) return held(l);
+    const sinceEnd =
+      session.endedAt === null ? null : now.getTime() - new Date(session.endedAt).getTime();
     const draining =
       (session.status === 'completed' || session.status === 'aborted') &&
-      (session.outboxPending ?? 0) > 0 &&
-      session.endedAt !== null &&
-      now.getTime() - new Date(session.endedAt).getTime() <= CLOSE_AFTER_END_MS &&
+      sinceEnd !== null &&
+      (((session.outboxPending ?? 0) > 0 && sinceEnd <= CLOSE_AFTER_END_MS) ||
+        sinceEnd <= LATE_LIGHT_AFTER_END_MS) &&
       leaseReleasedAt(session) === null &&
       l?.releasedSessionId !== session.id;
     return draining && !(l && l.activeSessionId !== null && held(l));

@@ -1,7 +1,8 @@
 /**
  * Sessions im Web (AP-15; S-60, S-61; FA-AUS-01…03, FA-AUS-07, FA-AUS-22; TK 7.2): Liste je Rig und
- * Nacht mit Frames/Integration, Detail mit Soll/Ist je Zeile (Soll aus der ersten Planrevision der
- * Session, Ist aus `capture_night`), Aufnahmen mit Kennzeichen, Ereignisse, Flats; *Als geprüft
+ * Nacht mit Frames/Integration, Detail mit Soll/Ist je Zeile (Soll = erste Planrevision der Session ohne
+ * Bonus, Ist = Aufnahmen dieser Session; Entscheidung Sven 07.10.2026), Aufnahmen mit Kennzeichen,
+ * Ereignisse, Flats; *Als geprüft
  * markieren*; Ziel einer Korrektur prüfen (Zeile eines Projekts am Rig der Session).
  */
 import { ProblemError, sessionKpis, type KpiPlanEntry, type RejectReason } from '@nina-pm/shared';
@@ -46,10 +47,91 @@ interface PlanSummary {
     readonly astronomicalStartUtc?: string | null;
     readonly astronomicalEndUtc?: string | null;
   };
-  readonly summary?: { plannedFrames?: Record<string, Record<string, number>> };
 }
 
 const parseJson = <T>(v: unknown): T => (typeof v === 'string' ? JSON.parse(v) : v) as T;
+
+/** Eintrag eines gespeicherten Plan-Blocks (`night_plan.blocks[].entries[]`, TK 7.6) – nur gelesene Felder. */
+interface PlanEntryJson {
+  readonly cmd?: string;
+  readonly atUtc?: string;
+  readonly untilUtc?: string;
+  readonly exposureLineId?: string;
+  readonly exposureS?: number;
+  readonly bonus?: boolean;
+}
+interface PlanBlockJson {
+  readonly entries?: readonly PlanEntryJson[];
+}
+
+/** Soll einer Zeile in einem Plan: Frames ohne Bonus, Transit-Serie als Zeitfenster. */
+export interface LineSoll {
+  readonly frames: number;
+  readonly series: { readonly fromUtc: string; readonly untilUtc: string } | null;
+}
+
+/**
+ * Soll je Zeile aus den Blöcken eines Plans (Entscheidung Sven 07.10.2026): `expose` ohne `bonus: true` zählt
+ * einen Frame, `expose_series` (Transit) ergibt das Zeitfenster vom frühesten Beginn bis zum spätesten
+ * Ende. `summary.plannedFrames` der Engine zählt Bonus-Frames mit und taugt dafür nicht. Zeilen nur mit
+ * Bonus-Einträgen fehlen im Ergebnis.
+ */
+export function plannedByLine(blocks: readonly PlanBlockJson[] | null): Map<string, LineSoll> {
+  const acc = new Map<string, { frames: number; from: string | null; until: string | null }>();
+  for (const b of blocks ?? [])
+    for (const e of b.entries ?? []) {
+      if (!e.exposureLineId) continue;
+      const frame = e.cmd === 'expose' && e.bonus !== true;
+      const series = e.cmd === 'expose_series' && Boolean(e.atUtc) && Boolean(e.untilUtc);
+      if (!frame && !series) continue;
+      const cur = acc.get(e.exposureLineId) ?? { frames: 0, from: null, until: null };
+      if (frame) cur.frames += 1;
+      else {
+        const from = e.atUtc as string;
+        const until = e.untilUtc as string;
+        if (cur.from === null || Date.parse(from) < Date.parse(cur.from)) cur.from = from;
+        if (cur.until === null || Date.parse(until) > Date.parse(cur.until)) cur.until = until;
+      }
+      acc.set(e.exposureLineId, cur);
+    }
+  return new Map(
+    [...acc].map(([lineId, v]) => [
+      lineId,
+      {
+        frames: v.frames,
+        series:
+          v.from !== null && v.until !== null
+            ? { fromUtc: iso(v.from) as string, untilUtc: iso(v.until) as string }
+            : null,
+      },
+    ]),
+  );
+}
+
+/**
+ * Anteil einer Session am Korrektur-Überhang einer Zeile in der Nacht. Verworfen = max(Korrektur, einzeln
+ * verworfene) gilt je Zeile und Nacht, nicht je Session (FA-AUS-06). Den Überhang über die einzeln
+ * verworfenen tragen die Sessions nach Beginn (bei Gleichstand nach ID), jede höchstens bis zu ihren nicht
+ * verworfenen Nicht-Bonus-Aufnahmen – die Summe über die Sessions ergibt den Nachtwert.
+ */
+export function correctionShare(
+  extra: number,
+  sessions: readonly { sessionId: string; startedAt: string; open: number }[],
+  sessionId: string,
+): number {
+  let rest = Math.max(0, extra);
+  const ordered = [...sessions].sort(
+    (a, b) =>
+      Date.parse(a.startedAt) - Date.parse(b.startedAt) ||
+      (a.sessionId < b.sessionId ? -1 : a.sessionId > b.sessionId ? 1 : 0),
+  );
+  for (const s of ordered) {
+    const take = Math.min(rest, Math.max(0, s.open));
+    if (s.sessionId === sessionId) return take;
+    rest -= take;
+  }
+  return 0;
+}
 
 /** HFR und Sterne aus `capture.metrics` (AP-62); fehlende oder ungültige Werte → `null`, nie 0. */
 export function captureMetrics(v: unknown): { hfr: number | null; stars: number | null } {
@@ -187,25 +269,39 @@ export class SessionReviewRepository extends TenantRepo {
       .execute();
     const first = plans[0] ? parseJson<PlanSummary>(plans[0].summary) : null;
     const last = plans.at(-1) ? parseJson<PlanSummary>(plans.at(-1)?.summary) : null;
-    const planned = first?.summary?.plannedFrames ?? {};
+    // Soll (Entscheidung Sven 07.10.2026): erster Plan der Session ohne Bonus; Transit-Serien als Zeitfenster.
+    const firstBlocks = plans[0] ? parseJson<PlanBlockJson[]>(plans[0].blocks) : null;
+    const planned = plannedByLine(firstBlocks);
+    const plannedLater = new Set<string>();
+    for (const p of plans.slice(1))
+      for (const lineId of plannedByLine(parseJson<PlanBlockJson[]>(p.blocks)).keys())
+        if (!planned.has(lineId)) plannedLater.add(lineId);
 
-    // Zeilen: mit Zählern der Nacht oder mit Soll im ersten Plan – nur Projekte am Rig der Session.
-    const nightRows = await this.db
-      .selectFrom('captureNight as n')
-      .innerJoin('project as p', (j) =>
-        j.onRef('p.id', '=', 'n.projectId').onRef('p.tenantId', '=', 'n.tenantId'),
-      )
-      .selectAll('n')
-      .where('n.tenantId', '=', t)
-      .where('n.night', '=', session.night)
-      .where('p.rigId', '=', session.rigId)
+    // Ist: gespeicherte, zugeordnete Lights dieser Session je Zeile (FK 8.4) – nicht die ganze Nacht.
+    const own = await this.db
+      .selectFrom('capture')
+      .select([
+        'exposureLineId',
+        sql<number>`SUM(CASE WHEN NOT is_bonus THEN 1 ELSE 0 END)`.as('acquired'),
+        sql<number>`SUM(CASE WHEN NOT is_bonus AND rejected THEN 1 ELSE 0 END)`.as('rejInd'),
+        sql<number>`SUM(CASE WHEN is_bonus THEN 1 ELSE 0 END)`.as('bonus'),
+        sql<number>`SUM(CASE WHEN is_bonus AND rejected THEN 1 ELSE 0 END)`.as('bonusRej'),
+        sql<number>`SUM(CASE WHEN NOT rejected THEN exposure_s ELSE 0 END)`.as('seconds'),
+      ])
+      .where('tenantId', '=', t)
+      .where('sessionId', '=', id)
+      .where('frameType', '=', 'light')
+      .where('result', '=', 'saved')
+      .where('assignment', '=', 'assigned')
+      .where('exposureLineId', 'is not', null)
+      .groupBy('exposureLineId')
       .execute();
-    const byLine = new Map(nightRows.map((n) => [n.exposureLineId, n]));
-    const projectIds = [
-      ...new Set([...nightRows.map((n) => n.projectId), ...Object.keys(planned)]),
-    ];
+    const ownByLine = new Map(own.map((o) => [String(o.exposureLineId), o]));
+
+    // Zeilen: mit Aufnahmen dieser Session oder in einem Plan der Session – nur Projekte am Rig der Session.
+    const lineIds = [...new Set([...ownByLine.keys(), ...planned.keys(), ...plannedLater])];
     const lines =
-      projectIds.length === 0
+      lineIds.length === 0
         ? []
         : await this.db
             .selectFrom('exposureLine as l')
@@ -221,49 +317,109 @@ export class SessionReviewRepository extends TenantRepo {
               'l.deletedAt',
               'p.name as projectName',
               'p.createdBy as projectCreatedBy',
-              'p.rigId',
             ])
             .where('l.tenantId', '=', t)
-            .where('l.projectId', 'in', projectIds)
+            .where('l.id', 'in', lineIds)
+            .where('p.rigId', '=', session.rigId)
             .orderBy('p.name')
             .orderBy('l.orderIndex')
             .orderBy('l.id')
             .execute();
-    const plannedUsed = new Set<string>();
-    const rows = lines
-      .filter((l) => l.rigId === session.rigId)
-      .filter((l) => byLine.has(l.id) || (planned[l.projectId]?.[l.filterShortName] ?? 0) > 0)
-      .filter((l) => byLine.has(l.id) || l.deletedAt === null)
-      .map((l) => {
-        const n = byLine.get(l.id);
-        const key = `${l.projectId}|${l.filterShortName}`;
-        // Soll gilt je Projekt und Filter: an der ersten Zeile, weitere Zeilen desselben Filters `null`.
-        const firstOfKey = !plannedUsed.has(key);
-        plannedUsed.add(key);
-        const soll =
-          plans.length === 0 || !firstOfKey
-            ? null
-            : (planned[l.projectId]?.[l.filterShortName] ?? 0);
-        const acquired = num(n?.acquiredCount);
-        const rejected = num(n?.rejectedCount);
-        return {
-          projectId: l.projectId,
-          projectName: l.projectName,
-          projectCreatedBy: l.projectCreatedBy,
-          exposureLineId: l.id,
-          filterShortName: l.filterShortName,
-          exposureS: num(l.exposureS),
-          planned: soll,
-          acquired,
-          rejected,
-          rejectedIndividual: num(n?.rejectedIndividual),
-          rejectedCorrection: num(n?.rejectedCorrection),
-          accepted: Math.max(0, acquired - rejected),
-          bonus: num(n?.bonusCount),
-          bonusRejected: num(n?.bonusRejectedCount),
-          integrationS: num(n?.integrationS),
-        };
+    const shown = lines.filter((l) => ownByLine.has(l.id) || l.deletedAt === null);
+
+    // Nachtwerte je Zeile: die Korrektur gilt je Zeile und Nacht (FA-AUS-06).
+    const nightRows =
+      shown.length === 0
+        ? []
+        : await this.db
+            .selectFrom('captureNight')
+            .selectAll()
+            .where('tenantId', '=', t)
+            .where('night', '=', session.night)
+            .where(
+              'exposureLineId',
+              'in',
+              shown.map((l) => l.id),
+            )
+            .execute();
+    const nightByLine = new Map(nightRows.map((n) => [n.exposureLineId, n]));
+    // Korrektur-Überhang (Korrektur über den einzeln verworfenen) auf die Sessions der Nacht verteilen.
+    const extraLines = shown
+      .map((l) => l.id)
+      .filter((lid) => {
+        const n = nightByLine.get(lid);
+        return (
+          ownByLine.has(lid) && n !== undefined && num(n.rejectedCount) > num(n.rejectedIndividual)
+        );
       });
+    const capacities =
+      extraLines.length === 0
+        ? []
+        : await this.db
+            .selectFrom('capture as c')
+            .innerJoin('session as s', (j) =>
+              j.onRef('s.id', '=', 'c.sessionId').onRef('s.tenantId', '=', 'c.tenantId'),
+            )
+            .select([
+              'c.exposureLineId',
+              'c.sessionId',
+              's.startedAt',
+              sql<number>`SUM(CASE WHEN NOT c.rejected THEN 1 ELSE 0 END)`.as('open'),
+            ])
+            .where('c.tenantId', '=', t)
+            .where('c.night', '=', session.night)
+            .where('c.exposureLineId', 'in', extraLines)
+            .where('c.frameType', '=', 'light')
+            .where('c.result', '=', 'saved')
+            .where('c.assignment', '=', 'assigned')
+            .where('c.isBonus', '=', false)
+            .groupBy(['c.exposureLineId', 'c.sessionId', 's.startedAt'])
+            .execute();
+
+    const rows = shown.map((l) => {
+      const o = ownByLine.get(l.id);
+      const n = nightByLine.get(l.id);
+      const soll = planned.get(l.id);
+      const nightRejected = num(n?.rejectedCount);
+      const nightIndividual = num(n?.rejectedIndividual);
+      const share = correctionShare(
+        nightRejected - nightIndividual,
+        capacities
+          .filter((c) => c.exposureLineId === l.id)
+          .map((c) => ({
+            sessionId: c.sessionId,
+            startedAt: iso(c.startedAt) as string,
+            open: num(c.open),
+          })),
+        id,
+      );
+      const acquired = num(o?.acquired);
+      const rejected = num(o?.rejInd) + share;
+      return {
+        projectId: l.projectId,
+        projectName: l.projectName,
+        projectCreatedBy: l.projectCreatedBy,
+        exposureLineId: l.id,
+        filterShortName: l.filterShortName,
+        exposureS: num(l.exposureS),
+        planned: plans.length === 0 ? null : (soll?.frames ?? 0),
+        plannedSeries: soll?.series ?? null,
+        plannedLater: plannedLater.has(l.id),
+        acquired,
+        rejected,
+        accepted: Math.max(0, acquired - rejected),
+        bonus: num(o?.bonus),
+        bonusRejected: num(o?.bonusRej),
+        // Korrektur ohne Einzelauswahl mit der Zeilenbelichtung abziehen (wie `capture_night`, NT-E3).
+        integrationS: Math.max(0, num(o?.seconds) - share * num(l.exposureS)),
+        night: {
+          acquired: num(n?.acquiredCount),
+          rejected: nightRejected,
+          rejectedIndividual: nightIndividual,
+          rejectedCorrection: num(n?.rejectedCorrection),
+        },
+      };
+    });
 
     const captureRows = await this.db
       .selectFrom('capture as c')
@@ -317,7 +473,8 @@ export class SessionReviewRepository extends TenantRepo {
       .orderBy('filterShortName')
       .orderBy('rotatorMechDegDg')
       .execute();
-    // Kennzahlen und Gründe (AP-31): alle Lights der Session, erster Plan als Soll.
+    // Kennzahlen und Gründe (AP-31): alle Lights der Session, erster Plan als Soll – mit denselben
+    // Begriffen wie Soll/Ist (ohne Bonus, Transit-Serie nur in der Zeit; 07.10.2026).
     const lights = await this.db
       .selectFrom('capture')
       .select([
@@ -328,25 +485,22 @@ export class SessionReviewRepository extends TenantRepo {
         'assignment',
         'filterShortName',
         'blockId',
+        'exposureLineId',
       ])
       .where('tenantId', '=', t)
       .where('sessionId', '=', id)
       .where('frameType', '=', 'light')
       .execute();
-    const firstBlocks = plans[0]
-      ? parseJson<
-          { entries?: { cmd: string; atUtc: string; untilUtc?: string; exposureS?: number }[] }[]
-        >(plans[0].blocks)
-      : null;
     const planEntries: KpiPlanEntry[] | null = firstBlocks
       ? firstBlocks.flatMap((b) =>
           (b.entries ?? [])
             .filter((e) => (e.cmd === 'expose' || e.cmd === 'expose_series') && e.exposureS)
             .map((e) => ({
               cmd: e.cmd as 'expose' | 'expose_series',
-              atUtc: e.atUtc,
+              atUtc: String(e.atUtc),
               untilUtc: e.untilUtc,
               exposureS: Number(e.exposureS),
+              bonus: e.bonus === true,
             })),
         )
       : null;
@@ -368,6 +522,8 @@ export class SessionReviewRepository extends TenantRepo {
         assigned: l.assignment === 'assigned',
         filter: l.filterShortName,
         blockId: l.blockId,
+        // Zeilen mit Transit-Serie im ersten Plan: Soll ist ein Zeitfenster – Aufnahmen zählen nur in der Zeit.
+        series: (planned.get(l.exposureLineId ?? '')?.series ?? null) !== null,
       })),
       events: events.map((e) => ({
         kind: e.kind,

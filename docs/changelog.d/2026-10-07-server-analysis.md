@@ -1,0 +1,12 @@
+### Server: Transit-Zählung, Planrevisionen, Ziele-ETag, Session-Bindung (2026-10-07)
+
+Anforderungen: FA-EXO-20/21, FA-SYN-03, FA-NIN-07, FA-SIM-10, NT-09, NT-14, NT-19, NIN5-7; Analyse 07.10.2026 (Paket B – Server)
+
+- **Transit-Abschluss zählt nur gültige Lights.** Abgebrochene, fehlgeschlagene und verworfene Aufnahmen machen aus einem verpassten Transit keinen beobachteten mehr, und sie zählen nicht in `acquiredCount`.
+- **„Transit verpasst“ wartet auf den Postausgang.** Hat eine Session des Rigs in der Nacht noch Meldungen beim Plugin, wartet *verpasst* bis höchstens Fensterende + 6 h. Das betrifft eine beendete Session mit `outbox_pending > 0` und eine laufende im Offline-Modus oder mit `outboxPending > 0` im Heartbeat. Vorher ging „verpasst“ hinaus und kurz darauf „beobachtet“ (transit.md §8).
+- **Keine Planrevision je Abruf.** Ein inhaltsgleicher Plan wird nicht neu gespeichert, sondern die letzte Revision der Session zurückgegeben. Inhaltsgleich heißt: nur `startAtUtc` und die daraus abgeleiteten IDs sind anders, z. B. beim leeren Plan alle 5 min. Sessionende und Berichtsfrist bleiben dabei unverändert. Das Ist zeigt wiederholte Planereignisse derselben Revision nur einmal. Mehr als 20 Planabrufe einer Session in 60 s erzeugen eine Warnung im Log. Für Ist und gespeicherten Plan lädt der Server nur noch den Inhalt der ersten und der letzten Revision.
+- **Ziele-ETag nur für die laufende Nacht.** Änderungen nur für morgen lösen keine Neuplanung mehr aus. Dazu gehören Startdatum und Transit-Festlegung. Auch das falsche „Rig plant noch mit Rev. n (Ziele geändert)“ entfällt. Im ETag stehen für die Tagesschleife nur noch die aktuelle Nacht und ob eine der folgenden Nächte ausliefert. `deliveryNights` im Inhalt ist unverändert, der Vertrag ebenso (Plugin ab 0.4.10 vergleicht weiter die Zeichenkette).
+- **Neustart vor der Dämmerung.** Eine neue Session mit derselben `nightPlanId` erhält eine Kopie als eigene Revision. Bisher hatte sie keinen Plan: Soll leer, Bericht sofort fällig.
+- **Offline angelegte Session.** Pläne vor der Anlage tragen schon die gemeldete `sessionId`. Die Anlage bindet den Startplan und zählt die Revisionen nach Zeit.
+- **Letztes Light nach dem Abschluss.** Aufnahmen derselben Session bis 10 min nach `completed` sind kein Lease-Konflikt mehr, auch mit `outboxPending = 0`, und werden gezählt. Der Nachtbericht läuft frühestens `endedAt` + 10 min.
+- **Transitblöcke aus Zwischenrevisionen.** Ein Block mit Transit-Aufnahme gilt im Ist immer als Transitblock. Das betrifft Plugins vor 0.4.13.
