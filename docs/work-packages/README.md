@@ -133,8 +133,8 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-50b](AP-50b.md) | Auto-Flats je Projekt | M | AP-50 | H-15 | ☑ |
 | [AP-52](AP-52.md) | Tagesschleife | M | AP-50 | H-15 | ☑ 04.10.2026 |
 | [AP-53](AP-53.md) | Simulator im Plugin | M | AP-16h | H-15 | ☑ 04.10.2026 |
-| [AP-53b](AP-53b.md) | Andockbare Fenster im Imaging-Reiter (Status, Plangrafik, Protokoll) | M | AP-53 | H-15 | ◐ |
-| [AP-53c](AP-53c.md) | Ist + Plan, eine Eingabe-Quelle (Simulator Web/Plugin, „Heute Nacht“) | M | AP-53, AP-53b | H-15 | ◐ |
+| [AP-53b](AP-53b.md) | Andockbare Fenster im Imaging-Reiter (Status, Plangrafik, Protokoll) | M | AP-53 | H-15 | ☑ 07.10.2026 |
+| [AP-53c](AP-53c.md) | Ist + Plan, eine Eingabe-Quelle (Simulator Web/Plugin, „Heute Nacht“) | M | AP-53, AP-53b | H-15 | ☑ 07.10.2026 |
 | [AP-54](AP-54.md) | Mandanten-Export/-Import | M | AP-17 | – | ☐ zurückgestellt |
 | [AP-55](AP-55.md) | Astro-PM-Import (optional) | M | AP-54 | – | ☐ zurückgestellt |
 
@@ -146,3 +146,4 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-61](AP-61.md) | Belichtungs-/Sampling-Rechner | S | AP-09b | – | ☑ 01.10.2026 |
 | [AP-62](AP-62.md) | Optionale NINA-Metriken | S | AP-16h | – | ☑ 04.10.2026 |
 | [AP-63](AP-63.md) | Teilen von Ausrüstung/Projekten | S | AP-54 | – | ☐ zurückgestellt |
+| [AP-64](AP-64.md) | Auswertung neu ordnen: Nächte, Projekte, Standort-Statistik | L | AP-53c | H-16 | ☐ |
