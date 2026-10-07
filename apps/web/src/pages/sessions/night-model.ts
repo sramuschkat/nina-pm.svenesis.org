@@ -295,3 +295,159 @@ export function median(values: readonly number[]): number | null {
   const m = Math.floor(s.length / 2);
   return s.length % 2 === 1 ? (s[m] as number) : ((s[m - 1] as number) + (s[m] as number)) / 2;
 }
+
+// ---- Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026) ----
+
+export interface NightGroup {
+  readonly key: string;
+  readonly rigId: string;
+  readonly rigName: string;
+  readonly siteTimeZone: string;
+  readonly night: string;
+  /** Sessions der Nacht in zeitlicher Reihenfolge. */
+  readonly sessions: readonly NightSessionListItem[];
+  readonly startedAt: string;
+  /** `null`, solange eine Session läuft. */
+  readonly endedAt: string | null;
+  /** Ungeprüft, solange eine Session ungeprüft ist. */
+  readonly reviewed: boolean;
+  /** Laufend vor verwaist vor abgebrochen vor abgeschlossen. */
+  readonly status: NightSessionListItem['status'];
+  readonly integrationS: number;
+  readonly efficiency: NightSessionListItem['efficiency'];
+  readonly weather: NightSessionListItem['weather'];
+  readonly projects: NightSessionProject[];
+}
+
+const STATUS_RANK: Record<string, number> = { running: 3, stale: 2, aborted: 1, completed: 0 };
+
+const latest = (ends: readonly (string | null)[]): string | null =>
+  ends.includes(null)
+    ? null
+    : (([...ends] as string[]).sort((a, b) => Date.parse(a) - Date.parse(b)).at(-1) ?? null);
+
+/** Effizienz der Nacht: Summe Belichtung / Summe nutzbare Dunkelzeit der Sessions mit Effizienz (gewichtet). */
+export function mergeEfficiency(
+  list: readonly NightSessionListItem['efficiency'][],
+): NightSessionListItem['efficiency'] {
+  const known = list.filter((e): e is NonNullable<typeof e> => e !== null);
+  if (known.length === 0) return null;
+  const exposureS = known.reduce((s, e) => s + e.exposureS, 0);
+  const usableDarkS = known.reduce((s, e) => s + e.usableDarkS, 0);
+  return {
+    exposureS,
+    usableDarkS,
+    pct: usableDarkS > 0 ? Math.round((exposureS / usableDarkS) * 1000) / 10 : null,
+  };
+}
+
+/** Projekt-Chips mehrerer Sessions: Frames je Filter summiert, Reihenfolge des ersten Auftretens. */
+export function mergeProjects(
+  lists: readonly (readonly NightSessionProject[])[],
+): NightSessionProject[] {
+  const out = new Map<string, NightSessionProject>();
+  for (const list of lists)
+    for (const p of list) {
+      const cur = out.get(p.projectId);
+      if (!cur) {
+        out.set(p.projectId, { ...p, filters: p.filters.map((f) => ({ ...f })) });
+        continue;
+      }
+      const filters = cur.filters.map((f) => ({ ...f }));
+      for (const f of p.filters) {
+        const hit = filters.find((x) => x.filter === f.filter);
+        if (hit) hit.frames += f.frames;
+        else filters.push({ ...f });
+      }
+      out.set(p.projectId, {
+        ...cur,
+        transit: cur.transit || p.transit,
+        frames: cur.frames + p.frames,
+        filters,
+      });
+    }
+  return [...out.values()];
+}
+
+/** Sessions der Liste je Nacht und Rig zusammenfassen (Reihenfolge der Liste: neueste Nacht zuerst). */
+export function groupNights(items: readonly NightSessionListItem[]): NightGroup[] {
+  const groups = new Map<string, NightSessionListItem[]>();
+  for (const s of items) {
+    const key = `${s.night}|${s.rigId}`;
+    groups.set(key, [...(groups.get(key) ?? []), s]);
+  }
+  return [...groups].map(([key, list]) => {
+    const sessions = [...list].sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
+    const first = sessions[0] as NightSessionListItem;
+    return {
+      key,
+      rigId: first.rigId,
+      rigName: first.rigName,
+      siteTimeZone: first.siteTimeZone,
+      night: first.night,
+      sessions,
+      startedAt: first.startedAt,
+      endedAt: latest(sessions.map((s) => s.endedAt)),
+      reviewed: sessions.every((s) => s.reviewed),
+      status: sessions.reduce<NightSessionListItem['status']>(
+        (w, s) => ((STATUS_RANK[s.status] ?? 0) > (STATUS_RANK[w] ?? 0) ? s.status : w),
+        'completed',
+      ),
+      integrationS: sessions.reduce((n, s) => n + s.integrationS, 0),
+      efficiency: mergeEfficiency(sessions.map((s) => s.efficiency)),
+      weather: sessions.find((s) => s.weather !== null)?.weather ?? null,
+      projects: mergeProjects(sessions.map((s) => s.projects)),
+    };
+  });
+}
+
+/**
+ * Daten der ganzen Nacht aus mehreren Session-Details (Nacht-Seite, Auswahl „Ganze Nacht“): Aufnahmen, Ereignisse
+ * und Flats zusammen in zeitlicher Reihenfolge, Zeilen je Belichtungszeile einmal (für Zuordnen und Rechte), Kennzahlen
+ * summiert (Effizienz gewichtet). Soll/Ist und „geprüft“ bleiben je Session.
+ */
+export function mergeDetails(details: readonly NightSessionDetail[]): NightSessionDetail {
+  const first = details[0] as NightSessionDetail;
+  if (details.length === 1) return first;
+  const rows = new Map<string, NightSessionLineRow>();
+  for (const d of details)
+    for (const r of d.rows) if (!rows.has(r.exposureLineId)) rows.set(r.exposureLineId, r);
+  const k = details.map((d) => d.kpis);
+  const exposureS = k.reduce((s, x) => s + x.exposureS, 0);
+  const dark = k.reduce((s, x) => s + (x.usableDarkS ?? 0), 0);
+  return {
+    ...first,
+    session: {
+      ...first.session,
+      endedAt: latest(details.map((d) => d.session.endedAt)),
+      reviewed: details.every((d) => d.session.reviewed),
+    },
+    rows: [...rows.values()],
+    captures: details
+      .flatMap((d) => d.captures)
+      .sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt)),
+    capturesTruncated: details.some((d) => d.capturesTruncated),
+    events: details
+      .flatMap((d) => d.events)
+      .sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt)),
+    flats: details.flatMap((d) => d.flats),
+    kpis: {
+      ...first.kpis,
+      darkToUtc: details.at(-1)?.kpis.darkToUtc ?? first.kpis.darkToUtc,
+      exposureS,
+      usableDarkS: dark,
+      efficiencyPct: dark > 0 ? Math.round((exposureS / dark) * 1000) / 10 : null,
+    },
+    reasons: details.flatMap((d) => d.reasons),
+  };
+}
+
+/** Lücken im Zeitraum einer Session (Prüfliste je Session). */
+export function gapsWithin(
+  gaps: readonly NightGap[],
+  session: { readonly startedAt: string; readonly endedAt: string | null },
+): NightGap[] {
+  const from = Date.parse(session.startedAt) / 1000;
+  const to = session.endedAt ? Date.parse(session.endedAt) / 1000 : Number.POSITIVE_INFINITY;
+  return gaps.filter((g) => g.toUtc > from && g.fromUtc < to);
+}

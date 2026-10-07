@@ -91,12 +91,21 @@ test('Nacht öffnen, Prüfliste abarbeiten, als geprüft markieren; Aufnahmen na
   const { rigId, rigName, projectName } = await nightOnOwnRig(admin, user, baseURL ?? '');
 
   await admin.goto(`/auswertung/naechte?rig=${rigId}`);
-  const card = admin
-    .getByRole('article', { name: new RegExp(rigName) })
-    .filter({ hasNotText: 'offline angelegt' });
+  const card = admin.getByRole('article', { name: new RegExp(rigName) });
+  await expect(card).toHaveCount(1);
   await expect(card.getByText('ungeprüft')).toBeVisible();
+  await expect(card.getByText('2 Sessions')).toBeVisible();
   await card.getByRole('link', { name: /öffnen$/ }).click();
   await expect(admin.getByRole('heading', { level: 1, name: new RegExp(rigName) })).toBeVisible();
+  // Zwei Sessions in der Nacht: Auswahl, Standard ganze Nacht; Prüfen je Session.
+  const choose = admin.getByRole('group', { name: 'Session wählen' });
+  await expect(choose.getByRole('button', { name: 'Ganze Nacht' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(admin.getByRole('region', { name: /Nacht prüfen/ })).toHaveCount(2);
+  await choose.getByRole('button', { name: /^Session 2/ }).click();
+  await expect(admin).toHaveURL(/session=[0-9a-f-]{36}/);
 
   // Prüfliste: Aufnahme ohne Zuordnung → zuordnen (über ⋯ je Zeile).
   const banner = admin.getByRole('region', { name: /Nacht prüfen/ });
@@ -132,7 +141,8 @@ test('Nacht öffnen, Prüfliste abarbeiten, als geprüft markieren; Aufnahmen na
   await expectNoSerious(admin, 'Nacht Übersicht');
   await banner.getByRole('button', { name: 'Als geprüft markieren' }).click();
   await expect(banner).toHaveCount(0);
-  await expect(admin.getByText('geprüft', { exact: true })).toBeVisible();
+  // Kopf (gewählte Session) und Session-Zeile zeigen „geprüft“.
+  await expect(admin.getByText('geprüft', { exact: true })).toHaveCount(2);
 
   // Verlauf & Notizen: Ereignisse als Zeitachse neben dem Protokoll.
   await admin.getByRole('tab', { name: 'Verlauf & Notizen' }).click();
@@ -153,7 +163,16 @@ test('Nacht öffnen, Prüfliste abarbeiten, als geprüft markieren; Aufnahmen na
   await admin
     .getByRole('button', { name: new RegExp(`^${nightLabel(night).replace(/\./g, '\\.')} · `) })
     .click();
-  await expect(admin).toHaveURL(/\/auswertung\/naechte\/[0-9a-f-]{36}$/);
+  await expect(admin).toHaveURL(new RegExp(`/auswertung/naechte/${rigId}/${night}$`));
+  await expect(
+    admin
+      .getByRole('group', { name: 'Session wählen' })
+      .getByRole('button', { name: 'Ganze Nacht' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  // Alte Session-Links (Discord, Lesezeichen) führen auf die Nacht und wählen die Session vor.
+  const sessionId = sessions.items[0]?.id as string;
+  await admin.goto(`/auswertung/sessions/${sessionId}`);
+  await expect(admin).toHaveURL(`/auswertung/naechte/${rigId}/${night}?session=${sessionId}`);
   await expect(admin.getByRole('heading', { level: 1, name: new RegExp(rigName) })).toBeVisible();
 });
 
@@ -167,6 +186,8 @@ for (const theme of ['light', 'dark'] as const) {
     await expectNoSerious(page, `Projekte ${theme}`);
     await page.goto('/auswertung/standort?zeitraum=90');
     await expect(page.getByRole('heading', { name: 'Nächte im Kalender' })).toBeVisible();
+    // Eigene Klasse „klar, aber nicht genutzt“ (Entscheidung Sven 07.10.2026) in der Legende.
+    await expect(page.getByRole('list', { name: 'Legende' })).toContainText('klar, nicht genutzt');
     await expectNoSerious(page, `Standort-Statistik ${theme}`);
     await page.goto('/heute-nacht');
     await expect(page.getByRole('heading', { level: 2, name: 'Nächste Nächte' })).toBeVisible();

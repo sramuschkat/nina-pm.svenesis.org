@@ -26,7 +26,7 @@ import { Person, useMemberNames } from '../../lib/member';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { EvaluationHeader, useEvaluationFilter } from './EvaluationHeader';
-import { nightPath } from './evaluation';
+import { sessionPath } from './evaluation';
 import { downloadReportCsv, ProgressChart } from './ProjectReportPage';
 import styles from './evaluation.module.css';
 
@@ -322,7 +322,7 @@ function ProjectRow({
             <ul className={styles.nightLinks}>
               {p.sessions.map((s) => (
                 <li key={s.sessionId}>
-                  <Link to={nightPath(s.sessionId)} className={styles.nightLink}>
+                  <Link to={sessionPath(s.sessionId)} className={styles.nightLink}>
                     <span>{formatNightKey(s.night)}</span>
                     <span className={styles.muted}>
                       {s.filters.map((f) => `${f.filter} ${String(f.frames)}`).join(' · ')}

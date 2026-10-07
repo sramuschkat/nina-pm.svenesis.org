@@ -30,16 +30,20 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await admin.goto('/auswertung/naechte');
   await expect(admin.getByRole('heading', { level: 1, name: 'Auswertung' })).toBeVisible();
   await admin.getByLabel('Rig', { exact: true }).selectOption(rigId);
-  const cards = admin.getByRole('article', { name: new RegExp(rigName) });
-  await expect(cards).toHaveCount(2);
-  await expect(cards.first()).toContainText('CDT');
-  await expect(cards.first()).toContainText(projectName.slice(0, 10));
-  await cards
-    .filter({ hasNotText: 'offline angelegt' })
-    .getByRole('link', { name: /öffnen$/ })
-    .click();
+  // Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026): offline angelegte und laufende Session zusammen.
+  const card = admin.getByRole('article', { name: new RegExp(rigName) });
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText('2 Sessions');
+  await expect(card).toContainText('CDT');
+  await expect(card).toContainText(projectName.slice(0, 10));
+  await card.getByRole('link', { name: /öffnen$/ }).click();
 
   await expect(admin.getByRole('heading', { level: 1, name: new RegExp(rigName) })).toBeVisible();
+  // Die Session der NINA-Instanz (die zweite der Nacht) wählen; Soll/Ist und Prüfen gelten je Session.
+  await admin
+    .getByRole('group', { name: 'Session wählen' })
+    .getByRole('button', { name: /^Session 2/ })
+    .click();
   const banner = admin.getByRole('region', { name: /Nacht prüfen/ });
   await expect(banner.getByText('Aufnahmen ohne Zuordnung: 1')).toBeVisible();
   await admin.getByRole('tab', { name: /Aufnahmen/ }).click();

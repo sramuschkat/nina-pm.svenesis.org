@@ -242,7 +242,21 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
   const path = '/auswertung/standort?zeitraum=frei&von=2026-09-01&bis=2026-09-25';
 
   it('Kalender mit Klassen und Tooltip, Kacheln, SQM/Seeing; Klick öffnet die Nacht; axe', async () => {
-    state.clear = { ...clearView(), from: '2026-09-01', to: '2026-09-25' };
+    state.clear = {
+      ...clearView(),
+      from: '2026-09-01',
+      to: '2026-09-25',
+      nights: [
+        ...clearView().nights,
+        nightRow('2026-09-15', {
+          source: 'session',
+          usable: false,
+          usableHours: 0.3,
+          sessionIds: [ID(2)],
+          forecastRatingIndex: 4,
+        }),
+      ],
+    };
     wrap(<SiteStatsPage />, path);
     const clear = await screen.findByRole('button', {
       name: /^18\.\/19\.09\. · klar, belichtet · 5,2 h nutzbar · Vorhersage Gut · Seeing 2,4″ · SQM 21,3$/,
@@ -255,6 +269,14 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
     expect(state.clearCalls[0]).toEqual([ID(600), '2026-09-01', '2026-09-25']);
     const tiles = screen.getByRole('region', { name: 'Kennzahlen des Standorts' });
     expect(within(tiles).getByText('50 %')).toBeTruthy();
+    // Klar, aber nicht genutzt: eigene Klasse im Kalender und Zahl in der Kachel.
+    expect(
+      screen.getByRole('button', { name: /^15\.\/16\.09\. · klar, nicht genutzt/ }),
+    ).toHaveAttribute('data-kind', 'clearUnused');
+    expect(within(tiles).getByText(/davon klar, ungenutzt: 1/)).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'Legende' }).textContent).toContain(
+      'klar, nicht genutzt',
+    );
     expect(within(tiles).getByText('100 %')).toBeTruthy();
     expect(
       screen.getByRole('img', { name: 'SQM in 1 Nächten, 21,3 mag/″² bis 21,3 mag/″²' }),
@@ -297,6 +319,27 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
       dayKind(nightRow('2026-09-01', { source: 'session', usable: false, sessionIds: [ID(1)] })),
     ).toBe('partial');
     expect(dayKind(nightRow('2026-09-01', { source: 'manual', usable: false }))).toBe('cloudy');
+    // Klar, aber nicht genutzt (Entscheidung Sven 07.10.2026): Vorhersage gut oder besser, unter 1 h belichtet.
+    expect(
+      dayKind(
+        nightRow('2026-09-01', {
+          source: 'session',
+          usable: false,
+          usableHours: 0.4,
+          sessionIds: [ID(1)],
+          forecastRatingIndex: 3,
+        }),
+      ),
+    ).toBe('clearUnused');
+    expect(dayKind(nightRow('2026-09-01', { sessionIds: [ID(1)], forecastRatingIndex: 4 }))).toBe(
+      'clearUnused',
+    );
+    expect(
+      dayKind(nightRow('2026-09-01', { source: 'manual', usable: false, forecastRatingIndex: 4 })),
+    ).toBe('cloudy');
+    expect(
+      dayKind(nightRow('2026-09-01', { source: 'session', usable: false, forecastRatingIndex: 2 })),
+    ).toBe('partial');
     expect(calendarMonths('2026-07-15', '2026-10-07')).toEqual(['2026-08', '2026-09', '2026-10']);
     expect(calendarMonths('2026-09-08', '2026-10-07')).toEqual(['2026-09', '2026-10']);
     expect(calendarMonths('2025-11-01', '2026-01-05')).toEqual(['2025-11', '2025-12', '2026-01']);

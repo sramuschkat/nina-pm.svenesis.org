@@ -1739,7 +1739,7 @@ export const en: Messages = {
         ninaInstance: 'NINA instance',
       },
       count: {
-        sessions: 'Sessions: {{count}}',
+        sessions: '{{count}} Sessions',
         nightPlans: 'Night plans: {{count}}',
         nightStats: 'Clear-night statistics: {{count}} nights',
         activeSession: 'running session {{id}}',
@@ -2199,6 +2199,7 @@ export const en: Messages = {
     to: 'To (night)',
     nights: {
       kpis: 'Key figures',
+      sessions: '{{count}} Sessions',
       withSession: 'Nights with a session',
       usable: '{{count}} usable (≥ 1 h exposed)',
       integration: 'Integration',
@@ -2231,7 +2232,12 @@ export const en: Messages = {
     night: {
       back: '← Nights',
       title: '{{night}} · {{rig}}',
-      more: 'More actions for night {{night}}',
+      noSessions: 'No session in this night.',
+      choose: 'Choose session',
+      whole: 'Whole night',
+      sessionN: 'Session {{n}} · {{range}}',
+      sessionOne: 'Session · {{range}}',
+      moreSession: 'More actions for {{session}}',
       tabs: 'Night sections',
       tab: { overview: 'Overview', captures: 'Captures', history: 'Timeline & notes' },
       facts: 'Key figures of the night',
@@ -2311,11 +2317,13 @@ export const en: Messages = {
     site: {
       kpis: 'Site key figures',
       usableHint: '≥ 1 h clear and exposed · {{usable}} of {{recorded}} nights',
+      clearUnused: 'clear but unused: {{count}}',
       forecastRight: 'Forecast was right',
       calendar: 'Nights in the calendar',
       legend: 'Legend',
       kind: {
         clear: 'clear, exposed',
+        clearUnused: 'clear, not used',
         partial: 'partly',
         cloudy: 'cloudy',
         none: 'no data',

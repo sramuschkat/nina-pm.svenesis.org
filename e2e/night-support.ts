@@ -39,6 +39,9 @@ export async function nightOnOwnRig(admin: Page, user: Page, baseURL: string) {
           id: rigId,
           name: rigName,
           siteId,
+          // Nicht in der Planung: Seiten, die das erste Planungs-Rig vorwählen (Exoplaneten, Heute Nacht), bleiben
+          // beim Seed-Rig, auch wenn dieser Test im selben Shard vorher läuft (CI rot am 07.10.2026).
+          showInPlanning: false,
           telescopeId: telescopes.items[0]?.id,
           cameraId: cameras.items[0]?.id,
         },

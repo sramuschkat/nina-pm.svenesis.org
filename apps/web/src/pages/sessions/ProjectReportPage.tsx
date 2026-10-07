@@ -11,7 +11,7 @@ import { CommentCount } from '../../components/CommentCount';
 import { FilterChip } from '../../components/FilterChip';
 import { useEquipmentList } from '../equipment/shared';
 import styles from './sessions.module.css';
-import { nightPath } from './evaluation';
+import { sessionPath } from './evaluation';
 import { Person } from '../../lib/member';
 
 const hours = (s: number) => s / 3600;
@@ -127,7 +127,7 @@ export function ProjectSection({
               {p.sessions.map((s) => (
                 <tr key={s.sessionId}>
                   <th scope="row">
-                    <Link to={nightPath(s.sessionId)}>{formatNightKey(s.night)}</Link>
+                    <Link to={sessionPath(s.sessionId)}>{formatNightKey(s.night)}</Link>
                   </th>
                   <td>{s.rigName}</td>
                   <td>

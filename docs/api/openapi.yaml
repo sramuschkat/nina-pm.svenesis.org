@@ -10664,12 +10664,22 @@ components:
         unreviewed:
           type: integer
           minimum: 0
-        firstUnreviewedId:
+        firstUnreviewed:
           type:
-            - string
+            - object
             - "null"
-          format: uuid
-          description: UUID
+          properties:
+            rigId:
+              type: string
+              format: uuid
+              description: UUID
+            night:
+              type: string
+              format: date
+              example: 2026-09-18
+          required:
+            - rigId
+            - night
       required:
         - nights
         - usableNights
@@ -10678,7 +10688,7 @@ components:
         - projects
         - efficiencyPct
         - unreviewed
-        - firstUnreviewedId
+        - firstUnreviewed
     NightSessionDetail:
       type: object
       properties:

@@ -20,13 +20,14 @@ export interface NightActual {
   readonly isError: boolean;
 }
 
-export function useNightActual(detail: NightSessionDetail | undefined): NightActual {
+export function useNightActual(
+  nightOf: { readonly rigId: string; readonly night: string } | null,
+  events: NightSessionDetail['events'] | null,
+): NightActual {
   const { t } = useTranslation();
-  const s = detail?.session;
-  const plan = useNightPlan(s?.rigId ?? null, s?.night ?? null);
+  const plan = useNightPlan(nightOf?.rigId ?? null, nightOf?.night ?? null);
   const actual = plan.actual ?? null;
   const result = plan.result;
-  const events = detail?.events;
   const chart = useMemo((): NightActual['chart'] => {
     if (!result) return null;
     const af = (events ?? [])

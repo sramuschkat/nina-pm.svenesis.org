@@ -22,7 +22,10 @@ export const NightSessionQuery = z.object({
   from: NightKey.optional(),
   to: NightKey.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
-  /** Fortsetzung (AP-64, Liste lädt seitenweise): `nextCursor` der vorigen Seite. */
+  /**
+   * Fortsetzung (AP-64, Liste lädt seitenweise): `nextCursor` der vorigen Seite. Eine Seite endet nie mitten in einer
+   * Nacht eines Rigs (eine Karte je Nacht) und kann deshalb etwas mehr als `limit` Einträge haben.
+   */
   cursor: z
     .string()
     .regex(/^[A-Za-z0-9_-]{1,200}$/)
@@ -125,9 +128,10 @@ export const NightSessionSummary = z
     projects: z.number().int().min(0),
     /** Summe Belichtung / Summe nutzbare Dunkelzeit über beendete Sessions mit Plan; `null` ohne solche. */
     efficiencyPct: z.number().min(0).nullable(),
+    /** Ungeprüfte Nächte (je Rig): mindestens eine Session der Nacht ist ungeprüft. */
     unreviewed: z.number().int().min(0),
-    /** Neueste ungeprüfte Session (Link „Jetzt prüfen“). */
-    firstUnreviewedId: Uuid.nullable(),
+    /** Neueste ungeprüfte Nacht (Link „Jetzt prüfen“). */
+    firstUnreviewed: z.object({ rigId: Uuid, night: NightKey }).nullable(),
   })
   .meta({ id: 'NightSessionSummary' });
 export type NightSessionSummary = z.infer<typeof NightSessionSummary>;

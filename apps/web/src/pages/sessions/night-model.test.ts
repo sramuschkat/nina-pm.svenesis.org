@@ -6,13 +6,18 @@
 import { describe, expect, it } from 'vitest';
 import type {
   NightSessionCapture,
+  NightSessionDetail,
   NightSessionLineRow,
+  NightSessionListItem,
   NightSessionProject,
 } from '../../api/client';
 import { filterSearch, parseFilter, periodRange } from './evaluation';
 import {
   captureCounts,
   efficiencyBar,
+  gapsWithin,
+  groupNights,
+  mergeDetails,
   metricPoints,
   nightFacts,
   projectChips,
@@ -330,5 +335,154 @@ describe('Filter der Auswertung in der Adresse', () => {
     expect(filterSearch(f)).toBe(`?rig=${ID(1)}&zeitraum=90`);
     expect(parseFilter(new URLSearchParams('zeitraum=kaputt&von=2026-13')).period).toBe('30');
     expect(filterSearch(parseFilter(new URLSearchParams('zeitraum=30')))).toBe('');
+  });
+});
+
+describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
+  const item = (over: Partial<NightSessionListItem> = {}): NightSessionListItem => ({
+    id: ID(1),
+    rigId: ID(500),
+    rigName: 'SFRO-Rig',
+    siteTimeZone: 'America/Chicago',
+    night: '2026-10-06',
+    status: 'completed',
+    startedAt: '2026-10-07T01:00:00Z',
+    endedAt: '2026-10-07T06:10:00Z',
+    sessionEndUtc: null,
+    createdOffline: false,
+    reviewed: true,
+    ninaInstanceName: 'PC',
+    frames: 10,
+    bonusFrames: 0,
+    integrationS: 6000,
+    unassigned: 0,
+    efficiency: { exposureS: 6000, usableDarkS: 18_000, pct: 33.3 },
+    weather: null,
+    projects: [
+      {
+        projectId: ID(10),
+        projectName: 'IC 1795',
+        createdBy: ID(3),
+        transit: false,
+        frames: 10,
+        filters: [{ filter: 'HA', frames: 10 }],
+      },
+    ],
+    ...over,
+  });
+
+  it('zwei Sessions einer Nacht → eine Gruppe mit Summen; ungeprüft, solange eine ungeprüft ist', () => {
+    const groups = groupNights([
+      item({
+        id: ID(2),
+        startedAt: '2026-10-07T06:15:00Z',
+        endedAt: '2026-10-07T11:52:00Z',
+        reviewed: false,
+        efficiency: { exposureS: 12_000, usableDarkS: 18_000, pct: 66.7 },
+        weather: { ratingIndex: 4, nightMean: 0.9 },
+        projects: [
+          {
+            projectId: ID(10),
+            projectName: 'IC 1795',
+            createdBy: ID(3),
+            transit: false,
+            frames: 11,
+            filters: [
+              { filter: 'HA', frames: 1 },
+              { filter: 'SII', frames: 10 },
+            ],
+          },
+        ],
+      }),
+      item(),
+      item({ id: ID(3), rigId: ID(501), rigName: 'Rig B' }),
+      item({ id: ID(4), night: '2026-10-05' }),
+    ]);
+    expect(groups.map((g) => [g.night, g.rigName, g.sessions.length])).toEqual([
+      ['2026-10-06', 'SFRO-Rig', 2],
+      ['2026-10-06', 'Rig B', 1],
+      ['2026-10-05', 'SFRO-Rig', 1],
+    ]);
+    const g = groups[0] as (typeof groups)[number];
+    expect(g.sessions.map((x) => x.id)).toEqual([ID(1), ID(2)]);
+    expect([g.startedAt, g.endedAt]).toEqual(['2026-10-07T01:00:00Z', '2026-10-07T11:52:00Z']);
+    expect(g.reviewed).toBe(false);
+    expect(g.efficiency).toEqual({ exposureS: 18_000, usableDarkS: 36_000, pct: 50 });
+    expect(g.weather).toEqual({ ratingIndex: 4, nightMean: 0.9 });
+    expect(g.integrationS).toBe(12_000);
+    expect(g.projects).toEqual([
+      {
+        projectId: ID(10),
+        projectName: 'IC 1795',
+        createdBy: ID(3),
+        transit: false,
+        frames: 21,
+        filters: [
+          { filter: 'HA', frames: 11 },
+          { filter: 'SII', frames: 10 },
+        ],
+      },
+    ]);
+    expect(groups[1]?.reviewed).toBe(true);
+  });
+
+  it('läuft eine Session noch, ist das Ende offen; ganze Nacht aus zwei Details, Lücken je Session', () => {
+    expect(
+      groupNights([item(), item({ id: ID(2), endedAt: null, status: 'running' })])[0],
+    ).toMatchObject({
+      endedAt: null,
+      status: 'running',
+    });
+    const d = (id: number, at: string, exposureS: number, reviewed: boolean): NightSessionDetail =>
+      ({
+        session: {
+          ...item({ id: ID(id), startedAt: at, reviewed }),
+          reviewedBy: null,
+          planRevision: 1,
+          darknessEndUtc: null,
+        },
+        rows: [row()],
+        captures: [capture({ id: ID(30 + id), capturedAt: at })],
+        capturesTruncated: false,
+        events: [{ id: ID(40 + id), occurredAt: at, kind: 'af', message: null, durationS: 60 }],
+        flats: [],
+        kpis: {
+          darkFromUtc: null,
+          darkToUtc: null,
+          runtimeS: null,
+          usableDarkS: 10_000,
+          exposureS,
+          efficiencyPct: null,
+          overhead: null,
+          safetyPauseS: 0,
+          blockChanges: 0,
+          filterChanges: 0,
+          plan: null,
+        },
+        reasons: [],
+      }) as NightSessionDetail;
+    const m = mergeDetails([
+      d(1, '2026-10-07T01:00:00Z', 5000, true),
+      d(2, '2026-10-07T06:00:00Z', 3000, false),
+    ]);
+    expect(m.captures.map((c) => c.id)).toEqual([ID(31), ID(32)]);
+    expect(m.rows).toHaveLength(1);
+    expect(m.session.reviewed).toBe(false);
+    expect(m.kpis).toMatchObject({ exposureS: 8000, usableDarkS: 20_000, efficiencyPct: 40 });
+    const gaps = [
+      {
+        fromUtc: Date.parse('2026-10-07T03:00:00Z') / 1000,
+        toUtc: Date.parse('2026-10-07T03:30:00Z') / 1000,
+        kind: 'idle',
+      },
+      {
+        fromUtc: Date.parse('2026-10-07T08:00:00Z') / 1000,
+        toUtc: Date.parse('2026-10-07T08:30:00Z') / 1000,
+        kind: 'idle',
+      },
+    ];
+    expect(
+      gapsWithin(gaps, { startedAt: '2026-10-07T01:00:00Z', endedAt: '2026-10-07T06:10:00Z' }),
+    ).toEqual([gaps[0]]);
   });
 });

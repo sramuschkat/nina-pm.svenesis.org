@@ -44,7 +44,7 @@ import { EVALUATION_PATHS } from '../pages/sessions/evaluation';
 import { NightPage } from '../pages/sessions/NightPage';
 import { NightsPage } from '../pages/sessions/NightsPage';
 import { ProjectsPage as EvaluationProjectsPage } from '../pages/sessions/ProjectsPage';
-import { LegacyRedirect } from '../pages/sessions/redirects';
+import { LegacyRedirect, SessionRedirect } from '../pages/sessions/redirects';
 import { SiteStatsPage } from '../pages/sessions/SiteStatsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
@@ -215,7 +215,8 @@ export function createRouter() {
                 { index: true, element: <Navigate to={EVALUATION_PATHS.nights} replace /> },
                 // AP-64: Nächte | Projekte | Standort-Statistik; alte Pfade leiten um (Suche bleibt erhalten).
                 { path: 'naechte', element: <NightsPage /> },
-                { path: 'naechte/:id', element: <NightPage /> },
+                { path: 'naechte/:id', element: <SessionRedirect /> },
+                { path: 'naechte/:rigId/:night', element: <NightPage /> },
                 { path: 'projekte', element: <EvaluationProjectsPage /> },
                 { path: 'standort', element: <SiteStatsPage /> },
                 { path: 'sessions', element: <LegacyRedirect to={EVALUATION_PATHS.nights} /> },

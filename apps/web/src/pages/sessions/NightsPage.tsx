@@ -19,7 +19,14 @@ import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { EvaluationHeader, useEvaluationFilter } from './EvaluationHeader';
 import { nightPath, nightWeekday } from './evaluation';
-import { efficiencyBar, projectChips, weatherTone, type ProjectChip } from './night-model';
+import {
+  efficiencyBar,
+  groupNights,
+  projectChips,
+  weatherTone,
+  type NightGroup,
+  type ProjectChip,
+} from './night-model';
 import styles from './evaluation.module.css';
 
 /** Nächte je Seite der Liste. */
@@ -142,8 +149,11 @@ function SummaryTiles({
         </span>
         <span className={styles.tileSub}>{t('evaluation.nights.efficiencyHint')}</span>
       </div>
-      {s && s.unreviewed > 0 && s.firstUnreviewedId ? (
-        <Link className={styles.tileWarn} to={nightPath(s.firstUnreviewedId, search)}>
+      {s && s.unreviewed > 0 && s.firstUnreviewed ? (
+        <Link
+          className={styles.tileWarn}
+          to={nightPath(s.firstUnreviewed.rigId, s.firstUnreviewed.night, search)}
+        >
           <span className={styles.tileLabel}>{t('evaluation.nights.unreviewed')}</span>
           <span className={styles.tileValue}>
             {t('evaluation.nights.unreviewedCount', { count: s.unreviewed })}
@@ -162,7 +172,7 @@ function SummaryTiles({
 }
 
 type Card =
-  | { readonly kind: 'session'; readonly night: string; readonly session: NightSessionListItem }
+  | { readonly kind: 'night'; readonly night: string; readonly group: NightGroup }
   | { readonly kind: 'cloudy'; readonly night: string };
 
 function NightList({
@@ -204,16 +214,16 @@ function NightList({
     )
     .map((n) => ({ kind: 'cloudy', night: n.night }));
   const cards: Card[] = [
-    ...items.map((s): Card => ({ kind: 'session', night: s.night, session: s })),
+    ...groupNights(items).map((g): Card => ({ kind: 'night', night: g.night, group: g })),
     ...cloudy,
   ].sort((a, b) => (a.night < b.night ? 1 : a.night > b.night ? -1 : 0));
   if (cards.length === 0) return <p className={styles.empty}>{t('evaluation.nights.empty')}</p>;
   return (
     <ul className={styles.cards}>
       {cards.map((c) =>
-        c.kind === 'session' ? (
-          <li key={c.session.id}>
-            <NightCard session={c.session} search={search} showRig={filter.rigId === ''} />
+        c.kind === 'night' ? (
+          <li key={c.group.key}>
+            <NightCard group={c.group} search={search} showRig={filter.rigId === ''} />
           </li>
         ) : (
           <li key={`cloudy-${c.night}`}>
@@ -234,12 +244,13 @@ function NightDate({ night }: { night: string }) {
   );
 }
 
+/** Karte einer Nacht und eines Rigs (Entscheidung Sven 07.10.2026): Summen über die Sessions der Nacht. */
 function NightCard({
-  session: s,
+  group: s,
   search,
   showRig,
 }: {
-  session: NightSessionListItem;
+  group: NightGroup;
   search: string;
   showRig: boolean;
 }) {
@@ -272,6 +283,11 @@ function NightCard({
           {showRig ? `${s.rigName} · ` : ''}
           {time(s.startedAt)} – {s.endedAt ? time(s.endedAt) : t('sessions.running')}
         </span>
+        {s.sessions.length > 1 ? (
+          <span className={styles.cardMeta}>
+            {t('evaluation.nights.sessions', { count: s.sessions.length })}
+          </span>
+        ) : null}
       </div>
       <div className={styles.cardMid}>
         <div className={styles.effRow}>
@@ -308,13 +324,12 @@ function NightCard({
         {s.status !== 'completed' ? (
           <StatusBadge kind="session" value={s.status} size="sm" />
         ) : null}
-        {s.createdOffline ? <span className={styles.badge}>{t('sessions.offline')}</span> : null}
         <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
           {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
         </span>
         <Link
           className={styles.open}
-          to={nightPath(s.id, search)}
+          to={nightPath(s.rigId, s.night, search)}
           aria-label={t('evaluation.nights.openLabel', {
             night: formatNightKey(s.night),
             rig: s.rigName,

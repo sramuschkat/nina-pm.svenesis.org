@@ -1,7 +1,9 @@
 /**
- * S-61 Nacht (AP-64; FA-AUS-01…09, FA-AUS-12, FA-AUS-14, FA-AUS-20, FA-AUS-22; NT-03, NT-E2, NT-E3): Detail einer
- * Session-Nacht **im Bereich** Auswertung – Link „← Nächte“ (mit dem Filter des Bereichs) statt Brotkrumen und drei
- * Reiter:
+ * S-61 Nacht (AP-64; FA-AUS-01…09, FA-AUS-12, FA-AUS-14, FA-AUS-20, FA-AUS-22; NT-03, NT-E2, NT-E3): eine Nacht eines
+ * Rigs **im Bereich** Auswertung (`/auswertung/naechte/{rigId}/{night}`) – Link „← Nächte“ (mit dem Filter des Bereichs)
+ * statt Brotkrumen. Mehrere Sessions der Nacht: Auswahl „Ganze Nacht | Session 1 · 20:00–01:10 | …“ (`?session=`);
+ * Grafik, Kennzahlen, Aufnahmen und Verlauf gelten für die Auswahl, Soll/Ist und Prüfen bleiben je Session (Entscheidung
+ * Sven 07.10.2026). Drei Reiter:
  * 1. **Übersicht**: Prüf-Banner, solange die Nacht ungeprüft ist (Prüfliste aus den Daten: ohne Zuordnung → zuordnen,
  *    Ist < Soll → Grund erfassen, Lücken > 10 min → ansehen; am Ende „Als geprüft markieren“), Kennzahlenleiste, Nachtgrafik
  *    mit Ist (`NightChart` wie Simulator und „Heute Nacht“), Ergebnis je Projekt mit Filter-Chips und „Details“ (Soll/Ist
@@ -12,7 +14,7 @@
  * Soll = erster Plan der Session ohne Bonus, Ist = Aufnahmen dieser Session (Entscheidung Sven 07.10.2026).
  */
 import { formatNightKey, formatTzAbbr, formatZonedTime, rejectReasons } from '@nina-pm/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router';
@@ -44,7 +46,9 @@ import {
   captureCounts,
   captureMatches,
   CAPTURE_TYPES,
+  gapsWithin,
   median,
+  mergeDetails,
   nightFacts,
   projectResults,
   reviewChecklist,
@@ -69,55 +73,273 @@ export const hours = (s: number) => (s / 3600).toFixed(1);
 
 export function NightPage() {
   const { t, i18n } = useTranslation();
-  const { id = '' } = useParams();
+  const { rigId = '', night = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const back = `${EVALUATION_PATHS.nights}${filterSearch(parseFilter(params))}`;
   const tab =
     (Object.entries(TAB_PARAM).find(([, v]) => v === params.get('ansicht'))?.[0] as
       Tab | undefined) ?? 'overview';
-  const setTab = (next: Tab) => {
+  const setParam = (key: string, value: string | null) => {
     const p = new URLSearchParams(params);
-    if (next === 'overview') p.delete('ansicht');
-    else p.set('ansicht', TAB_PARAM[next]);
+    if (value === null) p.delete(key);
+    else p.set(key, value);
     setParams(p, { replace: true });
   };
+  const setTab = (next: Tab) => setParam('ansicht', next === 'overview' ? null : TAB_PARAM[next]);
   const client = useQueryClient();
-  const detail = useQuery({
-    queryKey: ['sessions', 'detail', id],
-    queryFn: () => sessionsApi.get(id),
+  // Eine Seite je Nacht und Rig (Entscheidung Sven 07.10.2026): alle Sessions der Nacht, je Session das Detail.
+  const list = useQuery({
+    queryKey: ['sessions', 'night', rigId, night],
+    queryFn: () => sessionsApi.list({ rigId, from: night, to: night, limit: 50 }),
   });
-  const actual = useNightActual(detail.data);
-  const canReview = useCan('session.review');
-  const canResend = useCan('session.report.resend');
-  const resend = useMutation({ mutationFn: () => discordApi.resendReport(id) });
+  const ids = [...(list.data?.items ?? [])]
+    .sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt))
+    .map((s) => s.id);
+  const details = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['sessions', 'detail', id],
+      queryFn: () => sessionsApi.get(id),
+    })),
+  });
+  const loaded = details.map((d) => d.data).filter((d): d is NightSessionDetail => d !== undefined);
+  const wanted = params.get('session');
+  const selected = loaded.find((d) => d.session.id === wanted) ?? null;
+  const shown = selected ? [selected] : loaded;
+  const merged = shown.length > 0 ? mergeDetails(shown) : undefined;
+  const actual = useNightActual(rigId && night ? { rigId, night } : null, merged?.events ?? null);
   const refresh = () => client.invalidateQueries({ queryKey: ['sessions'] });
-  const review = useMutation({
-    mutationFn: (reviewed: boolean) => sessionsApi.review(id, reviewed),
-    onSettled: refresh,
-  });
   const [captureType, setCaptureType] = useState<CaptureType>('all');
-  const [openProject, setOpenProject] = useState<string | null>(null);
-  const [correctLine, setCorrectLine] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   const chartRef = useRef<HTMLElement>(null);
 
-  if (detail.isPending) return <p role="status">{t('common.loading')}</p>;
-  if (detail.isError)
+  const failed = list.error ?? details.find((d) => d.isError)?.error;
+  if (failed)
     return (
       <div className={styles.page}>
         <Link to={back} className={styles.back}>
           {t('evaluation.night.back')}
         </Link>
-        <ProblemMessage code={problemCode(detail.error)} onRetry={() => void detail.refetch()} />
+        <ProblemMessage
+          code={problemCode(failed)}
+          onRetry={() => {
+            void list.refetch();
+            for (const d of details) void d.refetch();
+          }}
+        />
       </div>
     );
-  const d = detail.data;
-  const s = d.session;
+  if (!list.data || loaded.length < ids.length || !merged)
+    return list.data && ids.length === 0 ? (
+      <div className={styles.page}>
+        <Link to={back} className={styles.back}>
+          {t('evaluation.night.back')}
+        </Link>
+        <p className={styles.empty}>{t('evaluation.night.noSessions')}</p>
+      </div>
+    ) : (
+      <p role="status">{t('common.loading')}</p>
+    );
+  const s = merged.session;
   const zone = s.siteTimeZone;
   const time = (at: string) => `${formatZonedTime(at, zone)} ${formatTzAbbr(at, zone)}`;
-  const items = reviewChecklist(d, actual.gaps ?? []);
+  const counts = captureCounts(merged.captures);
+  const many = loaded.length > 1;
+  const sessionLabel = (d: NightSessionDetail) => {
+    const i = loaded.indexOf(d);
+    const range = `${formatZonedTime(d.session.startedAt, zone)}–${
+      d.session.endedAt ? formatZonedTime(d.session.endedAt, zone) : t('sessions.running')
+    }`;
+    return many
+      ? t('evaluation.night.sessionN', { n: i + 1, range })
+      : t('evaluation.night.sessionOne', { range });
+  };
+  const showGap = (fromUtc: number) => {
+    setTab('overview');
+    setCursor(fromUtc);
+    chartRef.current?.scrollIntoView({ block: 'center' });
+    chartRef.current?.focus();
+  };
+  return (
+    <div className={styles.page}>
+      <Link to={back} className={styles.back}>
+        {t('evaluation.night.back')}
+      </Link>
+      <PageHeader
+        title={t('evaluation.night.title', {
+          night: `${nightWeekday(night, i18n.language)} ${formatNightKey(night)}`,
+          rig: s.rigName,
+        })}
+        meta={
+          <>
+            <span>
+              {time(s.startedAt)} – {s.endedAt ? time(s.endedAt) : t('sessions.running')}
+            </span>
+            {many ? <span>{t('evaluation.nights.sessions', { count: loaded.length })}</span> : null}
+            <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
+              {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
+            </span>
+          </>
+        }
+      />
+      {many ? (
+        // Auswahl der Session (Standard: ganze Nacht für Grafik, Kennzahlen, Aufnahmen und Verlauf).
+        <div className={styles.typeChips} role="group" aria-label={t('evaluation.night.choose')}>
+          <button
+            type="button"
+            className={styles.typeChip}
+            aria-pressed={selected === null}
+            onClick={() => setParam('session', null)}
+          >
+            {t('evaluation.night.whole')}
+          </button>
+          {loaded.map((d) => (
+            <button
+              key={d.session.id}
+              type="button"
+              className={styles.typeChip}
+              aria-pressed={selected === d}
+              onClick={() => setParam('session', d.session.id)}
+            >
+              {sessionLabel(d)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <Tabs
+        label={t('evaluation.night.tabs')}
+        tabs={TABS.map((k) => ({
+          key: k,
+          label: t(`evaluation.night.tab.${k}`),
+          ...(k === 'captures'
+            ? { badge: <span className={styles.tabCount}>{counts.all}</span> }
+            : {}),
+        }))}
+        value={tab}
+        onChange={setTab}
+        panelClassName={styles.tabPanel}
+        panels={{
+          overview: (
+            <>
+              <FactsBar
+                detail={merged}
+                gaps={
+                  actual.gaps && selected ? gapsWithin(actual.gaps, selected.session) : actual.gaps
+                }
+              />
+              <section
+                ref={chartRef}
+                tabIndex={-1}
+                className={styles.chartCard}
+                aria-label={t('evaluation.night.chart')}
+              >
+                <div className={styles.cardHead}>
+                  <h2 className={styles.sectionTitle}>{t('evaluation.night.chart')}</h2>
+                  <span className={styles.muted}>
+                    {t('evaluation.night.chartHint', { zone: formatTzAbbr(s.startedAt, zone) })}
+                  </span>
+                </div>
+                {actual.chart ? (
+                  <NightChart
+                    {...actual.chart}
+                    variant="plan"
+                    cursorUtc={cursor}
+                    onCursorChange={setCursor}
+                    height={260}
+                    state="ready"
+                  />
+                ) : actual.isError ? (
+                  <p className={styles.muted}>{t('evaluation.night.chartError')}</p>
+                ) : (
+                  <p className={styles.muted} role="status">
+                    {t('evaluation.night.chartPending')}
+                  </p>
+                )}
+              </section>
+              {/* Soll/Ist und Prüfen je Session (sessionbezogen). */}
+              {shown.map((d) => (
+                <SessionBlock
+                  key={d.session.id}
+                  detail={d}
+                  label={sessionLabel(d)}
+                  gaps={gapsWithin(actual.gaps ?? [], d.session)}
+                  onRefresh={refresh}
+                  onAssign={() => {
+                    setCaptureType('unassigned');
+                    setTab('captures');
+                  }}
+                  onGap={showGap}
+                />
+              ))}
+            </>
+          ),
+          captures: (
+            <Captures
+              detail={merged}
+              type={captureType}
+              onType={setCaptureType}
+              gaps={actual.gaps ?? []}
+              onChanged={refresh}
+            />
+          ),
+          history: (
+            <div className={styles.historyGrid}>
+              <EventTimeline detail={merged} />
+              <div className={styles.logs}>
+                {shown.map((d) => (
+                  <section
+                    key={d.session.id}
+                    className={styles.subCard}
+                    aria-label={
+                      many
+                        ? `${t('sessions.log.title')} – ${sessionLabel(d)}`
+                        : t('sessions.log.title')
+                    }
+                  >
+                    {many ? <p className={styles.muted}>{sessionLabel(d)}</p> : null}
+                    <SessionLogPanel sessionId={d.session.id} siteTimeZone={zone} />
+                  </section>
+                ))}
+              </div>
+            </div>
+          ),
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Eine Session der Nacht in der Übersicht: Kopfzeile (Zeitraum, NINA-Instanz, geprüft, ⋯ mit Prüfung zurücknehmen bzw.
+ * Nachtbericht erneut senden), Prüf-Banner, solange sie ungeprüft ist, und Ergebnis je Projekt (Soll/Ist je Session).
+ */
+function SessionBlock({
+  detail: d,
+  label,
+  gaps,
+  onRefresh,
+  onAssign,
+  onGap,
+}: {
+  detail: NightSessionDetail;
+  label: string;
+  gaps: readonly NightGap[];
+  onRefresh: () => Promise<unknown>;
+  onAssign: () => void;
+  onGap: (fromUtc: number) => void;
+}) {
+  const { t } = useTranslation();
+  const s = d.session;
+  const canReview = useCan('session.review');
+  const canResend = useCan('session.report.resend');
+  const resend = useMutation({ mutationFn: () => discordApi.resendReport(s.id) });
+  const review = useMutation({
+    mutationFn: (reviewed: boolean) => sessionsApi.review(s.id, reviewed),
+    onSettled: onRefresh,
+  });
+  const [openProject, setOpenProject] = useState<string | null>(null);
+  const [correctLine, setCorrectLine] = useState<string | null>(null);
+  const items = reviewChecklist(d, gaps);
   const banner = !s.reviewed && items.length > 0;
-  const counts = captureCounts(d.captures);
   const menu: ActionMenuItem[] = [
     ...(canReview && !s.reviewed && !banner
       ? [
@@ -150,54 +372,34 @@ export function NightPage() {
   const openCorrection = (lineId: string) => {
     const row = d.rows.find((r) => r.exposureLineId === lineId);
     if (!row) return;
-    setTab('overview');
     setOpenProject(row.projectId);
     setCorrectLine(row.canCorrect ? lineId : null);
   };
-  const showGap = (fromUtc: number) => {
-    setTab('overview');
-    setCursor(fromUtc);
-    chartRef.current?.scrollIntoView({ block: 'center' });
-    chartRef.current?.focus();
-  };
   return (
-    <div className={styles.page}>
-      <Link to={back} className={styles.back}>
-        {t('evaluation.night.back')}
-      </Link>
-      <PageHeader
-        title={t('evaluation.night.title', {
-          night: `${nightWeekday(s.night, i18n.language)} ${formatNightKey(s.night)}`,
-          rig: s.rigName,
-        })}
-        meta={
-          <>
-            {s.status !== 'completed' ? (
-              <StatusBadge kind="session" value={s.status} size="sm" />
-            ) : null}
-            <span>
-              {time(s.startedAt)} – {s.endedAt ? time(s.endedAt) : t('sessions.running')}
-            </span>
-            {s.ninaInstanceName ? (
-              <span>{t('sessions.detail.instance', { name: s.ninaInstanceName })}</span>
-            ) : null}
-            {s.createdOffline ? (
-              <span className={styles.badge}>{t('sessions.offline')}</span>
-            ) : null}
-            <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
-              {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-            </span>
-          </>
-        }
-        actions={
-          menu.length > 0 ? (
+    <>
+      <div className={styles.sessionHead}>
+        <strong>{label}</strong>
+        {s.status !== 'completed' ? (
+          <StatusBadge kind="session" value={s.status} size="sm" />
+        ) : null}
+        {s.ninaInstanceName ? (
+          <span className={styles.muted}>
+            {t('sessions.detail.instance', { name: s.ninaInstanceName })}
+          </span>
+        ) : null}
+        {s.createdOffline ? <span className={styles.badge}>{t('sessions.offline')}</span> : null}
+        <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
+          {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
+        </span>
+        {menu.length > 0 ? (
+          <span className={styles.sessionMenu}>
             <ActionMenu
-              label={t('evaluation.night.more', { night: formatNightKey(s.night) })}
+              label={t('evaluation.night.moreSession', { session: label })}
               items={menu}
             />
-          ) : null
-        }
-      />
+          </span>
+        ) : null}
+      </div>
       {review.error ? <ProblemMessage code={problemCode(review.error)} /> : null}
       {resend.error ? <ProblemMessage code={problemCode(resend.error)} /> : null}
       {resend.data ? (
@@ -207,98 +409,29 @@ export function NightPage() {
             : t('sessions.detail.resendNoChannel')}
         </p>
       ) : null}
-      <Tabs
-        label={t('evaluation.night.tabs')}
-        tabs={TABS.map((k) => ({
-          key: k,
-          label: t(`evaluation.night.tab.${k}`),
-          ...(k === 'captures'
-            ? { badge: <span className={styles.tabCount}>{counts.all}</span> }
-            : {}),
-        }))}
-        value={tab}
-        onChange={setTab}
-        panelClassName={styles.tabPanel}
-        panels={{
-          overview: (
-            <>
-              {banner ? (
-                <ReviewBanner
-                  items={items}
-                  zone={zone}
-                  canReview={canReview}
-                  pending={review.isPending}
-                  onReview={() => review.mutate(true)}
-                  onAssign={() => {
-                    setCaptureType('unassigned');
-                    setTab('captures');
-                  }}
-                  onCorrect={openCorrection}
-                  onGap={showGap}
-                />
-              ) : null}
-              <FactsBar detail={d} gaps={actual.gaps} />
-              <section
-                ref={chartRef}
-                tabIndex={-1}
-                className={styles.chartCard}
-                aria-label={t('evaluation.night.chart')}
-              >
-                <div className={styles.cardHead}>
-                  <h2 className={styles.sectionTitle}>{t('evaluation.night.chart')}</h2>
-                  <span className={styles.muted}>
-                    {t('evaluation.night.chartHint', { zone: formatTzAbbr(s.startedAt, zone) })}
-                  </span>
-                </div>
-                {actual.chart ? (
-                  <NightChart
-                    {...actual.chart}
-                    variant="plan"
-                    cursorUtc={cursor}
-                    onCursorChange={setCursor}
-                    height={260}
-                    state="ready"
-                  />
-                ) : actual.isError ? (
-                  <p className={styles.muted}>{t('evaluation.night.chartError')}</p>
-                ) : (
-                  <p className={styles.muted} role="status">
-                    {t('evaluation.night.chartPending')}
-                  </p>
-                )}
-              </section>
-              <ProjectResults
-                detail={d}
-                open={openProject}
-                onOpen={(p) => {
-                  setOpenProject(p);
-                  setCorrectLine(null);
-                }}
-                correctLine={correctLine}
-                onCorrect={setCorrectLine}
-              />
-            </>
-          ),
-          captures: (
-            <Captures
-              detail={d}
-              type={captureType}
-              onType={setCaptureType}
-              gaps={actual.gaps ?? []}
-              onChanged={refresh}
-            />
-          ),
-          history: (
-            <div className={styles.historyGrid}>
-              <EventTimeline detail={d} />
-              <section className={styles.subCard} aria-label={t('sessions.log.title')}>
-                <SessionLogPanel sessionId={id} siteTimeZone={zone} />
-              </section>
-            </div>
-          ),
+      {banner ? (
+        <ReviewBanner
+          items={items}
+          zone={s.siteTimeZone}
+          canReview={canReview}
+          pending={review.isPending}
+          onReview={() => review.mutate(true)}
+          onAssign={onAssign}
+          onCorrect={openCorrection}
+          onGap={onGap}
+        />
+      ) : null}
+      <ProjectResults
+        detail={d}
+        open={openProject}
+        onOpen={(p) => {
+          setOpenProject(p);
+          setCorrectLine(null);
         }}
+        correctLine={correctLine}
+        onCorrect={setCorrectLine}
       />
-    </div>
+    </>
   );
 }
 

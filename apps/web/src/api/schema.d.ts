@@ -19370,11 +19370,18 @@ export interface components {
             projects: number;
             efficiencyPct: number | null;
             unreviewed: number;
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            firstUnreviewedId: string | null;
+            firstUnreviewed: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                rigId: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+            } | null;
         };
         NightSessionDetail: {
             session: {

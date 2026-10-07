@@ -57,22 +57,31 @@ export type NightSessionListRow = NightSessionRow & NightSessionExtras;
 /** Nutzbare Nacht (FA-AUS-17, Entscheidung Sven 26.09.2026): ab 1 h Belichtung akzeptierter Lights. */
 const USABLE_NIGHT_S = 3600;
 
-/** Cursor der Liste: Nacht, Beginn und ID der letzten Zeile, base64url. */
-export function encodeCursor(s: Pick<NightSessionRow, 'night' | 'startedAt' | 'id'>): string {
-  return Buffer.from(`${s.night}|${s.startedAt}|${s.id}`, 'utf8').toString('base64url');
+/** Cursor der Liste: Nacht, Rig, Beginn und ID der letzten Zeile, base64url. */
+export interface ListCursor {
+  readonly night: string;
+  readonly rigId: string;
+  readonly startedAt: string;
+  readonly id: string;
 }
-export function decodeCursor(c: string): { night: string; startedAt: string; id: string } {
-  const [night, startedAt, id] = Buffer.from(c, 'base64url').toString('utf8').split('|');
+export function encodeCursor(s: ListCursor): string {
+  return Buffer.from(`${s.night}|${s.rigId}|${s.startedAt}|${s.id}`, 'utf8').toString('base64url');
+}
+export function decodeCursor(c: string): ListCursor {
+  const [night, rigId, startedAt, id] = Buffer.from(c, 'base64url').toString('utf8').split('|');
+  const uuid = /^[0-9a-f-]{36}$/i;
   if (
     !night ||
     !/^\d{4}-\d{2}-\d{2}$/.test(night) ||
+    !rigId ||
+    !uuid.test(rigId) ||
     !startedAt ||
     !Number.isFinite(Date.parse(startedAt)) ||
     !id ||
-    !/^[0-9a-f-]{36}$/i.test(id)
+    !uuid.test(id)
   )
     throw new ProblemError('validation.failed', [{ path: 'cursor', message: 'ungültig' }]);
-  return { night, startedAt, id };
+  return { night, rigId, startedAt, id };
 }
 
 /** Wetter-Schnappschuss zum Sessionbeginn: Klasse und Nachtmittel (wie der Nachtbericht). */
@@ -322,55 +331,82 @@ export class SessionReviewRepository extends TenantRepo {
   }
 
   /**
-   * Liste der Nächte S-60 (AP-64) seitenweise: Reihenfolge wie `list`, Fortsetzung per Cursor (Nacht, Beginn, ID);
-   * je Session Effizienz, Wetter-Schnappschuss und Projekt-Chips.
+   * Liste der Nächte S-60 (AP-64) seitenweise: neueste Nacht zuerst, je Nacht nach Rig, darin nach Beginn (neueste
+   * zuerst) – so liegen die Sessions einer Nacht und eines Rigs beieinander. Eine Seite schneidet nie mitten in eine
+   * Nacht (Entscheidung Sven 07.10.2026: eine Karte je Nacht und Rig): fehlende Sessions der letzten Nacht kommen dazu.
+   * Je Session Effizienz, Wetter-Schnappschuss und Projekt-Chips.
    */
   async page(
     f: NightSessionFilter & { readonly cursor?: string | undefined },
   ): Promise<{ items: NightSessionListRow[]; nextCursor: string | null }> {
-    let q = this.base();
-    if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
-    if (f.unreviewed) q = q.where('s.reviewed', '=', false);
-    if (f.from) q = q.where('s.night', '>=', f.from);
-    if (f.to) q = q.where('s.night', '<=', f.to);
-    const after = f.cursor ? decodeCursor(f.cursor) : null;
-    if (after)
-      q = q.where((eb) =>
-        eb.or([
-          eb('s.night', '<', after.night),
-          eb.and([
-            eb('s.night', '=', after.night),
-            eb('s.startedAt', '<', new Date(after.startedAt)),
+    const query = (after: ListCursor | null) => {
+      let q = this.base();
+      if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
+      if (f.unreviewed) q = q.where('s.reviewed', '=', false);
+      if (f.from) q = q.where('s.night', '>=', f.from);
+      if (f.to) q = q.where('s.night', '<=', f.to);
+      if (after)
+        q = q.where((eb) =>
+          eb.or([
+            eb('s.night', '<', after.night),
+            eb.and([eb('s.night', '=', after.night), eb('s.rigId', '>', after.rigId)]),
+            eb.and([
+              eb('s.night', '=', after.night),
+              eb('s.rigId', '=', after.rigId),
+              eb('s.startedAt', '<', new Date(after.startedAt)),
+            ]),
+            eb.and([
+              eb('s.night', '=', after.night),
+              eb('s.rigId', '=', after.rigId),
+              eb('s.startedAt', '=', new Date(after.startedAt)),
+              eb('s.id', '>', after.id),
+            ]),
           ]),
-          eb.and([
-            eb('s.night', '=', after.night),
-            eb('s.startedAt', '=', new Date(after.startedAt)),
-            eb('s.id', '>', after.id),
-          ]),
-        ]),
-      );
-    const rows = await q
-      .orderBy('s.night', 'desc')
-      .orderBy('s.startedAt', 'desc')
-      .orderBy('s.id')
+        );
+      return q
+        .orderBy('s.night', 'desc')
+        .orderBy('s.rigId')
+        .orderBy('s.startedAt', 'desc')
+        .orderBy('s.id');
+    };
+    type Row = Awaited<ReturnType<ReturnType<typeof query>['execute']>>[number];
+    // Cursor mit Millisekunden aus der Datenbankzeile (die Anzeige kürzt sie).
+    const cursorOf = (r: Row): ListCursor => ({
+      night: String(r.night),
+      rigId: r.rigId,
+      startedAt: new Date(r.startedAt).toISOString(),
+      id: r.id,
+    });
+    const rows = await query(f.cursor ? decodeCursor(f.cursor) : null)
       .limit(f.limit + 1)
       .execute();
-    const shown = rows.slice(0, f.limit);
+    let shown: Row[] = rows.slice(0, f.limit);
+    let more = rows.length > f.limit;
+    const cut = shown.at(-1);
+    const next = rows[f.limit];
+    if (
+      more &&
+      cut &&
+      next &&
+      String(next.night) === String(cut.night) &&
+      next.rigId === cut.rigId
+    ) {
+      // Rest der angeschnittenen Nacht nachladen, dann prüfen, ob danach noch etwas kommt.
+      const rest = await query(cursorOf(cut))
+        .where('s.night', '=', String(cut.night))
+        .where('s.rigId', '=', cut.rigId)
+        .execute();
+      shown = [...shown, ...rest];
+      const end = shown.at(-1) as Row;
+      more = (await query(cursorOf(end)).limit(1).execute()).length > 0;
+    }
     const counts = await this.counts(shown.map((r) => r.id));
     const base = shown.map((r) => SessionReviewRepository.view(r, counts.get(r.id)));
     const extra = await this.extras(base, counts);
-    // Cursor mit Millisekunden aus der Datenbankzeile (die Anzeige kürzt sie).
     const last = shown.at(-1);
     return {
-      items: base.map((s) => ({ ...s, ...(extra.get(s.id) as NightSessionExtras) })),
-      nextCursor:
-        rows.length > f.limit && last
-          ? encodeCursor({
-              night: String(last.night),
-              startedAt: new Date(last.startedAt).toISOString(),
-              id: last.id,
-            })
-          : null,
+      items: base.map((x) => ({ ...x, ...(extra.get(x.id) as NightSessionExtras) })),
+      nextCursor: more && last ? encodeCursor(cursorOf(last)) : null,
     };
   }
 
@@ -510,17 +546,18 @@ export class SessionReviewRepository extends TenantRepo {
     projects: number;
     efficiencyPct: number | null;
     unreviewed: number;
-    firstUnreviewedId: string | null;
+    firstUnreviewed: { rigId: string; night: string } | null;
   }> {
     let q = this.db
       .selectFrom('session as s')
-      .select(['s.id', 's.night', 's.startedAt', 's.endedAt', 's.reviewed'])
+      .select(['s.id', 's.rigId', 's.night', 's.startedAt', 's.endedAt', 's.reviewed'])
       .where('s.tenantId', '=', this.ctx.tenantId);
     if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
     if (f.from) q = q.where('s.night', '>=', f.from);
     if (f.to) q = q.where('s.night', '<=', f.to);
     const sessions = await q
       .orderBy('s.night', 'desc')
+      .orderBy('s.rigId')
       .orderBy('s.startedAt', 'desc')
       .orderBy('s.id')
       .execute();
@@ -564,7 +601,12 @@ export class SessionReviewRepository extends TenantRepo {
         dark += eff.usableDarkS;
       }
     }
-    const unreviewed = sessions.filter((s) => !s.reviewed);
+    // Ungeprüft zählt Nächte (je Rig): eine Nacht ist ungeprüft, solange eine ihrer Sessions ungeprüft ist.
+    const unreviewed = new Map<string, { rigId: string; night: string }>();
+    for (const s of sessions) {
+      const night = String(s.night).slice(0, 10);
+      if (!s.reviewed) unreviewed.set(`${night}|${s.rigId}`, { rigId: s.rigId, night });
+    }
     return {
       nights: perNight.size,
       usableNights: [...perNight.values()].filter((v) => v >= USABLE_NIGHT_S).length,
@@ -572,8 +614,8 @@ export class SessionReviewRepository extends TenantRepo {
       lights,
       projects: projects.filter((p) => p.projectId !== null).length,
       efficiencyPct: dark > 0 ? Math.round((exposure / dark) * 1000) / 10 : null,
-      unreviewed: unreviewed.length,
-      firstUnreviewedId: unreviewed[0]?.id ?? null,
+      unreviewed: unreviewed.size,
+      firstUnreviewed: [...unreviewed.values()][0] ?? null,
     };
   }
 

@@ -250,13 +250,22 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       pct: kpis.efficiencyPct,
     });
 
+    // Eine Seite schneidet keine Nacht an (eine Karte je Nacht und Rig, 07.10.2026): limit=1 liefert beide Sessions.
+    const whole = await t.web('/sessions?limit=1');
+    expect((whole.body.items as Body[]).map((x) => x.id)).toEqual(items.map((x) => x.id));
+    expect(whole.body.nextCursor).toBeNull();
+    // Eine weitere Nacht davor: die erste Seite endet nach der Nacht, die zweite bringt die ältere.
+    await t.q(
+      `INSERT INTO session SELECT (json_populate_record(null::session, (to_jsonb(s) || jsonb_build_object('id', gen_random_uuid(), 'night', '2026-09-17', 'status', 'completed'))::json)).* FROM session s WHERE id = $1`,
+      [online.id],
+    );
     const first = await t.web('/sessions?limit=1');
-    expect(first.body.items as Body[]).toHaveLength(1);
+    expect((first.body.items as Body[]).map((x) => x.night)).toEqual([NIGHT, NIGHT]);
     const cursor = first.body.nextCursor as string;
     expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/);
     const second = await t.web(`/sessions?limit=1&cursor=${cursor}`);
     expect(second.status).toBe(200);
-    expect((second.body.items as Body[]).map((x) => x.id)).toEqual([items[1]?.id]);
+    expect((second.body.items as Body[]).map((x) => x.night)).toEqual(['2026-09-17']);
     expect(second.body.nextCursor).toBeNull();
     expect((await t.web('/sessions?cursor=bm9wZQ')).status).toBe(422);
   });
@@ -264,7 +273,6 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
   it('Kennzahlen je Rig und Zeitraum, mandantengebunden', async () => {
     const t = await setup();
     await t.fakeNight();
-    const items = (await t.web('/sessions')).body.items as Body[];
     const summary = await t.web(`/sessions/summary?rigId=${t.rig.id}&from=${NIGHT}&to=${NIGHT}`);
     expect(summary.status).toBe(200);
     expect(summary.body).toMatchObject({
@@ -273,8 +281,9 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       usableNights: 0,
       lights: 5,
       projects: 1,
-      unreviewed: 2,
-      firstUnreviewedId: items[0]?.id,
+      // Ungeprüft zählt Nächte: zwei ungeprüfte Sessions in einer Nacht = 1.
+      unreviewed: 1,
+      firstUnreviewed: { rigId: t.rig.id, night: NIGHT },
     });
     expect(summary.body.integrationS).toBeGreaterThan(1230);
     // 1 h Belichtung in der Nacht → nutzbar.
@@ -289,7 +298,7 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       projects: 0,
       efficiencyPct: null,
       unreviewed: 0,
-      firstUnreviewedId: null,
+      firstUnreviewed: null,
     };
     expect((await t.web(`/sessions/summary?rigId=${id()}`)).body).toEqual(empty);
     expect((await t.web('/sessions/summary?from=2026-09-19')).body).toEqual(empty);

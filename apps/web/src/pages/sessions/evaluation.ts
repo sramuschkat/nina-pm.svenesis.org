@@ -86,9 +86,23 @@ export function periodRange(f: Pick<EvaluationFilter, 'period' | 'from' | 'to'>,
   }
 }
 
-/** Nacht-Detail im Bereich (der Filter wandert mit, damit „← Nächte“ dorthin zurückführt). */
-export const nightPath = (sessionId: string, search = '') =>
-  `${EVALUATION_PATHS.nights}/${sessionId}${search}`;
+/**
+ * Nacht im Bereich (eine Seite je Nacht und Rig, Entscheidung Sven 07.10.2026); der Filter wandert mit, damit
+ * „← Nächte“ dorthin zurückführt. `session` wählt eine Session der Nacht vor.
+ */
+export const nightPath = (rigId: string, night: string, search = '', session?: string) => {
+  const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  if (session) p.set('session', session);
+  const q = p.toString();
+  return `${EVALUATION_PATHS.nights}/${rigId}/${night}${q ? `?${q}` : ''}`;
+};
+
+/**
+ * Link auf eine Session (Projekte, Standort-Statistik, Übersicht, Discord): leitet auf ihre Nacht um und wählt sie vor;
+ * mit `whole` die ganze Nacht.
+ */
+export const sessionPath = (sessionId: string, whole = false) =>
+  `${EVALUATION_PATHS.nights}/${sessionId}${whole ? '?nacht=1' : ''}`;
 
 /** Wochentag einer Nacht (Abend) in der Sprache der Oberfläche, z. B. „Di“. Kalenderrechnung ohne Zone. */
 export function nightWeekday(night: string, language: string): string {

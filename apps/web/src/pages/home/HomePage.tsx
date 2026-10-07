@@ -38,7 +38,7 @@ import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import { NO_RIG, groupByRig } from '../projects/list-model';
 import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { nightKeyIn } from '../projects/queue-model';
-import { EVALUATION_PATHS, nightPath } from '../sessions/evaluation';
+import { EVALUATION_PATHS, sessionPath } from '../sessions/evaluation';
 
 const sessionHours = (s: number) => (s / 3600).toFixed(1);
 import { WEATHER_PATH } from '../weather/model';
@@ -640,7 +640,7 @@ function SessionsCard() {
       id: 'night',
       header: t('sessions.col.night'),
       nowrap: true,
-      cell: (s) => <Link to={nightPath(s.id)}>{formatNightKey(s.night)}</Link>,
+      cell: (s) => <Link to={sessionPath(s.id)}>{formatNightKey(s.night)}</Link>,
     },
     { id: 'rig', header: t('sessions.col.rig'), priority: 2, cell: (s) => s.rigName },
     {

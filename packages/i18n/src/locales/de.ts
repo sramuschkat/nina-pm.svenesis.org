@@ -1748,7 +1748,7 @@ export const de = {
         ninaInstance: 'NINA-Instanz',
       },
       count: {
-        sessions: 'Sessions: {{count}}',
+        sessions: '{{count}} Sessions',
         nightPlans: 'Nachtpläne: {{count}}',
         nightStats: 'Klarnacht-Statistik: {{count}} Nächte',
         activeSession: 'laufende Session {{id}}',
@@ -2208,6 +2208,7 @@ export const de = {
     to: 'Bis (Nacht)',
     nights: {
       kpis: 'Kennzahlen',
+      sessions: '{{count}} Sessions',
       withSession: 'Nächte mit Session',
       usable: 'davon {{count}} nutzbar (≥ 1 h belichtet)',
       integration: 'Integration',
@@ -2240,7 +2241,12 @@ export const de = {
     night: {
       back: '← Nächte',
       title: '{{night}} · {{rig}}',
-      more: 'Weitere Aktionen zur Nacht {{night}}',
+      noSessions: 'Keine Session in dieser Nacht.',
+      choose: 'Session wählen',
+      whole: 'Ganze Nacht',
+      sessionN: 'Session {{n}} · {{range}}',
+      sessionOne: 'Session · {{range}}',
+      moreSession: 'Weitere Aktionen zu {{session}}',
       tabs: 'Bereiche der Nacht',
       tab: { overview: 'Übersicht', captures: 'Aufnahmen', history: 'Verlauf & Notizen' },
       facts: 'Kennzahlen der Nacht',
@@ -2320,11 +2326,13 @@ export const de = {
     site: {
       kpis: 'Kennzahlen des Standorts',
       usableHint: '≥ 1 h klar und belichtet · {{usable}} von {{recorded}} Nächten',
+      clearUnused: 'davon klar, ungenutzt: {{count}}',
       forecastRight: 'Vorhersage stimmte',
       calendar: 'Nächte im Kalender',
       legend: 'Legende',
       kind: {
         clear: 'klar, belichtet',
+        clearUnused: 'klar, nicht genutzt',
         partial: 'teilweise',
         cloudy: 'bewölkt',
         none: 'keine Angabe',

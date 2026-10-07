@@ -19,17 +19,27 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { EvaluationHeader, useEvaluationFilter, useEvaluationSite } from './EvaluationHeader';
-import { nightPath } from './evaluation';
+import { sessionPath } from './evaluation';
 import styles from './evaluation.module.css';
 
-export type DayKind = 'clear' | 'partial' | 'cloudy' | 'none';
+export type DayKind = 'clear' | 'clearUnused' | 'partial' | 'cloudy' | 'none';
 
-/** Klasse eines Kalendertags aus der Statistik der Nacht. */
+/** Wetterklasse „gut“ oder besser (FA-WET-03) gilt als klar. */
+const CLEAR_RATING = 3;
+
+/**
+ * Klasse eines Kalendertags (Entscheidung Sven 07.10.2026): *klar, belichtet* = nutzbar (≥ 1 h belichtete Lights);
+ * *klar, aber nicht genutzt* = Vorhersage gut oder besser, aber unter 1 h belichtet; *teilweise* = Session ohne
+ * nutzbare Belichtung; *bewölkt* = als bewölkt/nicht genutzt erfasst; sonst *keine Angabe*. Die Vorhersage einer Nacht
+ * ist nur gespeichert, wenn eine Session lief (Schnappschuss zum Sessionbeginn).
+ */
 export function dayKind(n: ClearNightNight | undefined): DayKind {
-  if (!n || n.source === null) return 'none';
+  if (!n) return 'none';
+  if (n.source === 'manual') return 'cloudy';
   if (n.usable === true) return 'clear';
+  if (n.forecastRatingIndex !== null && n.forecastRatingIndex >= CLEAR_RATING) return 'clearUnused';
   if (n.source === 'session' || n.sessionIds.length > 0) return 'partial';
-  return 'cloudy';
+  return 'none';
 }
 
 /** Monate (`YYYY-MM`) des Kalenders: die letzten drei Monate bis `to`, nicht vor `from`. */
@@ -85,6 +95,7 @@ function SiteStatsBody({ view }: { view: ClearNightView }) {
     v.toLocaleString(i18n.language, { maximumFractionDigits: digits });
   const recorded = view.months.reduce((n, m) => n + m.recorded, 0);
   const usable = view.months.reduce((n, m) => n + m.usable, 0);
+  const clearUnused = view.nights.filter((n) => dayKind(n) === 'clearUnused').length;
   const [table, setTable] = useState(false);
   const tableId = useId();
   return (
@@ -100,6 +111,12 @@ function SiteStatsBody({ view }: { view: ClearNightView }) {
               </span>
               <span className={styles.tileSub}>
                 {t('evaluation.site.usableHint', { usable, recorded })}
+                {clearUnused > 0 ? (
+                  <>
+                    <br />
+                    {t('evaluation.site.clearUnused', { count: clearUnused })}
+                  </>
+                ) : null}
               </span>
             </div>
             <div className={styles.tile}>
@@ -186,7 +203,7 @@ function Calendar({ view }: { view: ClearNightView }) {
           {t('evaluation.site.calendar')}
         </h2>
         <ul className={styles.legend} aria-label={t('evaluation.site.legend')}>
-          {(['clear', 'partial', 'cloudy', 'none'] as const).map((k) => (
+          {(['clear', 'clearUnused', 'partial', 'cloudy', 'none'] as const).map((k) => (
             <li key={k}>
               <span className={styles.legendBox} data-kind={k} aria-hidden="true" />
               {t(`evaluation.site.kind.${k}`)}
@@ -250,7 +267,7 @@ function Calendar({ view }: { view: ClearNightView }) {
                                 title={label}
                                 aria-label={label}
                                 onClick={() =>
-                                  session ? navigate(nightPath(session)) : setPicked(night)
+                                  session ? navigate(sessionPath(session, true)) : setPicked(night)
                                 }
                               >
                                 {i + 1}
@@ -378,7 +395,7 @@ function NightsTable({ view }: { view: ClearNightView }) {
       nowrap: true,
       cell: (n) =>
         n.sessionIds[0] ? (
-          <Link to={nightPath(n.sessionIds[0])}>{formatNightKey(n.night)}</Link>
+          <Link to={sessionPath(n.sessionIds[0], true)}>{formatNightKey(n.night)}</Link>
         ) : (
           formatNightKey(n.night)
         ),
