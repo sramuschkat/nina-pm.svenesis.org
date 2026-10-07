@@ -78,7 +78,13 @@ function rigNight(): OverheadNight {
       data: { kind: 'regular', slewCenterS: 35 },
     }),
     { ...ev('af', '00:00:00'), atMs: afEnd, blockId: ic, durationS: 210, data: { result: 'ok' } },
-    { ...ev('flip', '00:00:00'), atMs: flipEnd, blockId: ic, durationS: 900 },
+    {
+      ...ev('flip', '00:00:00'),
+      atMs: flipEnd,
+      blockId: ic,
+      durationS: 900,
+      data: { flipActionS: 900 },
+    },
     {
       ...ev('af', '00:00:00'),
       atMs: flipEnd - 10_000,
@@ -188,6 +194,24 @@ describe('measuredOverheads – Ausreißer und Ausschlüsse', () => {
     });
     expect(s.downloadS.map((x) => x.valueS)).toEqual([5, 5, 5, 5]);
     expect(s.ditherSettleS.map((x) => x.valueS)).toEqual([20, 20]);
+  });
+
+  it('Flip: nur `flipActionS` ohne NINAs Warten; ältere Flips ohne Feld zählen nicht; AF im Flip nur als AF', () => {
+    // Rig-Nacht 06./07.10.2026: Trigger 02:50, 16 min Warten auf Meridian + 5, dann Flip, AF (180 s), Guiding – gemeldet
+    // 1300 s, davon 960 s Warten.
+    const night: OverheadNight = {
+      night: '2026-10-06',
+      events: [
+        { ...ev('flip', '03:11:40'), durationS: 1300, data: { flipActionS: 340 } },
+        { ...ev('af', '03:11:00'), durationS: 180, data: { result: 'ok' } },
+        // Plugin 0.4.16–0.4.18: nur durationS (mit Warten) – keine Messung.
+        { ...ev('flip', '05:00:00'), durationS: 1250 },
+      ],
+      lights: [],
+    };
+    const s = overheadSamples([night], opts);
+    expect(s.flipDurationS.map((x) => x.valueS)).toEqual([160]);
+    expect(s.afDurationS.map((x) => x.valueS)).toEqual([180]);
   });
 
   it('gescheiterter Autofokus zählt nicht', () => {

@@ -1062,7 +1062,7 @@ public sealed class NightRunner(
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
                 rotator is null ? null : RotationSettings.For(rotator.Present, rotator.ToleranceDeg, rotator.SkipOnMismatch),
                 scheduler is null ? null : scheduler.Playback == SchedulerPlayback.Sequential ? PlaybackMode.Sequential : PlaybackMode.TimeAware,
-                (kind, code, b, durationS, at) => ReportEvent(kind, code, b.Id, durationS: durationS, occurredAtUtc: at),
+                (kind, code, b, durationS, at, data) => ReportEvent(kind, code, b.Id, data: data, durationS: durationS, occurredAtUtc: at),
                 b =>
                 {
                     // flipDoneByPanel (flip-rotation.md §1): die Neuplanung plant für dieses Panel keinen zweiten Flip.

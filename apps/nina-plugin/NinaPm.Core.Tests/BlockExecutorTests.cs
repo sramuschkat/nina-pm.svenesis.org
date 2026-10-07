@@ -1,3 +1,4 @@
+using System.Globalization;
 using Newtonsoft.Json;
 using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
@@ -957,11 +958,50 @@ public sealed class BlockExecutorTests
         nina.FlipDurationS = 1300;
         var reported = new List<(EventsKind Kind, double? DurationS, DateTimeOffset? At)>();
 
-        await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Report: (k, _, _, d, at) => reported.Add((k, d, at))));
+        await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Report: (k, _, _, d, at, _) => reported.Add((k, d, at))));
 
         var started = StartOf(nina.Calls.First(c => c.StartsWith("expose:", StringComparison.Ordinal)));
         var flip = Assert.Single(reported, r => r.Kind == EventsKind.Flip);
         Assert.Equal((1300d, started.AddSeconds(1300)), (flip.DurationS!.Value, flip.At!.Value));
+    }
+
+    [Fact]
+    public async Task Ungeplanter_Flip_meldet_den_eigentlichen_Flip_ohne_NINAs_Warten_auf_die_frueheste_Flipzeit()
+    {
+        // AP-65 (Plugin 0.4.19): Rig-Nacht 06./07.10.2026 – NINAs Trigger löste 16 min vor der frühesten Flipzeit aus und
+        // wartete; flip.durationS enthält das Warten, data.flipActionS nicht (die Engine plant das Warten als `wait`).
+        async Task<(DateTimeOffset Started, IDictionary<string, object>? Data)> Run(Func<DateTimeOffset, DateTimeOffset?> earliest, DateTimeOffset? started)
+        {
+            var (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z");
+            nina.Pier = "west";
+            nina.FlipDuringExposure = 1;
+            nina.FlipDurationS = 1300;
+            if (started is { } st) nina.EarliestFlipUtc = earliest(st);
+            IDictionary<string, object>? data = null;
+            await executor.RunAsync(Regular(), null, default,
+                new BlockRunOptions(Report: (k, _, _, _, _, d) => { if (k == EventsKind.Flip) data = d; }));
+            return (StartOf(nina.Calls.First(c => c.StartsWith("expose:", StringComparison.Ordinal))), data);
+        }
+
+        var unknown = await Run(_ => null, null);
+        Assert.Null(unknown.Data); // ohne Montierung keine früheste Flipzeit → kein flipActionS
+        var waited = await Run(st => st.AddSeconds(960), unknown.Started);
+        Assert.Equal(340d, Convert.ToDouble(waited.Data!["flipActionS"], CultureInfo.InvariantCulture));
+        var reached = await Run(st => st.AddSeconds(-60), unknown.Started);
+        Assert.Equal(1300d, Convert.ToDouble(reached.Data!["flipActionS"], CultureInfo.InvariantCulture));
+    }
+
+    [Theory]
+    [InlineData(1300, 960, 340)]
+    [InlineData(300, 0, 300)]
+    [InlineData(300, -120, 300)]
+    [InlineData(200, 600, 0)]
+    public void FlipRules_ActionS_zieht_das_Warten_auf_die_frueheste_Flipzeit_ab(double durationS, double earliestInS, double expected)
+    {
+        var t = DateTimeOffset.Parse("2026-10-07T07:50:00Z", CultureInfo.InvariantCulture);
+        Assert.Equal(expected, FlipRules.ActionS(durationS, t, t.AddSeconds(earliestInS)));
+        Assert.Null(FlipRules.ActionS(durationS, t, null));
+        Assert.Equal(t.AddSeconds(Math.Max(0, earliestInS)), FlipRules.EarliestUtc(t, earliestInS / 60));
     }
 
     [Fact]
@@ -994,7 +1034,7 @@ public sealed class BlockExecutorTests
         var reported = new List<EventsKind>();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.RunAsync(block, null, nina.Sequence.Token,
-            new BlockRunOptions(Report: (k, _, _, _, _) => reported.Add(k))));
+            new BlockRunOptions(Report: (k, _, _, _, _, _) => reported.Add(k))));
 
         Assert.Contains(sink.Lines, l => l.EndsWith($"TRANSIT_END id={block.Id}", StringComparison.Ordinal));
         Assert.Equal([EventsKind.Transit_start, EventsKind.Transit_end], reported);

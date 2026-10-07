@@ -73,6 +73,22 @@ public static class FlipRules
         return FlipDetection.Undetected;
     }
 
+    /// <summary>NINAs früheste Flipzeit ab <paramref name="now"/> (<c>minutesToEarliestFlip</c> ≤ 0 = jetzt); unbekannt = <c>null</c>.</summary>
+    public static DateTimeOffset? EarliestUtc(DateTimeOffset now, double? minutesToEarliestFlip) =>
+        minutesToEarliestFlip is { } m ? now.AddSeconds(Math.Max(0, Math.Round(m * 60))) : null;
+
+    /// <summary>
+    /// Eigentlicher Flip (AP-65, <c>data.flipActionS</c>): gemeldete Dauer ab <paramref name="triggerStart"/> abzüglich
+    /// NINAs Warten bis zur frühesten Flipzeit; unbekannte Flipzeit → <c>null</c>. Autofokus nach dem Flip bleibt darin
+    /// (der Server zieht die <c>af</c>-Läufe ab).
+    /// </summary>
+    public static double? ActionS(double durationS, DateTimeOffset triggerStart, DateTimeOffset? earliestFlipUtc)
+    {
+        if (earliestFlipUtc is not { } e) return null;
+        var waitS = Math.Max(0, (e - triggerStart).TotalSeconds);
+        return Math.Max(0, Math.Round(durationS - waitS));
+    }
+
     /// <summary>Gemeldete Dauer <c>now − max(tTriggerStart, tM + afterMin)</c> (NT-21), nie negativ.</summary>
     public static double DurationS(DateTimeOffset now, DateTimeOffset triggerStart, DateTimeOffset plannedUtc)
     {

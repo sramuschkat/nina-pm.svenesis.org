@@ -11,8 +11,9 @@
  *   wartet das Plugin nach dem Zentrieren auf den geplanten Beginn der ersten Belichtung, z. B. auf einen geplanten
  *   Autofokus, den NINA dann nicht ausführt – im kopflosen Lauf `real-rig-newmoon` ergab die Brief-Regel 300 s statt der
  *   simulierten 35 s. Ältere Plugins liefern deshalb keine Anfahr-Messung.
- * - **Meridian-Flip** (`flipDurationS`): `flip.durationS` abzüglich der Autofokus-Läufe im Flip (Autofokus nach dem Flip,
- *   seit Plugin 0.4.19 als `af` gemeldet).
+ * - **Meridian-Flip** (`flipDurationS`): `flip.data.flipActionS` (Plugin ≥ 0.4.19) = eigentlicher Flip ohne NINAs Warten
+ *   auf die früheste Flipzeit (die Engine plant das Warten als `wait`), abzüglich der Autofokus-Läufe darin (Autofokus nach
+ *   dem Flip zählt nur als Autofokus). Flips ohne `flipActionS` (ältere Plugins, Montierung ohne Flipzeit) zählen nicht.
  * - **Autofokus** (`afDurationS`): `af.durationS` erfolgreicher Läufe (Plugin ≥ 0.4.19).
  * - **Download** (`downloadS`), **Dither** (`ditherSettleS`), **Filterwechsel** (`filterChangeS`): Abstand zweier
  *   aufeinanderfolgender Lights im selben Block, Start(n+1) − Ende(n). Ob dazwischen gedithert wurde, folgt der Regel
@@ -188,15 +189,21 @@ export function overheadSamples(
     for (const e of afs)
       if (!afFailed(e)) out.afDurationS.push({ atMs: e.atMs, valueS: e.durationS as number });
 
-    // ---- Meridian-Flip (ohne Autofokus im Flip) ----
+    // ---- Meridian-Flip: nur der eigentliche Flip, ohne Warten und ohne Autofokus im Flip ----
+    // `flip.durationS` enthält je nach Fall NINAs Warten auf die früheste Flipzeit (Rig-Nacht 06./07.10.2026: ≈ 1300 s,
+    // davon 16 min Warten); die Engine plant das Warten als eigenen `wait` – als Median in `flipDurationS` zählte es
+    // doppelt. Gemessen wird deshalb nur `data.flipActionS` (Plugin ≥ 0.4.19); ältere Flips bleiben außen vor.
     for (const f of events) {
-      if (f.kind !== 'flip' || f.durationS === null || f.durationS <= 0) continue;
-      const fs = span(f);
+      if (f.kind !== 'flip') continue;
+      const action = f.data?.flipActionS;
+      if (typeof action !== 'number' || !Number.isFinite(action) || action <= 0) continue;
+      const from = f.atMs - action * 1000;
+      // Autofokus nach dem Flip zählt als Autofokus, nicht als Flip (nicht doppelt).
       const inside = afs
         .map(span)
-        .filter((a) => a.from >= fs.from - 1000 && a.to <= fs.to + 1000)
+        .filter((a) => a.from >= from - 1000 && a.to <= f.atMs + 1000)
         .reduce((sum, a) => sum + (a.to - a.from) / 1000, 0);
-      const v = f.durationS - inside;
+      const v = action - inside;
       if (v > 0) out.flipDurationS.push({ atMs: f.atMs, valueS: v });
     }
 
