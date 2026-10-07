@@ -273,6 +273,7 @@ export const de = {
       filter_not_found: 'Filter nicht im Filterrad bestätigt',
       rotation_mismatch: 'Rotation passt nicht',
       no_locked_transit: 'kein festgelegter Transit in dieser Nacht',
+      transit_done: 'Transit dieser Nacht schon belichtet ({{n}} Aufnahmen)',
     },
     filter: {
       all: 'alle',

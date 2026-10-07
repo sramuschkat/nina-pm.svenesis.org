@@ -93,6 +93,50 @@ describe('simulate', () => {
       { reason: 'no_locked_transit' },
     ]);
 
+    // Transit dieser Nacht schon belichtet (Fenster vorbei, Ist vom Server): eigener Grund mit Anzahl.
+    const done = simulate(
+      request({
+        projects: exo,
+        server: {
+          input: buildPlanInput(rig, exo, moonProfiles, nights, {
+            night: '2026-09-17',
+            site: STARFRONT,
+            autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+          }),
+          inputHash: 'sha256:abc',
+          projectNames: {},
+          executed: {
+            night: '2026-09-17',
+            sessions: 1,
+            blocks: [
+              {
+                blockId: null,
+                nightPlanId: null,
+                projectId: NGC281,
+                panelId: null,
+                title: 'NGC 281',
+                kind: 'transit',
+                startUtc: '2026-09-18T04:00:00Z',
+                endUtc: '2026-09-18T06:00:00Z',
+                endReason: 'completed',
+                exposures: 558,
+                running: false,
+              },
+            ],
+            segments: [],
+            events: [],
+            gaps: [],
+            counters: { saved: 558, skipped: 0, failed: 0 },
+          },
+          storedPlan: null,
+          firstPlan: null,
+        },
+      }),
+    );
+    expect(done.unallocated.find((u) => u.projectId === NGC281)?.reasons).toEqual([
+      { reason: 'transit_done', message: '558' },
+    ]);
+
     const withTransit = simulate(request({ projects: exo, transits: [transit] }));
     const block = withTransit.plan.blocks.find((b) => b.projectId === NGC281);
     expect(block?.kind).toBe('transit');

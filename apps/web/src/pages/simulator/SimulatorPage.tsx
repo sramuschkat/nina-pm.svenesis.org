@@ -577,6 +577,7 @@ export function SimulatorPage() {
                                     u.reasons.map((r) =>
                                       t(`effort.reason.${r.reason}`, {
                                         defaultValue: r.reason,
+                                        n: r.message ?? '',
                                       }),
                                     ),
                                   ),

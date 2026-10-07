@@ -273,6 +273,7 @@ export const en: Messages = {
       filter_not_found: 'filter not confirmed in the filter wheel',
       rotation_mismatch: 'rotation mismatch',
       no_locked_transit: 'no locked transit in this night',
+      transit_done: 'transit of this night already exposed ({{n}} frames)',
     },
     filter: {
       all: 'all',

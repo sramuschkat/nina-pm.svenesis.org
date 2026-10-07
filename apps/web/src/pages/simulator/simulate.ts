@@ -306,11 +306,23 @@ export function simulate(req: SimulationRequest): SimulationResult {
       ...view.unallocated,
       ...req.projects
         .filter((p) => withoutTransit(req, p))
-        .map((p) => ({
-          projectId: p.id,
-          name: p.name,
-          reasons: [{ reason: 'no_locked_transit' }],
-        })),
+        .map((p) => {
+          // Transit dieser Nacht schon belichtet (Ist, AP-53c): das Fenster ist vorbei, darum nicht mehr festgelegt –
+          // nicht „kein festgelegter Transit“ (Rig-Nacht 06./07.10.2026, WASP-3b).
+          const done = (req.server?.executed?.blocks ?? []).filter(
+            (b) => b.projectId === p.id && b.kind === 'transit',
+          );
+          const frames = done.reduce((n, b) => n + b.exposures, 0);
+          return {
+            projectId: p.id,
+            name: p.name,
+            reasons: [
+              done.length > 0
+                ? { reason: 'transit_done', message: String(frames) }
+                : { reason: 'no_locked_transit' },
+            ],
+          };
+        }),
     ],
     protocol: actual ? actual.protocol : view.protocol,
     lineNames: view.lineNames,
