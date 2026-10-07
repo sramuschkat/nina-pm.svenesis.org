@@ -23,7 +23,7 @@ import {
   type NotificationKind,
 } from '@nina-pm/shared';
 import { sql, type Kysely, type Selectable, type Transaction } from 'kysely';
-import { withTx, type WithTxOptions } from '../tx';
+import { withTx, type WithTxOptions, retryOcc } from '../tx';
 import type { Database, DiscordChannelTable } from '../types';
 import { TenantRepo } from './base';
 
@@ -346,12 +346,14 @@ export class DiscordRepository extends TenantRepo {
 
   /** Ergebnis der Testnachricht als letzte Zustellung bzw. letzter Fehler. */
   async recordTest(id: string, error: DiscordErrorText | null, now: Date): Promise<void> {
-    await this.db
-      .updateTable('discordChannel')
-      .set(error ? { lastError: error, lastErrorAt: now } : { lastDeliveryAt: now })
-      .where('id', '=', id)
-      .where('tenantId', '=', this.ctx.tenantId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('discordChannel')
+        .set(error ? { lastError: error, lastErrorAt: now } : { lastDeliveryAt: now })
+        .where('id', '=', id)
+        .where('tenantId', '=', this.ctx.tenantId)
+        .execute(),
+    );
   }
 
   /**

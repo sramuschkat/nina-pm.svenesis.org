@@ -7,6 +7,7 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 import { enqueueDiscordEvent, NOTIFICATION_DISCORD_EVENTS, stableUuid } from './discord';
+import { retryOcc } from '../tx';
 
 export interface NewNotifications {
   readonly tenantId: string;
@@ -139,6 +140,6 @@ export class NotificationRepository extends TenantRepo {
       .where('recipientId', '=', this.member)
       .where('readAt', 'is', null);
     if (target !== 'all') q = q.where('id', 'in', target.ids);
-    await q.execute();
+    await retryOcc(() => q.execute());
   }
 }

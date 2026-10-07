@@ -5,7 +5,7 @@ import {
   type TenantSettingsPatch,
 } from '@nina-pm/shared';
 import type { Selectable } from 'kysely';
-import { withTx, type WithTxOptions } from '../tx';
+import { withTx, type WithTxOptions, retryOcc } from '../tx';
 import type { TenantTable } from '../types';
 import { TenantRepo } from './base';
 
@@ -35,12 +35,14 @@ export class TenantRepository extends TenantRepo {
   }
 
   async rename(id: string, displayName: string): Promise<number> {
-    const res = await this.db
-      .updateTable('tenant')
-      .set({ displayName, updatedAt: new Date() })
-      .where('id', '=', id)
-      .where('id', '=', this.ctx.tenantId)
-      .executeTakeFirst();
+    const res = await retryOcc(() =>
+      this.db
+        .updateTable('tenant')
+        .set({ displayName, updatedAt: new Date() })
+        .where('id', '=', id)
+        .where('id', '=', this.ctx.tenantId)
+        .executeTakeFirst(),
+    );
     return Number(res.numUpdatedRows);
   }
 

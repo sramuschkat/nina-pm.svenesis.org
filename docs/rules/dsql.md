@@ -20,6 +20,7 @@ Quelle: TK 6.0–6.10 (Fakten geprüft 17.09.2026, im Spike AP-S1 am 23.09.2026 
 
 ## Muster
 - `withTx(ctx, fn, {guard})` mit OCC-Retry (40001/OC000; 3 Versuche, Jitter 50/150/400 ms); `fn` wiederholbar formulieren.
+- **Einzelne Schreibanweisung außerhalb von `withTx`** (Update, Upsert, Delete) immer über `retryOcc(() => …)`: DSQL meldet Konflikte auch dort erst beim Commit (OC000), ohne Wiederholung wird daraus ein 500 (Prod-Alarm `nina-pm-api-5xx-rate` 07.10.2026, `PUT /me/preferences`).
 - Invarianten über mehrere Zeilen: Wächterzeile per `guard` (`SELECT … FOR UPDATE`): `tenant` (Owner), `project` (Stimmen vs. Entscheidung, Rang), `app_user` (Rang beim Einreicher), **`rig_lease`** (Lease – nicht `rig`, DAT5-18).
 - Jede Abfrage mandantengebunden (`tenant_id = $ctx`), nur in `packages/db/src/repositories`. Isolationstest je Methode.
 - Zähler inkrementell im Ingest + nächtlicher Abgleich.

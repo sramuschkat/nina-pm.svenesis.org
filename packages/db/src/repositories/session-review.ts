@@ -14,6 +14,7 @@ import {
 } from '@nina-pm/shared';
 import { sql } from 'kysely';
 import { TenantRepo } from './base';
+import { retryOcc } from '../tx';
 
 const iso = (v: Date | string | null | undefined): string | null =>
   v === null || v === undefined ? null : new Date(v).toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -958,12 +959,14 @@ export class SessionReviewRepository extends TenantRepo {
 
   /** *Als geprüft markieren* (FA-AUS-07, Admin). */
   async setReviewed(id: string, reviewed: boolean): Promise<void> {
-    const r = await this.db
-      .updateTable('session')
-      .set({ reviewed, reviewedBy: reviewed ? (this.ctx.memberId ?? null) : null })
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    const r = await retryOcc(() =>
+      this.db
+        .updateTable('session')
+        .set({ reviewed, reviewedBy: reviewed ? (this.ctx.memberId ?? null) : null })
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('id', '=', id)
+        .executeTakeFirst(),
+    );
     if (Number(r.numUpdatedRows) === 0) throw new ProblemError('resource.not_found');
   }
 

@@ -124,3 +124,31 @@ export async function withTx<DB, T>(
     }
   }
 }
+
+/**
+ * Einzelne Anweisung außerhalb von `withTx` mit derselben OCC-Wiederholung (40001/OC000/OC001): DSQL meldet einen
+ * Konflikt auch bei einer einzelnen Änderung erst beim Commit. Nur für wiederholbare Anweisungen (Update, Upsert,
+ * Delete) – Prod-Alarm 07.10.2026: `PUT /me/preferences/ui.theme` scheiterte mit OC000 und 500.
+ */
+export async function retryOcc<T>(
+  fn: () => Promise<T>,
+  options: Pick<WithTxOptions, 'delaysMs' | 'sleep' | 'jitter' | 'onRetry'> = {},
+): Promise<T> {
+  const delays = options.delaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+  const sleep = options.sleep ?? defaultSleep;
+  const jitter = options.jitter ?? (() => Math.floor(Math.random() * 25));
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (!isOccConflict(error) || attempt >= delays.length) throw error;
+      options.onRetry?.(attempt + 1, error);
+      try {
+        retryObserver?.(attempt + 1, error);
+      } catch {
+        // Beobachtung ist best effort.
+      }
+      await sleep((delays[attempt] ?? 0) + jitter());
+    }
+  }
+}

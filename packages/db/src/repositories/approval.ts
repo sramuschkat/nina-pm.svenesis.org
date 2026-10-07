@@ -21,7 +21,7 @@ import {
   type SubmitInput,
 } from '@nina-pm/shared';
 import type { Kysely, Transaction } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
 import { insertNotifications } from './notification';
@@ -503,14 +503,16 @@ export class ApprovalRepository extends TenantRepo {
 
   /** „Geändert seit deiner Stimme“ quittieren (auch beim Öffnen des Objekts). */
   async acknowledge(projectId: string, now: Date): Promise<void> {
-    await this.db
-      .updateTable('queueVote')
-      .set({ acknowledgedAt: now })
-      .where('tenantId', '=', this.tenantId)
-      .where('subjectKind', '=', 'project')
-      .where('subjectId', '=', projectId)
-      .where('voterId', '=', this.me)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('queueVote')
+        .set({ acknowledgedAt: now })
+        .where('tenantId', '=', this.tenantId)
+        .where('subjectKind', '=', 'project')
+        .where('subjectId', '=', projectId)
+        .where('voterId', '=', this.me)
+        .execute(),
+    );
   }
 
   private async voteSummaries(db: Kysely<Database> | Tx, projects: readonly ProjectRow[]) {

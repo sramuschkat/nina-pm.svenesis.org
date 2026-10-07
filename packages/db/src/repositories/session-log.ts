@@ -10,7 +10,7 @@
  */
 import { ProblemError, isUsableNight, type SessionLogView } from '@nina-pm/shared';
 import { sql, type Kysely } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
 
@@ -352,13 +352,15 @@ export class SessionLogRepository extends TenantRepo {
 
   /** Manuelle Erfassung zurücknehmen (nur `source = manual`). */
   async unmarkUnused(siteId: string, night: string): Promise<void> {
-    await this.db
-      .deleteFrom('siteNightStat')
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('siteId', '=', siteId)
-      .where('night', '=', night)
-      .where('source', '=', 'manual')
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .deleteFrom('siteNightStat')
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('siteId', '=', siteId)
+        .where('night', '=', night)
+        .where('source', '=', 'manual')
+        .execute(),
+    );
   }
 }
 

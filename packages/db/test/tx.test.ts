@@ -6,6 +6,7 @@ import {
   orderGuards,
   RowCounterPlugin,
   RowLimitExceededError,
+  retryOcc,
   withTx,
 } from '../src/tx';
 
@@ -81,6 +82,34 @@ describe('withTx', () => {
     expect(isOccConflict(occ('OC000'))).toBe(true);
     expect(isOccConflict(new Error('x'))).toBe(false);
     expect(isOccConflict(null)).toBe(false);
+  });
+});
+
+describe('retryOcc (Einzelanweisung, Prod-Alarm 07.10.2026)', () => {
+  const fast = { sleep: () => Promise.resolve(), jitter: () => 0 };
+
+  it('wiederholt bei OC000/OC001/40001 und liefert das Ergebnis', async () => {
+    const fn = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(occ('OC000'))
+      .mockRejectedValueOnce(occ('40001'))
+      .mockResolvedValue('ok');
+    await expect(retryOcc(fn, fast)).resolves.toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it('gibt nach den Wartezeiten auf und wirft den Konflikt', async () => {
+    const fn = vi.fn<() => Promise<string>>().mockRejectedValue(occ('OC001'));
+    await expect(retryOcc(fn, { ...fast, delaysMs: [1, 1] })).rejects.toMatchObject({
+      code: 'OC001',
+    });
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it('wirft andere Fehler sofort', async () => {
+    const fn = vi.fn<() => Promise<string>>().mockRejectedValue(new Error('kaputt'));
+    await expect(retryOcc(fn, fast)).rejects.toThrow('kaputt');
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 });
 

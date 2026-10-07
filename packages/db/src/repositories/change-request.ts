@@ -20,7 +20,7 @@ import {
   type StoredChangeRequestProposal,
 } from '@nina-pm/shared';
 import type { Kysely, Selectable, Transaction } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { ChangeRequestTable, Database } from '../types';
 import type { VoteSummary } from './approval';
 import { nextSubmitterRank, openRequests, renumberRanks } from './ranks';
@@ -629,14 +629,16 @@ export class ChangeRequestRepository extends TenantRepo {
 
   async acknowledge(id: string, now: Date): Promise<void> {
     await this.rowOf(this.db, id);
-    await this.db
-      .updateTable('queueVote')
-      .set({ acknowledgedAt: now })
-      .where('tenantId', '=', this.tenantId)
-      .where('subjectKind', '=', KIND)
-      .where('subjectId', '=', id)
-      .where('voterId', '=', this.me)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('queueVote')
+        .set({ acknowledgedAt: now })
+        .where('tenantId', '=', this.tenantId)
+        .where('subjectKind', '=', KIND)
+        .where('subjectId', '=', id)
+        .where('voterId', '=', this.me)
+        .execute(),
+    );
   }
 
   async voteSummaries(
