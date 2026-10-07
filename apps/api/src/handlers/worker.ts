@@ -8,6 +8,7 @@ import {
   JobRepository,
   latestWeather,
   projectsWithoutThumbnail,
+  recordSiteNightForecast,
   recordTenantStorage,
   setProjectThumbnail,
   thumbnailKeyInUse,
@@ -46,6 +47,7 @@ import {
 import { measureTenantStorage, tickTasks } from '../worker/tasks';
 import { httpClient } from '../lib/http-client';
 import { weatherJobHandler, weatherTick, type WeatherJobDeps } from '../weather/job';
+import { recordNightForecasts } from '../weather/night-forecast';
 import {
   HIPS2FITS_TIMEOUT_MS,
   thumbnailJobHandler,
@@ -166,6 +168,19 @@ const maintenanceFor = (startedAt: number) => ({
     );
     logger.info('weather_sites', { runs });
     return runs;
+  },
+  nightForecasts: async () => {
+    const db = (await lambdaDatabase()).db;
+    const written = await recordNightForecasts(
+      {
+        sites: () => weatherSites(db),
+        latest: (lat, lon) => latestWeather(db, lat, lon),
+        record: (input, now) => recordSiteNightForecast(db, input, now),
+      },
+      new Date(),
+    );
+    if (written > 0) logger.info('night_forecasts', { written });
+    return written;
   },
   thumbnails: async () => {
     const db = (await lambdaDatabase()).db;

@@ -120,7 +120,11 @@ export const ClearNightNight = z
     usableHours: z.number().min(0).nullable(),
     /** Sessions dieser Nacht an Rigs des Standorts. */
     sessionIds: z.array(Uuid),
-    /** Vorhersage zum Sessionbeginn (erste Session der Nacht mit Schnappschuss). */
+    /**
+     * Vorhersage der Nacht: Schnappschuss zum Sessionbeginn (erste Session der Nacht mit Schnappschuss), sonst die
+     * gespeicherte Vorhersage je Standort und Nacht (`site_night_forecast`, letzte vor Beginn der Dunkelheit,
+     * AP-64b) – auch für Nächte ohne Session („klar, aber nicht genutzt“).
+     */
     forecastRatingIndex: z.number().int().min(0).max(4).nullable(),
     forecastNightMean: z.number().min(0).max(1).nullable(),
     /** Aus dem Protokoll (erste Session der Nacht mit Protokoll). */
@@ -158,8 +162,9 @@ export const ClearNightView = z
     months: z.array(ClearNightMonth),
     nights: z.array(ClearNightNight),
     /**
-     * Treffsicherheit der Vorhersage (FA-AUS-16): Nächte mit Session und Schnappschuss; „Treffer“ =
-     * Bewertung ≥ *Gut* (Index 3) und nutzbar bzw. < *Gut* und nicht nutzbar.
+     * Treffsicherheit der Vorhersage (FA-AUS-16): Nächte mit Session und Vorhersage (Schnappschuss, sonst
+     * gespeicherte Vorhersage der Nacht); „Treffer“ = Bewertung ≥ *Gut* (Index 3) und nutzbar bzw. < *Gut* und nicht
+     * nutzbar. Nächte ohne Session zählen nicht (nichts beobachtet, AP-64b).
      */
     accuracy: z.object({
       compared: z.number().int().min(0),

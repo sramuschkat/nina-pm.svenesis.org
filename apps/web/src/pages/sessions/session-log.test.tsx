@@ -255,6 +255,8 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
           sessionIds: [ID(2)],
           forecastRatingIndex: 4,
         }),
+        // Ohne Session, nur gespeicherte Vorhersage der Nacht (AP-64b).
+        nightRow('2026-09-14', { forecastRatingIndex: 3, forecastNightMean: 0.7 }),
       ],
     };
     wrap(<SiteStatsPage />, path);
@@ -273,7 +275,12 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
     expect(
       screen.getByRole('button', { name: /^15\.\/16\.09\. · klar, nicht genutzt/ }),
     ).toHaveAttribute('data-kind', 'clearUnused');
-    expect(within(tiles).getByText(/davon klar, ungenutzt: 1/)).toBeTruthy();
+    expect(
+      screen.getByRole('button', {
+        name: /^14\.\/15\.09\. · klar, nicht genutzt · Vorhersage Gut$/,
+      }),
+    ).toHaveAttribute('data-kind', 'clearUnused');
+    expect(within(tiles).getByText(/davon klar, ungenutzt: 2/)).toBeTruthy();
     expect(screen.getByRole('list', { name: 'Legende' }).textContent).toContain(
       'klar, nicht genutzt',
     );
@@ -340,6 +347,10 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
     expect(
       dayKind(nightRow('2026-09-01', { source: 'session', usable: false, forecastRatingIndex: 2 })),
     ).toBe('partial');
+    // Nacht ohne Session mit gespeicherter Vorhersage (AP-64b): gut oder besser → klar, nicht genutzt; sonst keine Angabe.
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 3 }))).toBe('clearUnused');
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 4 }))).toBe('clearUnused');
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 2 }))).toBe('none');
     expect(calendarMonths('2026-07-15', '2026-10-07')).toEqual(['2026-08', '2026-09', '2026-10']);
     expect(calendarMonths('2026-09-08', '2026-10-07')).toEqual(['2026-09', '2026-10']);
     expect(calendarMonths('2025-11-01', '2026-01-05')).toEqual(['2025-11', '2025-12', '2026-01']);

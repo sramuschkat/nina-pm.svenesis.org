@@ -25,6 +25,11 @@ export interface MaintenanceDeps {
   readonly reconcileSiteNights?: () => Promise<number>;
   /** Astro-Wetter je Standort aktiver Mandanten → `weather_cache` (AP-23, `tick-5min`, je Ort alle 15 min). */
   readonly weather?: () => Promise<number>;
+  /**
+   * Vorhersage der kommenden Nacht je Standort aus dem Wetter-Cache → `site_night_forecast` (AP-64b, `tick-5min`
+   * nach dem Wetter; schreibt nur bei jüngerer Cache-Zeile und nicht mehr ab Beginn der Dunkelheit).
+   */
+  readonly nightForecasts?: () => Promise<number>;
   /** Fehlende Vorschaubilder der Projekte → Jobs `thumbnail` (AP-25, `tick-hourly`). */
   readonly thumbnails?: () => Promise<number>;
   /** Bahndaten der Raumstationen und des Hubble-Teleskops → `catalog/sky/` (Ereignisse der Nacht, `daily`). */
@@ -42,7 +47,8 @@ export interface MaintenanceDeps {
  * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
  * verwaiste Sessions und legt fällige Session-Jobs an (AP-15), schließt Transit-Beobachtungen ab bzw. lässt
  * Transit-Fristen verfallen (AP-43); danach holt er das Astro-Wetter je Standort
- * alle 15 min (AP-23, seit 29.09.2026 statt stündlich) mit eigenem Zeitbudget (`WEATHER_TICK_BUDGET_MS`).
+ * alle 15 min (AP-23, seit 29.09.2026 statt stündlich) mit eigenem Zeitbudget (`WEATHER_TICK_BUDGET_MS`) und hält
+ * aus dem Wetter-Cache die Vorhersage der kommenden Nacht je Standort fest (AP-64b, `site_night_forecast`).
  * `tick-hourly` holt zuletzt fehlende Vorschaubilder (AP-25) mit Zeitbudget (`HOURLY_FETCH_BUDGET_MS`), damit
  * langsame externe Dienste die Aufgaben je Standort nicht verdrängen (28.09.2026). `daily` holt außerdem die
  * Bahndaten für „Ereignisse der Nacht“ (27.09.2026) und den Exoplaneten-Katalog ExoClock; `weekly` holt NASA
@@ -63,6 +69,14 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
         : []),
       ...(maintenance?.weather
         ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]
+        : []),
+      ...(maintenance?.nightForecasts
+        ? [
+            {
+              name: 'night_forecasts',
+              run: async () => void (await maintenance.nightForecasts?.()),
+            },
+          ]
         : []),
     ],
     'tick-hourly': [

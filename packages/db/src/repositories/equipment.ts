@@ -420,6 +420,12 @@ export class EquipmentRepository extends TenantRepo {
         const n = stats.rows[0]?.n ?? 0;
         if (n > 0) users.push({ kind: 'nightStats', name: String(n) });
         if (users.length > 0) throw inUse(users);
+        // Gespeicherte Vorhersagen je Nacht (AP-64b) sind abgeleitet und gehen mit dem Standort (eine Zeile je Nacht).
+        await trx
+          .deleteFrom('siteNightForecast')
+          .where('tenantId', '=', this.tenantId)
+          .where('siteId', '=', id)
+          .execute();
         await trx
           .deleteFrom('siteLink')
           .where('tenantId', '=', this.tenantId)

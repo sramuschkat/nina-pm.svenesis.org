@@ -22,6 +22,7 @@ import {
   ProjectRepository,
   projectsWithoutThumbnail,
   reconcileSite,
+  recordSiteNightForecast,
   recordTenantStorage,
   replaceForecast,
   saveWeather,
@@ -289,6 +290,25 @@ describe('worker unter der Rolle app_job (TK 6.2)', () => {
         }),
     ],
     ['latestWeather', () => latestWeather(pg.db, 50, 10)],
+    // tick-5min nach dem Wetter: Vorhersage der kommenden Nacht (AP-64b) – Anlegen und Ersetzen.
+    ...[12, 13].map((h): [string, () => Promise<unknown>] => [
+      `recordSiteNightForecast (${String(h)} Uhr)`,
+      () =>
+        recordSiteNightForecast(
+          pg.db,
+          {
+            tenantId: T,
+            siteId: SITE,
+            night: '2026-09-28',
+            ratingIndex: 3,
+            overallScore: 0.7,
+            modelSet: 'm',
+            recordedAt: new Date(`2026-09-28T${String(h)}:00:00Z`),
+            nightStartsAt: new Date('2026-09-29T01:00:00Z'),
+          },
+          new Date(`2026-09-28T${String(h)}:01:00Z`),
+        ).then((r) => expect(r).toBe('written')),
+    ]),
     ['projectsWithoutThumbnail', () => projectsWithoutThumbnail(pg.db, 10)],
     ['setProjectThumbnail', () => setProjectThumbnail(pg.db, T, P2, 'catalog/thumbs/x.jpg')],
     ['thumbnailKeyInUse', () => thumbnailKeyInUse(pg.db, 'x')],

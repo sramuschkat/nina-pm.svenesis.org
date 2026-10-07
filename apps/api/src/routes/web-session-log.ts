@@ -22,6 +22,7 @@ import {
   Uuid,
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
+import { noonNightKey } from '../lib/night-table';
 import { clearNightView, sessionLogView } from '../sessions/log';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
@@ -188,7 +189,8 @@ export function webSessionLogRoutes(services: () => Promise<ApiServices>) {
     const site = await repo.site(c.req.valid('param').id);
     const data = await repo.clearNightData(site.id, from, to);
     c.header('cache-control', 'no-store');
-    return c.json(clearNightView({ site, from, to, ...data }), 200);
+    const currentNight = noonNightKey(site.timeZone, svc.now().getTime());
+    return c.json(clearNightView({ site, from, to, ...data, currentNight }), 200);
   });
 
   app.openapi(clearNightMarkRoute, async (c) => {

@@ -1197,6 +1197,17 @@ CREATE TABLE site_night_stat (                     -- Klarnacht-Statistik (FA-AU
     PRIMARY KEY (site_id, night)
 );
 
+CREATE TABLE site_night_forecast (                 -- Vorhersage je Standort und Nacht (Migration 0014, AP-64b, FA-AUS-16/17)
+    tenant_id       uuid NOT NULL REFERENCES tenant(id),
+    site_id         uuid NOT NULL REFERENCES site(id),
+    night           date NOT NULL,
+    rating_index    smallint NOT NULL CHECK (rating_index BETWEEN 0 AND 4), -- FA-WET-03, wie ratingIndex im Schnappschuss
+    overall_score   real,                          -- nightMean 0…1 der Nacht
+    model_set       text,                          -- Modellsatz der weather_cache-Zeile
+    recorded_at     timestamptz NOT NULL,          -- fetched_at des Wetter-Caches; letzte vor Beginn der Dunkelheit gilt
+    PRIMARY KEY (site_id, night)
+);
+
 CREATE TABLE command (                             -- reserviert für refresh_targets/reset_plan (keine Fernsteuerung, Fachkonzept 2.3)
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       uuid NOT NULL REFERENCES tenant(id),

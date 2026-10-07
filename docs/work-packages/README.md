@@ -147,3 +147,4 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-62](AP-62.md) | Optionale NINA-Metriken | S | AP-16h | – | ☑ 04.10.2026 |
 | [AP-63](AP-63.md) | Teilen von Ausrüstung/Projekten | S | AP-54 | – | ☐ zurückgestellt |
 | [AP-64](AP-64.md) | Auswertung neu ordnen: Nächte, Projekte, Standort-Statistik | L | AP-53c | H-16 | ◐ |
+| [AP-64b](AP-64b.md) | Vorhersage je Standort und Nacht: „klar, aber nicht genutzt“ auch ohne Session (Migration 0014) | S | AP-64 | H-22 | ◐ |

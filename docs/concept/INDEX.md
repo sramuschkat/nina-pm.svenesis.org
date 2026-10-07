@@ -229,8 +229,9 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Sch
 | `flat_combination` | 1149–1169 |
 | `session_log` | 1170–1189 |
 | `site_night_stat` | 1190–1199 |
-| `command` | 1200–1209 |
-| `discord_channel` | 1210–1229 |
-| `discord_delivery` | 1230–1246 |
-| `job` | 1247–1269 |
-| `system_setting` | 1270–1321 |
+| `site_night_forecast` | 1200–1210 |
+| `command` | 1211–1220 |
+| `discord_channel` | 1221–1240 |
+| `discord_delivery` | 1241–1257 |
+| `job` | 1258–1280 |
+| `system_setting` | 1281–1332 |

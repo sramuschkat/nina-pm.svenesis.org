@@ -30,8 +30,9 @@ const CLEAR_RATING = 3;
 /**
  * Klasse eines Kalendertags (Entscheidung Sven 07.10.2026): *klar, belichtet* = nutzbar (≥ 1 h belichtete Lights);
  * *klar, aber nicht genutzt* = Vorhersage gut oder besser, aber unter 1 h belichtet; *teilweise* = Session ohne
- * nutzbare Belichtung; *bewölkt* = als bewölkt/nicht genutzt erfasst; sonst *keine Angabe*. Die Vorhersage einer Nacht
- * ist nur gespeichert, wenn eine Session lief (Schnappschuss zum Sessionbeginn).
+ * nutzbare Belichtung; *bewölkt* = als bewölkt/nicht genutzt erfasst; sonst *keine Angabe*. Die Vorhersage kommt aus
+ * dem Schnappschuss zum Sessionbeginn, sonst aus der gespeicherten Vorhersage je Standort und Nacht (AP-64b) – so wird
+ * auch eine vergangene Nacht **ohne Session** „klar, aber nicht genutzt“, wenn die Vorhersage gut oder besser war.
  */
 export function dayKind(n: ClearNightNight | undefined): DayKind {
   if (!n) return 'none';
