@@ -274,12 +274,15 @@ public sealed class BlockExecutorTests
     [Fact]
     public async Task Wartet_bis_zum_Blockstart()
     {
-        var (executor, nina, _, _) = Setup("2026-09-18T07:30:00Z");
-        await executor.RunAsync(Regular(), null, default);
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:30:00Z");
+        var block = Regular();
+        await executor.RunAsync(block, null, default);
         // Im 10-s-Takt (abbrechbar durch *Block überspringen*), der letzte Takt endet genau am Blockstart.
         var delays = nina.Calls.TakeWhile(c => c.StartsWith("delay:", StringComparison.Ordinal)).ToList();
         Assert.Equal("delay:2026-09-18T07:30:10.000Z", delays[0]);
         Assert.Equal("delay:2026-09-18T07:35:00.000Z", delays[^1]);
+        // Plugin 0.4.18: kein stilles Warten – eine Zeile im Log.
+        Assert.Contains($"I NINA-PM | WAIT_BLOCK block={block.Id} untilUtc=2026-09-18T07:35:00Z durationS=300", sink.Lines);
     }
 
     [Fact]
@@ -375,13 +378,15 @@ public sealed class BlockExecutorTests
     [Fact]
     public async Task Download_Zeit_des_Rigs_statt_fester_3_s_puenktlich_passt_die_Belichtung()
     {
+        // Start nach der geplanten Slew-Zeit (10:37:20): ohne Slew zieht die frei gewordene Slew-Zeit die Planuhr sonst vor
+        // (Plugin 0.4.18) – hier geht es nur um die Download-Zeit bei pünktlicher Belichtung um 10:37:30.
         var block = SingleExposure();
-        var (executor, nina, _, _) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        var (executor, nina, _, _) = Setup("2026-10-06T10:37:20Z", PlaybackMode.TimeAware);
         nina.SkipSlew = true;
         var fixedDownload = await executor.RunAsync(block, T("2026-10-06T11:15:00Z"), default);
         Assert.Equal(("completed", 0), (fixedDownload.Reason, fixedDownload.Exposures)); // 10:37:30 + 603 s > 10:47:31
 
-        (executor, nina, _, _) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        (executor, nina, _, _) = Setup("2026-10-06T10:37:20Z", PlaybackMode.TimeAware);
         nina.SkipSlew = true;
         var rigDownload = await executor.RunAsync(SingleExposure(), T("2026-10-06T11:15:00Z"), default, new BlockRunOptions(DownloadS: 1));
         Assert.Equal(("completed", 1), (rigDownload.Reason, rigDownload.Exposures));
@@ -690,5 +695,308 @@ public sealed class BlockExecutorTests
         await executor.RunAsync(Regular(), T("2026-09-18T11:30:42Z"), default);
         Assert.All(nina.Deviations, Assert.False);
         Assert.DoesNotContain(sink.Lines, l => l.Contains("camera_temperature"));
+    }
+
+    // ---- Plugin 0.4.18 (Analyse 07.10.2026): Flip- und Wartezeiten, Stopp, Blockschluss, Tätigkeit -------------------
+
+    /// <summary>
+    /// Vor dem Flip <paramref name="waitS"/> s auf den Meridian warten (Eintrag <c>wait</c>, seq 100), wie die Engine plant;
+    /// alles danach verschoben.
+    /// </summary>
+    private static void MeridianWait(Blocks b, double waitS = 600)
+    {
+        var flipAt = b.Entries.FindIndex(e => e.Cmd == EntriesCmd.Meridian_flip);
+        b.Entries.Insert(flipAt, new Entries { Seq = 100, Cmd = EntriesCmd.Wait, AtUtc = b.Entries[flipAt].AtUtc, DurationS = waitS });
+        var shift = TimeSpan.FromSeconds(waitS);
+        foreach (var e in b.Entries.Skip(flipAt + 1))
+        {
+            e.AtUtc += shift;
+            if (e.UntilUtc is { } u) e.UntilUtc = u + shift;
+        }
+        b.EndUtc += shift;
+    }
+
+    /// <summary>Block um <paramref name="by"/> verschoben, mit neuer ID (späterer Block desselben Ziels).</summary>
+    private static void Later(Blocks b, TimeSpan by)
+    {
+        b.Id = Guid.NewGuid();
+        b.StartUtc += by;
+        b.EndUtc += by;
+        foreach (var e in b.Entries) e.AtUtc += by;
+        if (b.MeridianFlip is { } m) m.PlannedUtc += by;
+        b.TwilightEndUtc = null;
+    }
+
+    private static DateTimeOffset StartOf(string call) => T(call[(call.IndexOf('@') + 1)..]);
+
+    [Fact]
+    public async Task Warten_auf_den_Meridian_endet_zur_festen_Flipzeit_nicht_um_den_Verzug_spaeter()
+    {
+        // Analyse 07.10.2026 (Befund 1): Der Meridian kommt nicht später, nur weil der Block 2 min hinter dem Plan liegt.
+        // Vorher wartete das Plugin bis Flipzeit + Verzug und schob den Verzug danach weiter.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:41:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b => MeridianWait(b));
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+
+        await executor.RunAsync(block, null, default);
+
+        var flipAt = block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip).AtUtc; // 07:57:58
+        var trigger = nina.Calls.IndexOf("flip");
+        Assert.Equal($"delay:{UtcText.Format(flipAt)}", nina.Calls.Take(trigger).Last(c => c.StartsWith("delay:", StringComparison.Ordinal)));
+        Assert.Contains(sink.Lines, l => l.Contains($"WAIT_ENTRY block={block.Id} untilUtc={flipAt:yyyy-MM-ddTHH:mm:ss}Z") && l.EndsWith("reason=meridian", StringComparison.Ordinal));
+        // Verzug abgebaut: nach Flip (240 s) und Zentrieren (90 s) beginnt die nächste Belichtung zur Planzeit.
+        var next = block.Entries.First(e => e.Cmd == EntriesCmd.Expose && e.AtUtc > flipAt);
+        Assert.Contains($"expose:{next.Seq}@{UtcText.Format(next.AtUtc)}", nina.Calls);
+    }
+
+    [Fact]
+    public async Task Wait_Eintrag_ohne_Flip_endet_zur_Planzeit_und_baut_den_Verzug_ab()
+    {
+        // Befund 1, allgemeiner wait: bis atUtc + durationS (§4.2), kürzeres Warten als geplant baut den Verzug ab.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:41:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            b.Entries.RemoveAll(e => e.Cmd == EntriesCmd.Meridian_flip || e.Seq == 7);
+            b.MeridianFlip = null;
+            var at = b.Entries.FindIndex(e => e.Seq == 9); // Dither nach der zweiten Belichtung
+            b.Entries.Insert(at + 1, new Entries { Seq = 101, Cmd = EntriesCmd.Wait, AtUtc = b.Entries[at].AtUtc.AddSeconds(15), DurationS = 300 });
+            foreach (var e in b.Entries.Skip(at + 2)) e.AtUtc += TimeSpan.FromSeconds(300);
+            b.EndUtc += TimeSpan.FromSeconds(300);
+        });
+
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal("completed", outcome.Reason);
+        var until = block.Entries.Single(e => e.Seq == 101).AtUtc.AddSeconds(300);
+        Assert.Contains(sink.Lines, l => l.Contains($"WAIT_ENTRY block={block.Id} untilUtc={until:yyyy-MM-ddTHH:mm:ss}Z") && l.EndsWith("reason=plan", StringComparison.Ordinal));
+        Assert.Contains($"expose:10@{UtcText.Format(block.Entries.Single(e => e.Seq == 10).AtUtc)}", nina.Calls);
+    }
+
+    [Fact]
+    public async Task Ungeplanter_Flip_im_frueheren_Block_spaeterer_Block_desselben_Ziels_flippt_nicht_noch_einmal()
+    {
+        // Befund 2: NINA flippte in Block A ungeplant; Block B desselben Ziels (Plan von vorher) sah noch Warten, Flip und
+        // Zentrieren vor – das Plugin wartete auf NINAs Flipzeit (die nach dem Flip nicht mehr kommt) und meldete
+        // FLIP_UNDETECTED.
+        var (executor, nina, sink, clock) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        nina.Pier = "west";
+        nina.FlipDuringExposure = 1;
+        nina.FlipDurationS = 300;
+        var a = Regular(b =>
+        {
+            b.Entries.RemoveAll(e => e.Seq is > 4 and < 40);
+            b.EndUtc = T("2026-09-18T07:55:00Z");
+            b.Entries[^1].AtUtc = b.EndUtc;
+            b.MeridianFlip = null;
+        });
+        var flipDone = false;
+        var options = new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240), FlipDone: _ => flipDone = true, FlipDoneTonight: _ => flipDone);
+        await executor.RunAsync(a, null, default, options);
+        Assert.True(flipDone);
+        Assert.Equal("east", nina.Pier);
+
+        var b = Regular(x =>
+        {
+            MeridianWait(x);
+            Later(x, TimeSpan.FromHours(2));
+        });
+        var before = nina.Calls.Count;
+        sink.Lines.Clear();
+        var outcome = await executor.RunAsync(b, null, default, options);
+
+        Assert.Equal("completed", outcome.Reason);
+        Assert.DoesNotContain("flip", nina.Calls.Skip(before));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("FLIP_UNDETECTED"));
+        Assert.Contains(sink.Lines, l => l.Contains($"WAIT_SKIPPED block={b.Id} reason=flipped"));
+        // Ohne Flip-Nachtfakt (neue Nacht) bleibt der Plan-Flip offen.
+        var (e2, n2, s2, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        n2.Pier = "west";
+        n2.FlipDuringExposure = 1;
+        await e2.RunAsync(Regular(x => { x.Entries.RemoveAll(e => e.Seq is > 4 and < 40); x.EndUtc = T("2026-09-18T07:55:00Z"); x.Entries[^1].AtUtc = x.EndUtc; x.MeridianFlip = null; }),
+            null, default, options with { FlipDoneTonight = _ => false });
+        n2.FlipOnTriggers = true;
+        await e2.RunAsync(Regular(x => Later(x, TimeSpan.FromHours(2))), null, default, options with { FlipDoneTonight = _ => false });
+        Assert.Contains("flip", n2.Calls);
+        Assert.True(clock.UtcNow > b.StartUtc);
+    }
+
+    [Fact]
+    public async Task Ueberspringen_waehrend_des_Wartens_auf_die_Flipzeit_beendet_den_Block_ohne_Flip_und_Zentrieren()
+    {
+        // Befund 3: FlipAsync wartete trotz Stoppgrund bis zur Flipzeit und löste den Flip noch aus (§4.2: der Block endet sofort).
+        var (executor, nina, sink, clock) = Setup("2026-09-18T07:35:00Z");
+        var block = Regular();
+        var flipEntry = block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip);
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+        nina.EarliestFlipUtc = flipEntry.AtUtc.AddMinutes(5); // vor limitEnd (tM + 15 min = 07:57:55)
+        var skip = false;
+        nina.OnDelay = until => skip |= until > flipEntry.AtUtc;
+
+        var outcome = await executor.RunAsync(block, null, default,
+            new BlockRunOptions(StopReason: () => skip ? "user_skip" : null, Flip: new FlipSettings(5, 15, 0, 240)));
+
+        Assert.Equal(("user_skip", 1), (outcome.Reason, outcome.Exposures));
+        Assert.DoesNotContain("flip", nina.Calls);
+        Assert.DoesNotContain("center-no-rotate", nina.Calls);
+        Assert.True(clock.UtcNow < nina.EarliestFlipUtc);
+        // Befund 12: das Warten auf NINAs früheste Flipzeit steht im Log.
+        Assert.Contains(sink.Lines, l => l.Contains($"WAIT_FLIP block={block.Id}") && l.Contains($"untilUtc={nina.EarliestFlipUtc:yyyy-MM-ddTHH:mm:ss}Z"));
+    }
+
+    [Fact]
+    public async Task Frueher_kurzer_NINA_Flip_frei_gewordene_Planzeit_zieht_die_naechste_Belichtung_vor()
+    {
+        // Befund 5: NINA flippte vor der ersten Belichtung in 120 s; Warten (600 s), Plan-Flip (240 s) und Zentrieren (90 s)
+        // entfallen – mehr, als der Verzug hergibt. Vorher wartete die Rig den Rest mit WAIT_PLAN ab.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b => MeridianWait(b));
+        nina.Pier = "west";
+        nina.FlipDuringExposure = 1;
+        nina.FlipDurationS = 120;
+
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240), DownloadS: 3));
+
+        var exposes = nina.Calls.Where(c => c.StartsWith("expose:", StringComparison.Ordinal)).ToList();
+        var center = nina.Calls.FindIndex(c => c == "center-no-rotate");
+        var second = nina.Calls.FindIndex(c => c == exposes[1]);
+        Assert.True(center > 0 && second > center);
+        Assert.DoesNotContain(nina.Calls.Skip(center).Take(second - center), c => c.StartsWith("delay:", StringComparison.Ordinal));
+        // Kein WAIT_PLAN nach dem Flip vor der zweiten Belichtung (nur vor der ersten und später an der Autofokus-Zeitmarke).
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("WAIT_PLAN") && l.Contains("untilUtc=2026-09-18T07:5"));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("SKIPPED_TIMEAWARE"));
+        Assert.StartsWith("expose:8@", exposes[1]);
+    }
+
+    [Fact]
+    public async Task Nach_langem_Flip_wird_das_Blockende_vor_der_Belichtung_neu_geprueft()
+    {
+        // Befund 6: Die Entscheidung „belichten“ fiel vor Dither und Flip; nach 10 min Flip begann die Belichtung nach dem
+        // Blockende.
+        var (executor, nina, _, clock) = Setup("2026-09-18T07:35:00Z");
+        nina.SkipSlew = true;
+        nina.FlipTriggerS = 600;
+        var block = Regular(b => b.EndUtc = T("2026-09-18T07:50:00Z"));
+
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal(("completed", 1), (outcome.Reason, outcome.Exposures));
+        Assert.Single(nina.Calls, c => c.StartsWith("expose:", StringComparison.Ordinal));
+        Assert.All(nina.Calls.Where(c => c.StartsWith("expose:", StringComparison.Ordinal)), c => Assert.True(StartOf(c).AddSeconds(303) <= block.EndUtc, c));
+        Assert.True(clock.UtcNow < block.EndUtc.AddMinutes(1));
+    }
+
+    [Fact]
+    public async Task Slew_entfaellt_die_geplante_Slew_Zeit_wird_nicht_abgewartet()
+    {
+        // Befund 7: gleiches Ziel, kein Slew – vorher wartete der Block die geplanten 330 s Slew/Zentrieren mit WAIT_PLAN ab.
+        // Es bleibt nur die Autofokus-Zeitmarke (120 s, NT-24).
+        var (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        nina.SkipSlew = true;
+
+        await executor.RunAsync(Regular(), null, default);
+
+        Assert.Equal("expose:4@2026-09-18T07:37:10.000Z", nina.Calls.First(c => c.StartsWith("expose:", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Mehr_als_3_verpasste_Belichtungen_beenden_den_Block_fuer_die_Neuplanung()
+    {
+        // Befund 8 (§4.2): z. B. nach einem Ruhezustand des PCs während einer Wartezeit liegt die Planuhr eine Stunde weiter.
+        var (executor, nina, sink, clock) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            foreach (var e in b.Entries.Skip(1)) e.AtUtc = e.AtUtc.AddMinutes(4);
+        });
+        var jumped = false;
+        nina.OnDelay = _ =>
+        {
+            if (jumped) return;
+            jumped = true;
+            clock.Advance(TimeSpan.FromHours(1));
+        };
+
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal(("replanned", 0), (outcome.Reason, outcome.Exposures));
+        Assert.True(outcome.NeedsReplan);
+        Assert.True(outcome.SkippedTimeAware > Playback.MaxSkippedBeforeReplan);
+        Assert.DoesNotContain("flip", nina.Calls);
+        Assert.Contains(sink.Lines, l => l.Contains($"BLOCK_END id={block.Id} reason=replanned"));
+    }
+
+    [Fact]
+    public async Task Beim_Warten_Flip_und_Zentrieren_laeuft_keine_Belichtung_die_Taetigkeit_steht_im_Executor()
+    {
+        // Befund 10: CurrentEntry blieb nach der Belichtung gesetzt – das Fenster zeigte beim Warten „▶ läuft 100 %“.
+        var (executor, nina, _, _) = Setup("2026-09-18T07:41:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b => MeridianWait(b));
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+        var seen = new List<(Entries? Current, BlockActivity? Activity, Entries? Last)>();
+        nina.OnDelay = _ => seen.Add((executor.CurrentEntry, executor.Activity, executor.LastEntry));
+
+        await executor.RunAsync(block, null, default);
+
+        Assert.All(seen, s => Assert.Null(s.Current));
+        Assert.Contains(seen, s => s.Activity is { Kind: BlockActivityKind.WaitPlan, UntilUtc: not null });
+        Assert.Contains(seen, s => s.Activity is { Kind: BlockActivityKind.WaitMeridian, Seq: 100 } && s.Last?.Seq == 4);
+        Assert.Null(executor.Activity);
+        Assert.Null(executor.LastEntry);
+    }
+
+    [Fact]
+    public async Task Ungeplanter_Flip_wird_zum_Ende_des_Flips_vor_der_Belichtung_gemeldet()
+    {
+        // Befund 11: Zeitpunkt war die Erkennung nach der folgenden Belichtung – das Fenster zeichnete den Flip eine
+        // Belichtung zu spät. Jetzt: Beginn der Belichtung (Trigger) + Flipdauer.
+        var (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Pier = "west";
+        nina.FlipDuringExposure = 1;
+        nina.FlipDurationS = 1300;
+        var reported = new List<(EventsKind Kind, double? DurationS, DateTimeOffset? At)>();
+
+        await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Report: (k, _, _, d, at) => reported.Add((k, d, at))));
+
+        var started = StartOf(nina.Calls.First(c => c.StartsWith("expose:", StringComparison.Ordinal)));
+        var flip = Assert.Single(reported, r => r.Kind == EventsKind.Flip);
+        Assert.Equal((1300d, started.AddSeconds(1300)), (flip.DurationS!.Value, flip.At!.Value));
+    }
+
+    [Fact]
+    public async Task Warten_vor_dem_Flip_prueft_neue_Ziele_sofort_und_endet_ohne_Flip()
+    {
+        // Befund 12: das Warten eines wait-Eintrags prüfte weder neue Ziele noch einen Transit (§4.2: wie die Wartezeit
+        // vor einer Belichtung) – der Block lief bis zum Flip weiter.
+        var (executor, nina, _, clock) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b => MeridianWait(b));
+        var wait = block.Entries.Single(e => e.Seq == 100);
+        var changed = false;
+        nina.OnDelay = _ => changed |= clock.UtcNow > wait.AtUtc;
+
+        var outcome = await executor.RunAsync(block, null, default, new BlockRunOptions(
+            InBlockCheck: (_, _) => Task.FromResult<string?>(changed ? "target_removed" : null),
+            TargetsChanged: () => changed));
+
+        Assert.Equal(("target_removed", 1), (outcome.Reason, outcome.Exposures));
+        Assert.DoesNotContain("flip", nina.Calls);
+        Assert.True(clock.UtcNow < block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip).AtUtc);
+    }
+
+    [Fact]
+    public async Task Transitserie_endet_durch_Abbruch_transit_end_wird_trotzdem_gemeldet()
+    {
+        // Befund 15: endete die Serie mit Fehler oder Abbruch, fehlte transit_end auf dem Server.
+        var (executor, nina, sink, _) = Setup("2026-09-18T02:00:00Z");
+        nina.CancelAtExposure = 3;
+        var block = Transit();
+        var reported = new List<EventsKind>();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.RunAsync(block, null, nina.Sequence.Token,
+            new BlockRunOptions(Report: (k, _, _, _, _) => reported.Add(k))));
+
+        Assert.Contains(sink.Lines, l => l.EndsWith($"TRANSIT_END id={block.Id}", StringComparison.Ordinal));
+        Assert.Equal([EventsKind.Transit_start, EventsKind.Transit_end], reported);
     }
 }

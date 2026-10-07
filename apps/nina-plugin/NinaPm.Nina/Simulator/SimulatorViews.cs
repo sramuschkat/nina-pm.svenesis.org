@@ -123,12 +123,18 @@ public sealed class CardCheckView(CardCheck check)
     };
 }
 
-/// <summary>Nicht zugeteiltes Projekt mit Gründen.</summary>
+/// <summary>Nicht zugeteiltes Projekt mit Gründen bzw. „Läuft an der Rig“ / „Heute Nacht abgearbeitet“ (blass, Plugin 0.4.18).</summary>
 public sealed class UnallocatedView(UnallocatedProject project)
 {
-    public string Text => project.Reasons.Count == 0
-        ? project.Name
-        : $"{project.Name} – {string.Join(", ", project.Reasons.Select(Texts.DiagnosticReason))}";
+    public string Text => project.State switch
+    {
+        UnallocatedState.RunningAtRig => $"{project.Name} – {Texts.UnallocatedRunning}",
+        UnallocatedState.DoneTonight => $"{project.Name} – {Texts.UnallocatedDone}",
+        _ when project.Reasons.Count == 0 => project.Name,
+        _ => $"{project.Name} – {string.Join(", ", project.Reasons.Select(Texts.DiagnosticReason))}",
+    };
+
+    public double Opacity => project.State == UnallocatedState.DoneTonight ? 0.5 : 0.8;
 }
 
 /// <summary>Zeile des Planprotokolls (Zellen nach <see cref="PlanLog.Columns"/>); mit Ist + Plan (AP-53c) zusätzlich „Ist“.</summary>

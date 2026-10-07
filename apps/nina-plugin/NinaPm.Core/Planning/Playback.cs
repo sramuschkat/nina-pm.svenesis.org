@@ -51,6 +51,11 @@ public static class Playback
 
     /// <param name="after">Index des zuletzt abgearbeiteten Eintrags (-1 am Blockanfang).</param>
     /// <param name="softEndUtc">Weiches Blockende (<see cref="SoftEnd"/>); <c>null</c> = harter Blockschluss bei <c>endUtc</c>.</param>
+    /// <param name="pullForward">
+    /// Vorgezogene Planuhr (Plugin 0.4.18, execution.md §4.2): frei gewordene Plan-Zeit (Flip, Warten, Zentrieren schon
+    /// erledigt, Slew entfallen), nachdem der Verzug 0 erreicht hat; nie negativ. Die Planuhr ist dann <c>now − offset +
+    /// pullForward</c> – die nächste Belichtung beginnt, statt die frei gewordene Zeit abzuwarten.
+    /// </param>
     public static PlaybackStep Next(
         Blocks block,
         int after,
@@ -59,7 +64,8 @@ public static class Playback
         PlaybackMode mode,
         DateTimeOffset? darknessEndUtc,
         double downloadS,
-        DateTimeOffset? softEndUtc = null)
+        DateTimeOffset? softEndUtc = null,
+        TimeSpan pullForward = default)
     {
         var entries = block.Entries;
         var all = Enumerable.Range(after + 1, Math.Max(0, entries.Count - after - 1))
@@ -80,11 +86,13 @@ public static class Playback
         else
         {
             if (offset < TimeSpan.Zero) offset = TimeSpan.Zero;
-            // Planuhr: der Plan ist um den Verzug nach hinten gerutscht.
-            var planClock = now - offset;
+            if (pullForward < TimeSpan.Zero) pullForward = TimeSpan.Zero;
+            // Planuhr: der Plan ist um den Verzug nach hinten gerutscht (bzw. um frei gewordene Zeit nach vorn).
+            var shift = offset - pullForward;
+            var planClock = now - shift;
             var due = exposes.Where(i => entries[i].AtUtc <= planClock).ToList();
             if (due.Count == 0)
-                return new PlaybackStep(PlaybackKind.Wait, exposes[0], [], entries[exposes[0]].AtUtc + offset, null);
+                return new PlaybackStep(PlaybackKind.Wait, exposes[0], [], entries[exposes[0]].AtUtc + shift, null);
             // Der letzte fällige Eintrag ist dran; alle früheren fälligen sind verpasst.
             chosen = due[^1];
             skipped.AddRange(due.Take(due.Count - 1));

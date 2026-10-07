@@ -1,4 +1,5 @@
 using NinaPm.Core.Api.Generated;
+using NinaPm.Core.Execution;
 using NinaPm.Core.Simulator;
 using NinaPm.Core.Targets;
 
@@ -80,7 +81,14 @@ public sealed record NightView(
     Guid? PlanId,
     int? Revision,
     string? PlanReason,
-    DateTimeOffset? PlanAtUtc);
+    DateTimeOffset? PlanAtUtc)
+{
+    /// <summary>
+    /// Was der laufende Block außerhalb einer Belichtung tut (Warten, Flip, Zentrieren; Plugin 0.4.18) – die Statuszeile zeigt
+    /// es statt einer Belichtung; ohne laufenden Block bzw. während einer Belichtung <c>null</c>.
+    /// </summary>
+    public BlockActivity? Activity { get; init; }
+}
 
 /// <summary>Eingaben der Fenster (vom <c>NightRunner</c> gesammelt, in Tests frei gesetzt).</summary>
 public sealed record NightViewInputs(
@@ -96,7 +104,9 @@ public sealed record NightViewInputs(
     NinaSimulation? Simulation,
     SiteTime Site,
     DateTimeOffset Now,
-    bool FlatsRunning = false);
+    bool FlatsRunning = false,
+    BlockActivity? Activity = null,
+    Entries? LastEntry = null);
 
 /// <summary>
 /// Aufbau der Fenster im Imaging-Reiter (AP-53b, execution.md §10) aus zwei Quellen: **bis jetzt** das Nachtjournal
@@ -357,14 +367,26 @@ public static class NightViewBuilder
         var skipped = 0;
         var failed = 0;
         var transitBlocks = past.Where(p => p.Transit).Select(p => p.BlockId).ToHashSet();
-        // Nr. wie im Simulator (simulation-view.ts): laufende Belichtungsnummer je Zeile bzw. – im Journal ohne Zeile – je
-        // Ziel und Filter; Transit-Serien ohne Nummer.
+        // Nr. wie im Simulator (simulation-view.ts): laufende Belichtungsnummer je Belichtungszeile – im Journal gezählt nur
+        // gespeicherte Aufnahmen, im Plan weitergezählt (Plugin 0.4.18: vorher je Projekt|Filter mit fehlgeschlagenen
+        // gegenüber je Zeile im Plan, die Nummern sprangen). Ohne Zeilen-ID (Server-Ist, ältere Einträge) über die Ziele
+        // (Projekt, Panel, Filter, Belichtung) zugeordnet, sonst je Projekt|Filter; Transit-Serien ohne Nummer.
         var numbers = new Dictionary<string, int>(StringComparer.Ordinal);
         int? Next(string key, bool series)
         {
             if (series) return null;
             numbers[key] = (numbers.TryGetValue(key, out var n) ? n : 0) + 1;
             return numbers[key];
+        }
+        string LineKey(Guid project, Guid? panel, string? filter, double? exposureS, Guid? lineId)
+        {
+            if (lineId is { } id) return id.ToString();
+            var lines = i.Targets?.Projects.FirstOrDefault(p => p.Id == project)?.Panels
+                .Where(p => panel is null || p.Id == panel)
+                .SelectMany(p => p.Lines)
+                .Where(l => l.Filter == filter && (exposureS is null || l.ExposureS == exposureS))
+                .Select(l => l.Id).Distinct().ToList();
+            return lines is { Count: 1 } ? lines[0].ToString() : $"{project}|{filter}";
         }
         foreach (var e in journal)
         {
@@ -383,7 +405,8 @@ public static class NightViewBuilder
                     var at = d.StartUtc ?? e.AtUtc;
                     rows.Add(new NightLogRow(at, state, d.Result == "saved" ? null : d.Result, true, false,
                         d.BlockId is { } bid && transitBlocks.Contains(bid) ? "expose_series" : "expose", Title(d), PanelName(project, d.PanelId),
-                        d.Count is > 1 ? null : Next($"{project}|{d.Filter}", d.BlockId is { } sb && transitBlocks.Contains(sb)),
+                        d.Count is > 1 || state != ActualState.Saved ? null
+                        : Next(LineKey(project, d.PanelId, d.Filter, d.ExposureS, d.LineId), d.BlockId is { } sb && transitBlocks.Contains(sb)),
                         d.Filter ?? "", d.ExposureS, d.Gain, d.Offset, d.Binning, d.Readout, d.RotationDeg, d.RaDeg, d.DecDeg, Alt(project, at))
                     { Count = d.Count ?? 1 });
                     break;
@@ -432,9 +455,27 @@ public static class NightViewBuilder
                 progress = new ExposureProgress(Math.Max(1, index), series2 ? null : exposures.Count, exp, remaining, fraction);
                 rows.Add(EntryRow(block, ce, started, ActualState.Running, current: true) with { Progress = fraction });
             }
-            var after = i.CurrentEntry?.Seq ?? int.MinValue;
-            foreach (var e in block.Entries.Where(e => e.Seq > after && (i.CurrentEntry is not null || e.AtUtc >= now)))
-                rows.Add(EntryRow(block, e, e.AtUtc, ActualState.Planned, current: false));
+            // Plugin 0.4.18: nach der Belichtung läuft keine mehr – Warten, Flip und Zentrieren stehen als laufende Zeile da
+            // (der passende Plan-Eintrag bzw. eine eigene Zeile), die Belichtung davor nicht mehr als „▶ läuft 100 %“.
+            var entries = block.Entries;
+            var activity = i.CurrentEntry is null ? i.Activity : null;
+            var activityIndex = activity?.Seq is { } aseq ? entries.FindIndex(e => e.Seq == aseq) : -1;
+            var anchor = i.CurrentEntry ?? i.LastEntry;
+            var anchorIndex = anchor is null ? -1 : entries.FindIndex(e => e.Seq == anchor.Seq);
+            var from = activityIndex >= 0 ? activityIndex : anchorIndex >= 0 ? anchorIndex + 1 : -1;
+            if (activity is not null && activityIndex < 0)
+                rows.Add(new NightLogRow(activity.SinceUtc, ActualState.Running, null, false, true, ActivityCmd(activity.Kind), TitleOf(block),
+                    PanelName(block.ProjectId, block.PanelId), null, "", null, null, null, null, null, block.RotationDeg, block.RaDeg, block.DecDeg,
+                    Alt(block.ProjectId, activity.SinceUtc))
+                { DurationS = activity.UntilUtc is { } u ? (u - activity.SinceUtc).TotalSeconds : null });
+            for (var k = 0; k < entries.Count; k++)
+            {
+                var e = entries[k];
+                if (from >= 0 ? k < from : e.AtUtc < now) continue;
+                rows.Add(k == activityIndex
+                    ? EntryRow(block, e, activity!.SinceUtc, ActualState.Running, current: true)
+                    : EntryRow(block, e, e.AtUtc, ActualState.Planned, current: false));
+            }
         }
         foreach (var b in future.Where(b => running?.Block.Id != b.Id))
             foreach (var e in b.Entries)
@@ -442,13 +483,18 @@ public static class NightViewBuilder
 
         NightLogRow EntryRow(Blocks b, Entries e, DateTimeOffset at, ActualState state, bool current) =>
             new(at, state, null, false, current, LockedSettings.Code(e.Cmd), TitleOf(b), PanelName(b.ProjectId, b.PanelId),
-                e.Cmd == EntriesCmd.Expose ? Next(e.ExposureLineId?.ToString() ?? $"{b.ProjectId}|{e.Filter}", false) : null, e.Filter ?? "", e.ExposureS, e.Gain, e.Offset, e.Binning,
+                e.Cmd == EntriesCmd.Expose ? Next(LineKey(b.ProjectId, b.PanelId, e.Filter, e.ExposureS, e.ExposureLineId), false) : null, e.Filter ?? "", e.ExposureS, e.Gain, e.Offset, e.Binning,
                 e.ReadoutMode, b.RotationDeg, b.RaDeg, b.DecDeg, Alt(b.ProjectId, at)) { DurationS = e.DurationS };
 
         // Flats ab Nachtende (wenn im Rig eingeschaltet).
         var flatsOn = i.Bootstrap?.Rig.Scheduler.Flats.Enabled == true;
         var flatsDone = journal.Any(e => e.Kind == JournalKinds.FlatsEnd);
-        NextUp? flatsNext = flatsOn && !flatsDone && !i.FlatsRunning && plan is not null ? new NextUp("", plan.FlatsNotBeforeUtc, true) : null;
+        // Panel-Flats beginnen mit dem Nachtende, nur Himmelsflats ab flatsNotBeforeUtc (NightLoop, Entscheidung Sven
+        // 06.10.2026) – vorher zeigte das Fenster nach dem Nachtende immer flatsNotBeforeUtc (Plugin 0.4.18).
+        var skyFlats = i.Bootstrap?.Rig.Scheduler.Flats.Source == FlatsSource.Sky;
+        NextUp? flatsNext = flatsOn && !flatsDone && !i.FlatsRunning && plan is not null
+            ? new NextUp("", skyFlats ? plan.FlatsNotBeforeUtc : plan.DarknessEndUtc ?? plan.SessionEndUtc, true)
+            : null;
         if (flatsNext is not null)
             rows.Add(new NightLogRow(flatsNext.AtUtc, ActualState.Planned, null, false, false, "flats", "", "", null, "", null, null, null, null, null,
                 null, null, null, null));
@@ -469,8 +515,19 @@ public static class NightViewBuilder
 
         var lastPlan = journal.LastOrDefault(e => e.Kind == JournalKinds.Plan && (plan is null || e.Data.PlanId == plan.NightPlanId));
         return new NightView(i.Night, chart, rows, list, progress, next, saved, skipped, failed, plan?.NightPlanId, plan?.Revision,
-            lastPlan?.Data.Reason, lastPlan?.AtUtc);
+            lastPlan?.Data.Reason, lastPlan?.AtUtc)
+        {
+            Activity = running is not null && i.CurrentEntry is null ? i.Activity : null,
+        };
     }
+
+    /// <summary>Befehl einer Tätigkeit ohne eigenen Plan-Eintrag (Protokoll, Code wie im Planprotokoll).</summary>
+    private static string ActivityCmd(BlockActivityKind kind) => kind switch
+    {
+        BlockActivityKind.Flip or BlockActivityKind.WaitFlip => "meridian_flip",
+        BlockActivityKind.Centering => "slew_center",
+        _ => "wait",
+    };
 
     private static DateTimeOffset Max(DateTimeOffset a, DateTimeOffset b) => a > b ? a : b;
 

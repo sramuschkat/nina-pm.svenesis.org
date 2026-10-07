@@ -40,6 +40,10 @@ const OPERATION_LINES = [
   'WAIT_TIME',
   'WAIT_TIME_END',
   'WAIT_PLAN',
+  'WAIT_SKIPPED',
+  'WAIT_ENTRY',
+  'WAIT_FLIP',
+  'WAIT_BLOCK',
 ] as const;
 
 /** Verbindliche Schlüsselnamen (Tabelle „Schlüsselnamen“). */
@@ -64,6 +68,7 @@ export const KEYS: ReadonlySet<string> = new Set([
   'pierBefore',
   'pierAfter',
   'durationS',
+  'plannedS',
   'pending',
   'dead',
   'combination',

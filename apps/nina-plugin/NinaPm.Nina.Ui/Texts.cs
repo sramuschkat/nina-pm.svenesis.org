@@ -301,6 +301,8 @@ public static class Texts
         _ => key,
     };
     public static string Unallocated => T("Nicht zugeteilt", "Not allocated");
+    public static string UnallocatedRunning => T("Läuft an der Rig", "Running at the rig");
+    public static string UnallocatedDone => T("Heute Nacht abgearbeitet", "Done tonight");
     public static string DiagnosticReason(string code) => code switch
     {
         "start_date" => T("Startdatum noch nicht erreicht", "start date not reached yet"),
@@ -476,6 +478,19 @@ public static class Texts
         ? T($"{index} von {c} · {seconds} s", $"{index} of {c} · {seconds} s")
         : T($"Nr. {index} · {seconds} s", $"No. {index} · {seconds} s");
     public static string DockRemaining(string time) => T($"noch {time}", $"{time} left");
+
+    /// <summary>Tätigkeit des Blocks ohne Belichtung (Plugin 0.4.18); <paramref name="kind"/> = Name von <c>BlockActivityKind</c>.</summary>
+    public static string DockActivity(string kind, string? until) => kind switch
+    {
+        "WaitPlan" or "WaitEntry" => until is null ? T("Warten (Plan)", "Waiting (plan)") : T($"Warten bis {until} (Plan)", $"Waiting until {until} (plan)"),
+        "WaitMeridian" => until is null ? T("Warten auf den Meridian", "Waiting for the meridian")
+            : T($"Warten auf den Meridian bis {until}", $"Waiting for the meridian until {until}"),
+        "WaitFlip" => until is null ? T("Warten auf NINAs Flipzeit", "Waiting for NINA's flip time")
+            : T($"Warten auf NINAs Flipzeit bis {until}", $"Waiting for NINA's flip time until {until}"),
+        "Flip" => T("Meridian-Flip", "Meridian flip"),
+        "Centering" => T("Zentrieren", "Centering"),
+        _ => kind,
+    };
     public static string DockNextBlock(string title, string time) => $"{title} {time}";
     public static string DockNextFlats(string time) => T($"Flats ab {time}", $"Flats from {time}");
     public static string DockFlats => T("Flats", "Flats");

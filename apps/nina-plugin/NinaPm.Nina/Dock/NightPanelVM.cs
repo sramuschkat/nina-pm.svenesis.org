@@ -144,7 +144,10 @@ public sealed class NightPanelVM : DockableVM, IDockSizeSink
         var live = new LiveStatusView(s.Live);
         var view = s.View;
         var site = s.Site;
-        StateText = live.StateText;
+        // Plugin 0.4.18: ohne laufende Belichtung zeigt die Statuszeile, was der Block tut (Warten, Flip, Zentrieren).
+        StateText = view.Activity is { } activity && view.Progress is null
+            ? $"{live.StateText} · {Texts.DockActivity(activity.Kind.ToString(), activity.UntilUtc is { } u ? site.Clock(u) : null)}"
+            : live.StateText;
         IsBlocked = live.IsBlocked;
         BlockedText = live.BlockedText;
         TestBanner = live.TestBanner;

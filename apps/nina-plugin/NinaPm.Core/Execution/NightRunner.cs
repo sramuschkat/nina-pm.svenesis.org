@@ -114,8 +114,21 @@ public sealed class NightRunner(
     /// <summary>Erster Aufruf nach dem Start geprüft (Neustart mit Session → <c>PATCH running</c>, §6).</summary>
     private bool resumeChecked;
 
-    /// <summary>Benutzeraktion *Block überspringen* (§4.1 Nr. 2, §4.2): wirkt auf den nächsten bzw. laufenden Block.</summary>
+    /// <summary>
+    /// Benutzeraktion *Block überspringen* (§4.1 Nr. 2, §4.2): wirkt auf den nächsten bzw. laufenden Block – nur in dieser
+    /// Nacht; beim Nachtende und beim Nachtwechsel verworfen (Plugin 0.4.18: vorher übersprang ein Klick ohne Block den
+    /// ersten Block der nächsten Nacht).
+    /// </summary>
     private volatile bool skipRequested;
+
+    /// <summary>
+    /// Nacht, in der schon ein Block übersprungen wurde (<c>not_viable</c>, <c>filter_not_found</c>, <c>elapsed</c> …): auch dann
+    /// gilt die Lücke vor dem nächsten Block als Lücke (<see cref="RefreshCause.IdleAhead"/>, Plugin 0.4.18).
+    /// </summary>
+    private string? blockSkippedNight;
+
+    /// <summary>Zuletzt protokolliertes Warten auf einen Block (<c>WAIT_BLOCK</c> nur bei neuem Ziel bzw. neuer Zeit).</summary>
+    private (Guid Block, DateTimeOffset Until)? waitBlockLogged;
 
     /// <summary>
     /// *Zurücksetzen* während eines Blocks: der Block endet nach der laufenden Belichtung mit <c>replanned</c>, danach
@@ -256,7 +269,8 @@ public sealed class NightRunner(
         var night = ExecutingPlan?.Night ?? store.GetState(StateKeys.Night);
         var stored = night is null ? null : PlanStore.Load(store, night);
         var blocked = Loop.Blocked ?? (Loop.PlanFailed ? NinaHeartbeatBlockedReason.Plan_failed : null);
-        return LiveStatusBuilder.Build(new LiveInputs(stored?.Plan, DoneBlocks(stored), runningBlock, Executor?.CurrentEntry, Targets,
+        // Filter und Kamera der zuletzt begonnenen Belichtung bleiben auch beim Warten, Flip und Zentrieren sichtbar.
+        return LiveStatusBuilder.Build(new LiveInputs(stored?.Plan, DoneBlocks(stored), runningBlock, Executor?.CurrentEntry ?? Executor?.LastEntry, Targets,
             blocked, Loop.NightFinished, OutboxPending, DeadLetters, offlineMode, testBanner, clock.UtcNow, bootstrap, SafetyPaused: interrupted,
             FlatsRunning: FlatsRunning, Flat: flats?.Current));
     }
@@ -279,7 +293,8 @@ public sealed class NightRunner(
         // Lokales Journal, davor das Ist vom Server (AP-53c), falls das Plugin erst mitten in der Nacht mitschreibt.
         var server = simulation?.Night == night ? ExecutedJournal.From(simulation.Executed) : [];
         return new NightViewInputs(night, ExecutedJournal.Merge(Journal.Read(night), server), stored?.Plan, DoneBlocks(stored), RunningBlock, Executor?.CurrentEntry,
-            Executor?.CurrentEntryStartedUtc, Targets, bootstrap, simulation, site, clock.UtcNow, FlatsRunning);
+            Executor?.CurrentEntryStartedUtc, Targets, bootstrap, simulation, site, clock.UtcNow, FlatsRunning,
+            runningBlock is null ? null : Executor?.Activity, runningBlock is null ? null : Executor?.LastEntry);
     }
 
     public List<Guid> TakeCommandAcks()
@@ -480,6 +495,12 @@ public sealed class NightRunner(
                     store.SetState(key, null);
                 TonightLog.Clear(store);
                 Loop.NewNight();
+                // Neue Nacht (Plugin 0.4.18): Plan, Überspringen und Lückenregel von gestern gelten nicht mehr – sonst zeigte
+                // das Fenster die alte Nacht, und Ereignisse vor dem ersten Block trügen die nightPlanId von gestern.
+                ExecutingPlan = null;
+                skipRequested = false;
+                blockSkippedNight = null;
+                waitBlockLogged = null;
                 return;
             case NightAction.FetchPlan:
                 await FetchPlanAsync(b, row.Night, step.Reason ?? NinaPlanRequestReason.Initial, stored, token).ConfigureAwait(false);
@@ -492,7 +513,14 @@ public sealed class NightRunner(
                     return;
                 if (!Loop.PlanLocked(clock.UtcNow) && await RefreshForIdleAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
                     return;
-                await WaitAsync(step.WaitUntilUtc!.Value, wakeOnTargets: true, token).ConfigureAwait(false);
+                var waitUntil = step.WaitUntilUtc!.Value;
+                // Lücke vor dem Block, aber noch in der 5-min-Sperre: mit Ablauf der Sperre aufwachen und die Lücke neu
+                // prüfen (einmal je Plan), statt bis zum Blockstart zu schlafen (Plugin 0.4.18).
+                if (Loop.PlanLocked(clock.UtcNow) && Loop.PlanLockUntil is { } lockEnd && lockEnd < waitUntil
+                    && IdleAheadDue(context.Plan!, step.BlockIndex!.Value))
+                    waitUntil = lockEnd;
+                LogWaitBlock(context.Plan!.Plan.Blocks[step.BlockIndex!.Value], step.WaitUntilUtc!.Value);
+                await WaitAsync(waitUntil, wakeOnTargets: true, token).ConfigureAwait(false);
                 return;
             case NightAction.Idle:
                 // Leerer Plan bzw. alle Blöcke vorbei: neue Ziele aus dem Web wecken nach höchstens 1 min (0.4.12).
@@ -529,6 +557,7 @@ public sealed class NightRunner(
                 // Ziele am Morgen auffrischen: die Tagesschleife entscheidet gleich danach über „keine Ziele“ (AP-52).
                 await RefreshTargetsAsync(token).ConfigureAwait(false);
                 Loop.NightFinishedSet(row.Night);
+                skipRequested = false;
                 log.Event("SESSION", ("status", "finished"), ("night", row.Night));
                 return;
             case NightAction.RunFlats:
@@ -608,6 +637,7 @@ public sealed class NightRunner(
         }
         var initial = reason == NinaPlanRequestReason.Initial;
         if (!initial) await AwaitImageSavesAsync(token).ConfigureAwait(false);
+        if (reason == NinaPlanRequestReason.Resume && SessionId is not null) RecordAbortedBlock(night);
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var tonight = TonightLog.Load(store);
         var input = new PlanRequestInput(reason, initial ? null : startAtUtc ?? clock.UtcNow, SessionId, etag,
@@ -623,6 +653,8 @@ public sealed class NightRunner(
                 log.Event("PLAN_REBUILT", ("id", stored.Plan.NightPlanId), ("plan", plan.NightPlanId),
                     ("reason", reason.ToString().ToLowerInvariant()));
             PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
+            // Plan einer anderen Nacht: der ausgeführte Plan von gestern gilt nicht mehr (Ereignisse, Fenster).
+            if (ExecutingPlan is { } executing && executing.Night != plan.Night) ExecutingPlan = null;
             store.SetState(StateKeys.DoneBlocks, null);
             Journal.Append(plan.Night, clock.UtcNow, JournalKinds.Plan,
                 new JournalData { PlanId = plan.NightPlanId, Revision = plan.Revision, Reason = reason.ToString().ToLowerInvariant() });
@@ -732,9 +764,7 @@ public sealed class NightRunner(
     private async Task<bool> RefreshForIdleAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
     {
         var block = stored.Plan.Blocks[index];
-        var fromIdle = store.GetState(StateKeys.IdleRefreshPlan) == stored.Plan.NightPlanId.ToString();
-        if (!ReplanPolicy.IdleAhead(ReplanPolicy.PlannedStart(block), clock.UtcNow, TonightLog.Load(store).HasPastBlocks, fromIdle))
-            return false;
+        if (!IdleAheadDue(stored, index)) return false;
         log.Note($"Re-planning before block {block.Id}: {RefreshCause.IdleAhead}");
         await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, clock.UtcNow).ConfigureAwait(false);
         if (PlanStore.Load(store, night) is { } fresh && fresh.Plan.NightPlanId != stored.Plan.NightPlanId)
@@ -742,6 +772,27 @@ public sealed class NightRunner(
         else
             store.SetState(StateKeys.IdleRefreshPlan, stored.Plan.NightPlanId.ToString());
         return true;
+    }
+
+    /// <summary>
+    /// Lücke vor dem Block nach <see cref="ReplanPolicy.IdleAhead"/>: in dieser Nacht lief oder entfiel schon ein Block (auch
+    /// übersprungene zählen, Plugin 0.4.18), der Plan stammt nicht aus einer solchen Neuplanung, der Block beginnt erst in
+    /// mehr als 5 min.
+    /// </summary>
+    private bool IdleAheadDue(StoredPlan stored, int index)
+    {
+        var fromIdle = store.GetState(StateKeys.IdleRefreshPlan) == stored.Plan.NightPlanId.ToString();
+        var blockBefore = TonightLog.Load(store).HasPastBlocks || blockSkippedNight == stored.Plan.Night;
+        return ReplanPolicy.IdleAhead(ReplanPolicy.PlannedStart(stored.Plan.Blocks[index]), clock.UtcNow, blockBefore, fromIdle);
+    }
+
+    /// <summary><c>WAIT_BLOCK</c> beim Warten auf einen späteren Block (ab 30 s, je Block und Startzeit einmal).</summary>
+    private void LogWaitBlock(Blocks block, DateTimeOffset startUtc)
+    {
+        var waitS = (startUtc - clock.UtcNow).TotalSeconds;
+        if (waitS < BlockExecutor.WaitLogMinS || waitBlockLogged == (block.Id, startUtc)) return;
+        waitBlockLogged = (block.Id, startUtc);
+        log.Event("WAIT_BLOCK", ("block", block.Id), ("untilUtc", startUtc), ("durationS", Math.Round(waitS)));
     }
 
     /// <summary>Slew-/Zentrier-Vorlauf vor einem Transitfenster: <c>slewCenterS + 60 s</c> (NT-25).</summary>
@@ -1002,7 +1053,7 @@ public sealed class NightRunner(
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
                 rotator is null ? null : RotationSettings.For(rotator.Present, rotator.ToleranceDeg, rotator.SkipOnMismatch),
                 scheduler is null ? null : scheduler.Playback == SchedulerPlayback.Sequential ? PlaybackMode.Sequential : PlaybackMode.TimeAware,
-                (kind, code, b, durationS) => ReportEvent(kind, code, b.Id, durationS: durationS),
+                (kind, code, b, durationS, at) => ReportEvent(kind, code, b.Id, durationS: durationS, occurredAtUtc: at),
                 b =>
                 {
                     // flipDoneByPanel (flip-rotation.md §1): die Neuplanung plant für dieses Panel keinen zweiten Flip.
@@ -1043,7 +1094,9 @@ public sealed class NightRunner(
                     });
                     ReportEvent(EventsKind.Skipped_timeaware, "late", b.Id, projectId: b.ProjectId, nightPlanId: stored.Plan.NightPlanId,
                         data: new Dictionary<string, object> { ["seq"] = e.Seq, ["filter"] = e.Filter ?? "", ["exposureS"] = e.ExposureS ?? 0 });
-                }))
+                },
+                // Flip des Ziels in dieser Nacht schon erledigt (flipDoneByPanel): ein späterer Block flippt nicht noch einmal.
+                b => TonightLog.Load(store).IsFlipDone(UnitId(b))))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             resetRequested = false;
@@ -1058,16 +1111,24 @@ public sealed class NightRunner(
                 });
                 ReportEvent(EventsKind.Block_skipped, outcome.Reason, block.Id, projectId: block.ProjectId, nightPlanId: stored.Plan.NightPlanId);
             }
+            if (outcome.Skipped) blockSkippedNight = stored.Plan.Night;
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
-            // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).
+            // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5). Ein schon verlangtes
+            // Zurücksetzen (reset) bzw. initial bleibt (Plugin 0.4.18: vorher überschrieb refresh ein Zurücksetzen im Transit).
             if (outcome.Reason is "target_removed" or "transit_interrupt"
-                || outcome.Started && block.Kind == BlocksKind.Transit) forcedPlan = NinaPlanRequestReason.Refresh;
+                || outcome.Started && block.Kind == BlocksKind.Transit) forcedPlan ??= NinaPlanRequestReason.Refresh;
+            // Mehr als 3 verpasste Belichtungen (§4.2): der Block endete mit replanned, jetzt ab jetzt neu planen.
+            if (outcome.Started && outcome.Reason == "replanned" && outcome.NeedsReplan)
+            {
+                log.Note($"Re-planning after block {block.Id}: {RefreshCause.SkippedExposures}");
+                forcedPlan ??= NinaPlanRequestReason.Refresh;
+            }
             // Leerer Block (Rig-Nacht 06.10.2026): ebenso sofort ab jetzt neu planen, einmal je Einheit.
             if (ReplanPolicy.EmptyBlock(outcome.Started, outcome.Reason, outcome.Exposures, unit, emptyBlockUnit))
             {
                 emptyBlockUnit = unit;
                 log.Note($"Re-planning after block {block.Id}: {RefreshCause.EmptyBlock}");
-                forcedPlan = NinaPlanRequestReason.Refresh;
+                forcedPlan ??= NinaPlanRequestReason.Refresh;
             }
             else if (outcome.Exposures > 0) emptyBlockUnit = null;
             // Gelaufen oder übersprungen: in diesem Plan nicht noch einmal (Unterbrechung → neuer Plan, §4.6).
@@ -1151,6 +1212,32 @@ public sealed class NightRunner(
             data: exposures is { } n ? new Dictionary<string, object> { ["exposures"] = n } : null);
     }
 
+    /// <summary>
+    /// Neustart mitten im Block (NINA abgestürzt, Entscheidung Sven 07.10.2026): Der Block hat im Nachtjournal einen Beginn,
+    /// aber kein Ende, und fehlt in <c>pastBlocks</c>. Vor dem Resume-Plan nachtragen – Beginn = <c>block_start</c> (sonst die
+    /// erste Aufnahme), Ende = Ende der letzten gespeicherten Aufnahme des Blocks –, damit die Engine die Neuplanung als
+    /// Fortsetzung derselben Einheit wertet (allocation.md A-32: Ende höchstens 300 s vor <c>startAtUtc</c>). Nur, wenn
+    /// <c>currentUnitId</c> diese Einheit ist und der Block noch nicht erfasst ist; ohne gespeicherte Aufnahme nichts.
+    /// </summary>
+    private void RecordAbortedBlock(string night)
+    {
+        var tonight = TonightLog.Load(store);
+        if (tonight.CurrentUnitId is not { } current) return;
+        var journal = Journal.Read(night);
+        var ended = journal.Where(e => e.Kind == JournalKinds.BlockEnd).Select(e => e.Data.BlockId).ToHashSet();
+        if (journal.LastOrDefault(e => e.Kind == JournalKinds.BlockStart && e.Data.BlockId is { } id && !ended.Contains(id)) is not { } start) return;
+        var blockId = start.Data.BlockId!.Value;
+        if (start.Data.ProjectId is not { } projectId || UnitId(projectId, start.Data.PanelId) != current) return;
+        var captures = journal.Where(e => e.Kind == JournalKinds.Capture && e.Data.BlockId == blockId && e.Data.Result == "saved").ToList();
+        if (captures.Count == 0) return;
+        var from = captures.Select(c => c.Data.StartUtc ?? c.AtUtc).Append(start.AtUtc).Min();
+        var to = captures.Select(c => c.Data.StartUtc is { } s ? s.AddSeconds(c.Data.ExposureS ?? 0) : c.AtUtc).Max();
+        if (to <= from || tonight.HasBlockEndingAfter(current, from)) return;
+        tonight.BlockFinished(current, from, to);
+        tonight.Save(store);
+        log.Note($"Resume: block {blockId} without end recorded for {current} ({UtcText.Format(from)}–{UtcText.Format(to)})");
+    }
+
     private void RecordBlockEnd(string unit, DateTimeOffset startedAt)
     {
         var tonight = TonightLog.Load(store);
@@ -1171,7 +1258,8 @@ public sealed class NightRunner(
         {
             PlanId = facts.NightPlanId, BlockId = facts.Block.Id, ProjectId = facts.Block.ProjectId, PanelId = facts.Block.PanelId,
             // Kurzname wie im Plan („L“), nicht NINAs Filtername („LUMINANCE“), sonst trennt die Filterleiste Plan und Ist.
-            Seq = facts.Entry.Seq, Filter = facts.Entry.Filter ?? facts.FilterActual, ExposureS = facts.ExposureS, Gain = facts.Gain, Offset = facts.Offset,
+            Seq = facts.Entry.Seq, LineId = facts.Entry.ExposureLineId, Filter = facts.Entry.Filter ?? facts.FilterActual, ExposureS = facts.ExposureS,
+            Gain = facts.Gain, Offset = facts.Offset,
             Binning = facts.Binning, Readout = facts.ReadoutMode, RotationDeg = facts.RotationDeg ?? facts.Block.RotationDeg,
             RaDeg = facts.Block.RaDeg, DecDeg = facts.Block.DecDeg, StartUtc = facts.CapturedAtUtc,
             Result = result.ToString().ToLowerInvariant(),
@@ -1200,7 +1288,7 @@ public sealed class NightRunner(
             _ => null,
         };
         if (journalKind is not null)
-            Journal.Append(JournalNight, clock.UtcNow, journalKind, new JournalData { BlockId = blockId, DurationS = durationS });
+            Journal.Append(JournalNight, occurredAtUtc ?? clock.UtcNow, journalKind, new JournalData { BlockId = blockId, DurationS = durationS });
         if (SessionId is not { } session) return;
         var planId = nightPlanId ?? ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
         var e = new Events
@@ -1366,12 +1454,14 @@ public sealed class NightRunner(
     }
 
     /// <summary>Einheiten-ID des Blocks (ENG5-14) aus Targets (Panelzahl, Panel-Index) und Mosaik-Einstellung.</summary>
-    public string UnitId(Blocks block)
+    public string UnitId(Blocks block) => UnitId(block.ProjectId, block.PanelId);
+
+    private string UnitId(Guid projectId, Guid? panelId)
     {
         var targets = Targets;
-        var project = targets?.Projects.FirstOrDefault(p => p.Id == block.ProjectId);
-        var panel = project?.Panels.FirstOrDefault(p => p.Id == block.PanelId);
-        return TonightLog.UnitId(block.ProjectId, panel?.Index ?? 0, project?.Panels.Count ?? 1, targets?.MosaicPanelsIndependent ?? false);
+        var project = targets?.Projects.FirstOrDefault(p => p.Id == projectId);
+        var panel = project?.Panels.FirstOrDefault(p => p.Id == panelId);
+        return TonightLog.UnitId(projectId, panel?.Index ?? 0, project?.Panels.Count ?? 1, targets?.MosaicPanelsIndependent ?? false);
     }
 
     /// <summary>§4.6: Unterbrechung oder Benutzer-Stopp (eigene Abbrüche kommen mit AP-16d/AP-44).</summary>

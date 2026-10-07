@@ -373,7 +373,7 @@
                         <ItemsControl ItemsSource="{Binding Unallocated}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Opacity="0.8" Text="{Binding Text}" TextWrapping="Wrap" />
+                                    <TextBlock Opacity="{Binding Opacity}" Text="{Binding Text}" TextWrapping="Wrap" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
