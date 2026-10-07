@@ -16286,6 +16286,7 @@ export interface components {
             scheduler: components["schemas"]["SchedulerSettings"];
             filterWheel: components["schemas"]["FilterWheelSlot"][];
             settingsVersion: number;
+            overheads?: components["schemas"]["RigOverheadsView"];
             derived: {
                 effFocalMm: number;
                 scaleArcsecPx: number;
@@ -16350,6 +16351,7 @@ export interface components {
                 /** @default 5 */
                 downloadS: number;
             };
+            overheadFixed?: ("slewCenterS" | "filterChangeS" | "ditherSettleS" | "afDurationS" | "downloadS" | "flipDurationS")[];
         };
         FilterWheelSlot: {
             position: number;
@@ -16370,6 +16372,37 @@ export interface components {
              */
             ninaConfirmedBy: string | null;
         };
+        RigOverheadsView: {
+            minSamples: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            computedAtUtc: string | null;
+            /** Format: date */
+            fromNight: string | null;
+            /** Format: date */
+            toNight: string | null;
+            nights: number;
+            values: components["schemas"]["RigOverheadValue"][];
+        };
+        RigOverheadValue: {
+            /** @enum {string} */
+            key: "slewCenterS" | "filterChangeS" | "ditherSettleS" | "afDurationS" | "downloadS" | "flipDurationS";
+            typedS: number;
+            measured: components["schemas"]["MeasuredOverheadStat"];
+            effectiveS: number;
+            /** @enum {string} */
+            source: "measured" | "typed";
+            fixed: boolean;
+            deviates: boolean;
+        };
+        MeasuredOverheadStat: {
+            medianS: number;
+            n: number;
+            p25S: number;
+            p75S: number;
+        } | null;
         RigCreate: {
             name: string;
             /**

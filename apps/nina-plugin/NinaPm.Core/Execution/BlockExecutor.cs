@@ -49,7 +49,7 @@ public sealed record RotationSettings(double ToleranceDeg, bool SkipOnMismatch)
 /// Rigs (AP-16f), Playback-Modus des Rigs und Meldungen an den Server (Ereignis, Code); Download-Zeit des Rigs
 /// (<c>overhead.downloadS</c>, wie die Engine) und weiches Blockende (<see cref="Playback.SoftEnd"/>, Plugin 0.4.8);
 /// Blockstart nach dem Zentrieren mit Beginn des Anfahrens und zeitgeführt übersprungene Belichtungen für das Nachtjournal
-/// (AP-53b). <see cref="Report"/> trägt beim Flip dessen Ende als Zeitpunkt (Plugin 0.4.18); <see cref="FlipDoneTonight"/>
+/// (AP-53b; <see cref="Started"/> mit Beginn und ob der Slew entfiel, Plugin 0.4.19). <see cref="Report"/> trägt beim Flip dessen Ende als Zeitpunkt (Plugin 0.4.18); <see cref="FlipDoneTonight"/>
 /// meldet, ob für die Einheit des Blocks in dieser Nacht schon ein Flip erledigt ist (<c>flipDoneByPanel</c>).
 /// </summary>
 public sealed record BlockRunOptions(
@@ -60,7 +60,7 @@ public sealed record BlockRunOptions(
     FlipSettings? Flip = null,
     RotationSettings? Rotation = null,
     PlaybackMode? Mode = null,
-    Action<EventsKind, string?, Blocks, double?, DateTimeOffset?>? Report = null,
+    Action<EventsKind, string?, Blocks, double?, DateTimeOffset?, IDictionary<string, object>?>? Report = null,
     Action<Blocks>? FlipDone = null,
     Func<bool>? SkipRequested = null,
     Func<bool>? TargetsChanged = null,
@@ -68,7 +68,7 @@ public sealed record BlockRunOptions(
     Func<TimeSpan>? InBlockInterval = null,
     double? DownloadS = null,
     DateTimeOffset? SoftEndUtc = null,
-    Action<Blocks, DateTimeOffset>? Started = null,
+    Action<Blocks, DateTimeOffset, bool>? Started = null,
     Action<Blocks, Entries>? EntrySkipped = null,
     Func<Blocks, bool>? FlipDoneTonight = null);
 
@@ -311,7 +311,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         }
 
         log.Event("BLOCK_START", ("id", block.Id), ("atUtc", clock.UtcNow));
-        options.Started?.Invoke(block, activeFrom);
+        options.Started?.Invoke(block, activeFrom, slewSkipped);
         // Startverzug: tatsächlicher minus geplanter Beginn der Einträge nach dem Zentrieren (§4.2, NT-21).
         var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
         if (plannedEntries is { } p && clock.UtcNow > p) run.Offset = clock.UtcNow - p;
@@ -340,7 +340,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             if (run.SeriesStarted)
             {
                 log.Event("TRANSIT_END", ("id", block.Id));
-                options.Report?.Invoke(EventsKind.Transit_end, null, block, null, null);
+                options.Report?.Invoke(EventsKind.Transit_end, null, block, null, null, null);
             }
         }
         var (reason, exposures, skipped) = result;
@@ -438,14 +438,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             {
                 opticsMirroredWarned = true;
                 log.Warning("WARNING", ("code", "optics_mirrored"), ("block", block.Id));
-                run.Options.Report?.Invoke(EventsKind.Warning, "optics_mirrored", block, null, null);
+                run.Options.Report?.Invoke(EventsKind.Warning, "optics_mirrored", block, null, null, null);
             }
             return new RotationOutcome(false);
         }
         if (reading.PositionAngleDeg is not { } actual)
         {
             log.Event("ROTATION_UNKNOWN", ("id", block.Id));
-            run.Options.Report?.Invoke(EventsKind.Rotation_unknown, null, block, null, null);
+            run.Options.Report?.Invoke(EventsKind.Rotation_unknown, null, block, null, null, null);
             return new RotationOutcome(false);
         }
         if (Rotation.WithinTolerance(actual, block.RotationDeg, r.ToleranceDeg))
@@ -455,7 +455,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         }
         mismatchTarget = (block.ProjectId, block.PanelId);
         log.Event("ROTATION_MISMATCH", ("id", block.Id));
-        run.Options.Report?.Invoke(EventsKind.Rotation_mismatch, null, block, null, null);
+        run.Options.Report?.Invoke(EventsKind.Rotation_mismatch, null, block, null, null, null);
         return new RotationOutcome(r.SkipOnMismatch && !host.RotatorConnected);
     }
 
@@ -565,11 +565,12 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             {
                 run.SeriesStarted = true;
                 log.Event("TRANSIT_START", ("id", block.Id), ("untilUtc", e.UntilUtc ?? block.EndUtc));
-                run.Options.Report?.Invoke(EventsKind.Transit_start, null, block, null, null);
+                run.Options.Report?.Invoke(EventsKind.Transit_start, null, block, null, null, null);
             }
             var deviation = checkCooling();
             var pierBefore = host.PierSide();
             var started = clock.UtcNow;
+            var earliestFlip = FlipRules.EarliestUtc(started, host.MinutesToEarliestFlip());
             Activity = null;
             CurrentEntry = e;
             LastEntry = e;
@@ -593,7 +594,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 log.Warning("WARNING", ("code", "transit_series_stalled"), ("block", block.Id));
                 return ("error", exposures, skippedTotal);
             }
-            DetectUnplannedFlip(run, pierBefore, host.PierSide(), started, (e.ExposureS ?? 0) + run.DownloadS);
+            DetectUnplannedFlip(run, pierBefore, host.PierSide(), started, (e.ExposureS ?? 0) + run.DownloadS, earliestFlip);
             // Die Serie wiederholt denselben Eintrag bis untilUtc (Playback entscheidet über das Ende).
             cursor = series ? target - 1 : target;
         }
@@ -631,7 +632,8 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// Ungeplanter Flip (NINAs Trigger vor einer Belichtung, auch die geplante ±1 Belichtung früher): Pier-Seite
     /// gewechselt → <c>FLIP</c>, Zentrieren vor der nächsten Belichtung, ein späterer <c>meridian_flip</c> ist erledigt.
     /// </summary>
-    private void DetectUnplannedFlip(Run run, string? before, string? after, DateTimeOffset started, double exposureS)
+    private void DetectUnplannedFlip(Run run, string? before, string? after, DateTimeOffset started, double exposureS,
+        DateTimeOffset? earliestFlipUtc)
     {
         if (FlipRules.Detect(before, after, null, null, 0, 0) != FlipDetection.Flipped) return;
         // NINAs Trigger flippt vor der Belichtung, erkannt wird es danach: die Belichtung gehört nicht zur Flipdauer
@@ -640,16 +642,21 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         // Belichtung zu spät (Plugin 0.4.18). Trigger danach (z. B. Autofokus nach dem Flip) lassen sich im Kern nicht
         // abtrennen und zählen mit.
         var durationS = Math.Max(0, Math.Round((clock.UtcNow - started).TotalSeconds - exposureS));
-        Flipped(run, before!, after!, durationS, started.AddSeconds(durationS));
+        // NINAs Trigger löst vor der frühesten Flipzeit aus und wartet darauf (Rig-Nacht 06./07.10.2026: 16 min) – das
+        // Warten gehört nicht zum Flip (AP-65, die Engine plant es als eigenen `wait`).
+        Flipped(run, before!, after!, durationS, started.AddSeconds(durationS), FlipRules.ActionS(durationS, started, earliestFlipUtc));
     }
 
-    private void Flipped(Run run, string before, string after, double durationS, DateTimeOffset endedUtc)
+    private void Flipped(Run run, string before, string after, double durationS, DateTimeOffset endedUtc, double? actionS)
     {
         run.Flipped = true;
         run.RecenterPending = true;
         if (after is "east" or "west") flippedPier[(run.Block.ProjectId, run.Block.PanelId)] = after;
         log.Event("FLIP", ("id", run.Block.Id), ("pierBefore", before), ("pierAfter", after), ("durationS", durationS));
-        run.Options.Report?.Invoke(EventsKind.Flip, null, run.Block, durationS, endedUtc); // mit Dauer (FA-NIN-24)
+        // Mit Dauer (FA-NIN-24); seit 0.4.19 zusätzlich der eigentliche Flip ohne NINAs Warten auf die früheste Flipzeit
+        // (`data.flipActionS`, AP-65) – fehlt, wenn die früheste Flipzeit unbekannt ist (keine Montierung).
+        var data = actionS is { } a ? new Dictionary<string, object> { ["flipActionS"] = a } : null;
+        run.Options.Report?.Invoke(EventsKind.Flip, null, run.Block, durationS, endedUtc, data);
         run.Options.FlipDone?.Invoke(run.Block);
     }
 
@@ -720,6 +727,8 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             var pierBefore = host.PierSide();
             double? paBefore = pierBefore is null ? (await host.SolveAsync(token).ConfigureAwait(false)).PositionAngleDeg : null;
             var triggerStart = clock.UtcNow;
+            // Ist NINAs früheste Flipzeit noch nicht erreicht (Warten bis limitEnd begrenzt), wartet NINAs Trigger darauf.
+            var earliestFlip = FlipRules.EarliestUtc(triggerStart, host.MinutesToEarliestFlip());
             await host.RunTriggersAsync(token).ConfigureAwait(false);
             var triggerS = (clock.UtcNow - triggerStart).TotalSeconds;
             var pierAfter = host.PierSide();
@@ -728,12 +737,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             switch (FlipRules.Detect(pierBefore, pierAfter, paBefore, paAfter, triggerS, durationS))
             {
                 case FlipDetection.Flipped:
-                    Flipped(run, pierBefore ?? "unknown", pierAfter ?? "unknown", FlipRules.DurationS(clock.UtcNow, triggerStart, planned), clock.UtcNow);
+                    var flipS = FlipRules.DurationS(clock.UtcNow, triggerStart, planned);
+                    var actionS = earliestFlip is { } ef ? Math.Max(0, Math.Round((clock.UtcNow - (ef > triggerStart ? ef : triggerStart)).TotalSeconds)) : (double?)null;
+                    Flipped(run, pierBefore ?? "unknown", pierAfter ?? "unknown", flipS, clock.UtcNow, actionS);
                     break;
                 default:
                     // NINA hat nicht (erkennbar) geflippt: Plan-Flip bleibt offen (flipDoneByPanel unverändert, NIN5-1).
                     log.Event("FLIP_UNDETECTED", ("id", block.Id));
-                    run.Options.Report?.Invoke(EventsKind.Flip_undetected, null, block, null, null);
+                    run.Options.Report?.Invoke(EventsKind.Flip_undetected, null, block, null, null, null);
                     break;
             }
             // Verzug: Warten auf die früheste Flipzeit und der Flip selbst gegen die geplante Flipdauer (§4.2).

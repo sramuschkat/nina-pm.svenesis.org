@@ -60,6 +60,7 @@ import { NINA_PATHS } from '../nina/NinaLayout';
 import { UptakeStatus } from '../nina/UptakeStatus';
 import { rebaseDraft } from '../../lib/draft-rebase';
 import { FilterWheelSection } from './FilterWheelSection';
+import { MeasuredOverheads } from './MeasuredOverheads';
 import { SORT_CHAIN_LABEL, SortChainEditor } from './SortChainEditor';
 import type { SortChainKey } from '@nina-pm/shared';
 
@@ -629,7 +630,14 @@ export function RigsPage() {
                   panels={{
                     general,
                     equipment,
-                    scheduler: selected ? <SchedulerSummary rig={selected} /> : saveFirst,
+                    scheduler: selected ? (
+                      <>
+                        <SchedulerSummary rig={selected} />
+                        <MeasuredOverheads rig={selected} canWrite={canSettings} />
+                      </>
+                    ) : (
+                      saveFirst
+                    ),
                     filterWheel: !selected ? (
                       saveFirst
                     ) : camera?.isColor ? (

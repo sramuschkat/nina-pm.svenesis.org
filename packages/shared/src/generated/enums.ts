@@ -260,6 +260,12 @@ export type FlatsSource = (typeof flatsSources)[number];
 export const flatsAutoModes = ["off","once_per_project","time_based"] as const;
 export type FlatsAutoMode = (typeof flatsAutoModes)[number];
 
+export const overheadValueKeys = ["slewCenterS","filterChangeS","ditherSettleS","afDurationS","downloadS","flipDurationS"] as const;
+export type OverheadValueKey = (typeof overheadValueKeys)[number];
+
+export const overheadSources = ["measured","typed"] as const;
+export type OverheadSource = (typeof overheadSources)[number];
+
 export const projectStatusTransitions = {
   "planning": [
     "active",

@@ -55,7 +55,30 @@ internal sealed class NinaPmRuntime : IDisposable
         SimulationApi = new NinaPm.Core.Simulator.NinaSimulationApi(api.Client);
         Heartbeat = new HeartbeatService(sessionApi, Runner, new NinaSettingsSource(host.Mediators, host.CurrentTriggers), Outbox,
             clock, Log, NinaPmPlugin.PluginVersion);
+        RegisterAutofocusWatcher();
         if (startHeartbeat) _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
+    }
+
+    private AutofocusWatcher? autofocusWatcher;
+
+    /// <summary>
+    /// Autofokus-Läufe melden (AP-65, execution.md §10.2): Verbraucher am Fokussierer-Mediator, solange die Laufzeit besteht.
+    /// Filter beim Beginn aus dem Filterrad. Ein Fehler beim Registrieren kostet nur die <c>af</c>-Ereignisse.
+    /// </summary>
+    private void RegisterAutofocusWatcher()
+    {
+        if (Host.Mediators.Focuser is not { } focuser) return;
+        try
+        {
+            var filterWheel = Host.Mediators.FilterWheel;
+            autofocusWatcher = new AutofocusWatcher(Runner.Autofocus, () => filterWheel.GetInfo()?.SelectedFilter?.Name);
+            focuser.RegisterConsumer(autofocusWatcher);
+        }
+        catch (Exception ex)
+        {
+            autofocusWatcher = null;
+            NINA.Core.Utility.Logger.Warning($"NINA-PM: autofocus watcher: {ex.Message}");
+        }
     }
 
     public OutboxSender Outbox { get; }
@@ -162,6 +185,18 @@ internal sealed class NinaPmRuntime : IDisposable
 
     public void Dispose()
     {
+        if (autofocusWatcher is not null)
+        {
+            try
+            {
+                Host.Mediators.Focuser?.RemoveConsumer(autofocusWatcher);
+            }
+            catch (Exception ex)
+            {
+                NINA.Core.Utility.Logger.Warning($"NINA-PM: autofocus watcher: {ex.Message}");
+            }
+            autofocusWatcher = null;
+        }
         heartbeatStop.Cancel();
         api.Dispose();
         Store.Dispose();

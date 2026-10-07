@@ -336,6 +336,9 @@ public sealed class NightViewTests : IDisposable
         var start = Assert.Single(events, e => e.Kind == EventsKind.Block_start);
         Assert.Equal((Regular.Id, Regular.ProjectId), (start.BlockId!.Value, start.ProjectId!.Value));
         Assert.Equal("NGC 281 Pacman", start.Data!["title"]);
+        // AP-65 (Plugin 0.4.19): Dauer von Anfahren + Zentrieren bis zum Blockstart-Bericht, vor jedem Warten auf den Plan.
+        Assert.True(start.Data!.ContainsKey("slewCenterS"));
+        Assert.True(Convert.ToDouble(start.Data["slewCenterS"], System.Globalization.CultureInfo.InvariantCulture) >= 0);
         var end = Assert.Single(events, e => e.Kind == EventsKind.Block_end);
         Assert.Equal("completed", end.Code);
         Assert.True(start.OccurredAtUtc <= end.OccurredAtUtc);

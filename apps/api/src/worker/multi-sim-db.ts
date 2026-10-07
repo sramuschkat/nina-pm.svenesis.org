@@ -8,7 +8,12 @@ import {
   ProjectRepository,
   type OpenDatabase,
 } from '@nina-pm/db';
-import type { JobResult, NightTransit, NightWeather } from '@nina-pm/shared';
+import {
+  effectiveRig,
+  type JobResult,
+  type NightTransit,
+  type NightWeather,
+} from '@nina-pm/shared';
 import { isoUtc } from '../lib/format';
 import { siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
@@ -29,14 +34,16 @@ export function multiSimDbDeps(
       const equipment = new EquipmentRepository(db, { tenantId });
       const rig = await equipment.rig(rigId);
       if (!rig) return null;
-      const [site, profiles, list] = await Promise.all([
+      const [site, profiles, list, measured] = await Promise.all([
         equipment.site(rig.siteId),
         equipment.moonProfiles(),
         new ProjectRepository(db, { tenantId }).list({ admin: true, rigId }),
+        equipment.measuredOverheads([rigId]),
       ]);
       if (!site) return null;
       return {
-        rig: rigView(rig, undefined, undefined),
+        // Wirksame Overheads wie `POST /plan` (AP-65): gemessen ab 10 Messungen, sonst bzw. mit „fest“ getippt.
+        rig: effectiveRig(rigView(rig, undefined, undefined, measured.get(rigId) ?? null)),
         site: {
           id: site.id,
           latitudeDeg: site.latitudeDeg,

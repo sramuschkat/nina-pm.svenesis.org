@@ -652,6 +652,18 @@
   "once_per_project",
   "time_based"
  ],
+ "overheadValueKeys": [
+  "slewCenterS",
+  "filterChangeS",
+  "ditherSettleS",
+  "afDurationS",
+  "downloadS",
+  "flipDurationS"
+ ],
+ "overheadSources": [
+  "measured",
+  "typed"
+ ],
  "projectStatusTransitions": {
   "planning": [
    "active",

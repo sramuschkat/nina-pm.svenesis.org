@@ -8,7 +8,10 @@ using NINA.WPF.Base.Interfaces.ViewModel;
 
 namespace NinaPm.Nina.Adapters;
 
-/// <summary>NINAs Mediatoren, die der Container per MEF erhält und an Adapter und interne Elemente weitergibt.</summary>
+/// <summary>
+/// NINAs Mediatoren, die der Container per MEF erhält und an Adapter und interne Elemente weitergibt. <c>Focuser</c> zuletzt
+/// und optional (AP-65: Autofokus-Läufe melden); ohne Fokussierer-Mediator (Adapter-Tests) keine <c>af</c>-Ereignisse.
+/// </summary>
 internal sealed record NinaMediators(
     IProfileService Profile,
     ITelescopeMediator Telescope,
@@ -23,4 +26,5 @@ internal sealed record NinaMediators(
     IWindowServiceFactory WindowServiceFactory,
     IImageSaveMediator ImageSave,
     IImageHistoryVM ImageHistory,
-    ISafetyMonitorMediator SafetyMonitor);
+    ISafetyMonitorMediator SafetyMonitor,
+    IFocuserMediator? Focuser = null);

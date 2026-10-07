@@ -361,6 +361,9 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
 
     public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
     {
+        // Vor der eigenen Belichtung läuft kein Autofokus mehr (z. B. eine AF-Anweisung im Startbereich): ein offener Lauf
+        // ist gescheitert, Ende = letzter Messpunkt (AP-65).
+        Runtime?.Runner.Autofocus.Settle(exact: false);
         var filters = m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters;
         // Filter beim Filterwechsel nicht gefunden: mit den aktuellen Zielen erneut versuchen – eine im Web bestätigte
         // Zuordnung wirkt so ab der nächsten Belichtung, nicht erst im nächsten Block (P-05 prod 03.10.2026).

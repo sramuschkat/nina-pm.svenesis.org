@@ -1597,6 +1597,36 @@ export const en: Messages = {
       afDurationS: 'Autofocus duration',
       downloadS: 'Download per exposure',
     },
+    measured: {
+      title: 'Measured overheads',
+      basis:
+        'From the actuals of {{nights}} nights (as of {{at}}). From {{min}} measurements on, the engine plans with the median, otherwise with the typed value.',
+      noData:
+        'No measurement yet – it is computed after every session close. From {{min}} measurements on, the engine plans with the median.',
+      hint: '“Fixed” = always the typed value. A changed measurement does not send a new settings version to NINA; new values apply from the next plan.',
+      seconds: '{{s}} s',
+      secondsMin: '{{s}} s ({{min}} min)',
+      spread: 'n = {{n}} · {{p25}}–{{p75}} s',
+      deviates: 'differs widely',
+      none: 'no measurement',
+      fixedAt: '{{value}} fixed (always typed)',
+      col: {
+        value: 'Value',
+        typed: 'Typed',
+        measured: 'Measured (median)',
+        effective: 'In effect',
+        fixed: 'Fixed',
+      },
+      source: { measured: 'measured', typed: 'typed' },
+      key: {
+        slewCenterS: 'Slew + center',
+        filterChangeS: 'Filter change',
+        ditherSettleS: 'Dither settle',
+        afDurationS: 'Autofocus duration',
+        downloadS: 'Download per exposure',
+        flipDurationS: 'Meridian flip',
+      },
+    },
     scheduler: {
       on: 'on',
       off: 'off',

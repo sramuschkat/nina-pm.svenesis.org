@@ -19,6 +19,7 @@ import {
 import {
   buildPlanInput,
   currentNightRow,
+  effectiveRig,
   effectiveTenantSettings,
   filterTypes,
   isDeliverable,
@@ -72,16 +73,17 @@ export async function rigData(svc: ApiServices, p: RigRef) {
   const eq = repos.equipment();
   const rig = await eq.rig(p.rigId);
   if (!rig) throw new ProblemError('nina.token_invalid');
-  const [site, telescope, camera, filters, profiles, tenant] = await Promise.all([
+  const [site, telescope, camera, filters, profiles, tenant, measured] = await Promise.all([
     eq.site(rig.siteId),
     eq.telescope(rig.telescopeId),
     eq.camera(rig.cameraId),
     eq.filters(),
     eq.moonProfiles(),
     repos.tenant().current(),
+    repos.ninaRig(p.rigId).measuredOverhead(),
   ]);
   if (!site || !telescope || !camera || !tenant) throw new ProblemError('internal.error');
-  return { repos, rig, site, telescope, camera, filters, profiles, tenant };
+  return { repos, rig, site, telescope, camera, filters, profiles, tenant, measured };
 }
 
 function readoutModes(camera: { readoutModes: readonly string[] }) {
@@ -91,7 +93,8 @@ function readoutModes(camera: { readoutModes: readonly string[] }) {
 export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Bootstrap> {
   const now = svc.now();
   const d = await rigData(svc, p);
-  const s = rigView(d.rig, d.telescope, d.camera).scheduler;
+  // Wirksame Overheads (AP-65) wie in der Engine-Eingabe: das Plugin misst die Download-Zeit gleich.
+  const s = effectiveRig(rigView(d.rig, d.telescope, d.camera, d.measured)).scheduler;
   const filterOf = new Map(d.filters.map((f) => [f.id, f]));
   const table = siteNights(d.site, now, undefined, BOOTSTRAP_NIGHTS, { twilight: true });
   await d.repos.ninaRig(p.rigId).recordSettingsFetched(p.instanceId, d.rig.settingsVersion, now);
@@ -686,7 +689,8 @@ export async function nightPlanInput(
     ignoreDeliverySwitch?: boolean;
   },
 ) {
-  const view = rigView(d.rig, d.telescope, d.camera);
+  // Wirksame Overheads (AP-65): gemessener Median ab 10 Messungen, sonst bzw. mit Schalter „fest“ der getippte Wert.
+  const view = effectiveRig(rigView(d.rig, d.telescope, d.camera, d.measured));
   const delivered = await deliverable(
     svc,
     p,

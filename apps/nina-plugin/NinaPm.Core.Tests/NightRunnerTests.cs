@@ -1569,6 +1569,68 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task AF_Ereignis_mit_Dauer()
+    {
+        // AP-65: jeder Autofokus-Lauf wird `af` mit Dauer, Block beim Beginn, Filter und Ergebnis – auch gescheiterte
+        // (NINA meldet nur Erfolge; das Blockende schließt einen offenen Lauf mit dem letzten Messpunkt).
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var block = PlanStore.Load(store, "2026-09-17")!.Plan.Blocks.Single(b => b.Kind == BlocksKind.Regular);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        DateTimeOffset? okEnd = null;
+        nina.OnExposure = n =>
+        {
+            if (n == 1)
+            {
+                // z. B. AutofocusAfterTimeTrigger vor der ersten Belichtung
+                runner.Autofocus.Starting("L");
+                clock.Advance(TimeSpan.FromSeconds(180));
+                runner.Autofocus.Completed("L");
+                okEnd = clock.UtcNow;
+            }
+            if (n == 2)
+            {
+                runner.Autofocus.Starting("Ha");
+                clock.Advance(TimeSpan.FromSeconds(95));
+                runner.Autofocus.Point();
+                clock.Advance(TimeSpan.FromSeconds(20)); // gescheitert: kein Erfolg gemeldet
+            }
+            if (n == 3) runner.Reset(); // Block endet nach dieser Belichtung
+        };
+
+        await runner.RunOnceAsync(default);
+        nina.OnExposure = null;
+
+        var af = store.OutboxPayloads(OutboxKinds.Event).Select(JObject.Parse).Where(e => (string?)e["kind"] == "af").ToList();
+        Assert.Equal(2, af.Count);
+        Assert.Null((string?)af[0]["code"]);
+        Assert.Equal(180, (double)af[0]["durationS"]!);
+        Assert.Equal("ok", (string?)af[0]["data"]!["result"]);
+        Assert.Equal("L", (string?)af[0]["data"]!["filter"]);
+        Assert.Equal(block.Id.ToString(), (string?)af[0]["blockId"]);
+        Assert.Equal(block.ProjectId.ToString(), (string?)af[0]["projectId"]);
+        Assert.Equal(okEnd, af[0]["occurredAtUtc"]!.ToObject<DateTimeOffset>());
+        Assert.Equal("failed", (string?)af[1]["code"]);
+        Assert.Equal(95, (double)af[1]["durationS"]!);
+        Assert.Equal("failed", (string?)af[1]["data"]!["result"]);
+        Assert.Equal("Ha", (string?)af[1]["data"]!["filter"]);
+        Assert.Equal(block.Id.ToString(), (string?)af[1]["blockId"]);
+        Assert.Contains(sink.Lines, l => l.Contains("NINA-PM | AF ") && l.Contains("result=ok") && l.Contains("durationS=180"));
+        Assert.Contains(sink.Lines, l => l.Contains("NINA-PM | AF ") && l.Contains("result=failed") && l.Contains("durationS=95"));
+    }
+
+    [Fact]
+    public void AF_ohne_Session_nur_im_Log()
+    {
+        var runner = Runner();
+        runner.Autofocus.Starting("L");
+        clock.Advance(TimeSpan.FromSeconds(120));
+        runner.Autofocus.Completed("L");
+        Assert.Empty(store.OutboxPayloads(OutboxKinds.Event));
+        Assert.Contains(sink.Lines, l => l.Contains("NINA-PM | AF ") && l.Contains("durationS=120") && !l.Contains("block="));
+    }
+
+    [Fact]
     public async Task Neuplanung_wartet_bis_NINA_die_letzte_Belichtung_gespeichert_hat()
     {
         // VM-Lauf real-night-flats 05.10.2026: der Plan kam, bevor die 12. von 12 Aufnahmen gemeldet war → Block für eine

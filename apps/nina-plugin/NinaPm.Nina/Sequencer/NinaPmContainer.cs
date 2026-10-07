@@ -43,9 +43,10 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
     public NinaPmContainer(IProfileService profile, ITelescopeMediator telescope, IImagingMediator imaging, ICameraMediator camera,
         IFilterWheelMediator filterWheel, IRotatorMediator rotator, IGuiderMediator guider, IDomeMediator dome, IDomeFollower domeFollower,
         IPlateSolverFactory plateSolverFactory, IWindowServiceFactory windowServiceFactory, IImageSaveMediator imageSave,
-        IImageHistoryVM imageHistory, ISafetyMonitorMediator safetyMonitor, INighttimeCalculator nighttimeCalculator)
+        IImageHistoryVM imageHistory, ISafetyMonitorMediator safetyMonitor, INighttimeCalculator nighttimeCalculator,
+        IFocuserMediator focuser)
         : this(new NinaMediators(profile, telescope, imaging, camera, filterWheel, rotator, guider, dome, domeFollower,
-            plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor), nighttimeCalculator)
+            plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor, focuser), nighttimeCalculator)
     {
     }
 

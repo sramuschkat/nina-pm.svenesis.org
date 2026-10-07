@@ -28,6 +28,7 @@ import {
   FilterWheelPut,
   FilterWheelView,
   imageScale,
+  type MeasuredOverheads,
   MoonProfileCreate,
   MoonProfileInput,
   MoonProfileView,
@@ -35,6 +36,7 @@ import {
   ProblemError,
   RigCreate,
   RigInput,
+  rigOverheads,
   RigView,
   SchedulerSettings,
   SiteCreate,
@@ -123,21 +125,28 @@ function templateView(row: TemplateRow): z.output<typeof ExposureTemplateView> {
   };
 }
 
+/**
+ * Rig-Ansicht; `measured` = jüngste Messung der Overheads (AP-65). `overheads` zeigt getippt/gemessen/wirksam,
+ * `scheduler` bleibt der getippte Stand (Bearbeiten in S-10) – Engine-Eingaben nehmen `effectiveRig(view)`.
+ */
 export function rigView(
   row: RigRow,
   telescope: TelescopeRow | undefined,
   camera: CameraRow | undefined,
+  measured: MeasuredOverheads | null = null,
 ): z.output<typeof RigView> {
   const scale =
     telescope && camera
       ? imageScale({ ...telescope, ...camera })
       : { effFocalMm: 0, scaleArcsecPx: 0, fovWidthDeg: 0, fovHeightDeg: 0 };
+  const scheduler = schedulerView(row);
   return {
     ...pick(RigInput, row),
     id: row.id,
-    scheduler: schedulerView(row),
+    scheduler,
     filterWheel: row.filterWheel.map((s) => ({ ...s })),
     settingsVersion: row.settingsVersion,
+    overheads: rigOverheads(scheduler, measured),
     derived: {
       effFocalMm: scale.effFocalMm,
       scaleArcsecPx: scale.scaleArcsecPx,
@@ -482,13 +491,18 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
     return { repo: svc.repositories(tenant).equipment(), svc };
   };
 
-  const rigContext = async (repo: Repo) => {
-    const [telescopes, cameras] = await Promise.all([repo.telescopes(), repo.cameras()]);
+  const rigContext = async (repo: Repo, rigIds: readonly string[]) => {
+    const [telescopes, cameras, measured] = await Promise.all([
+      repo.telescopes(),
+      repo.cameras(),
+      repo.measuredOverheads(rigIds),
+    ]);
     return (row: RigRow) =>
       rigView(
         row,
         telescopes.find((t) => t.id === row.telescopeId),
         cameras.find((k) => k.id === row.cameraId),
+        measured.get(row.id) ?? null,
       );
   };
 
@@ -601,7 +615,7 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
     create: (r, id, input, now) => r.createRig(id, input, now),
     update: (r, id, input, now, version) => r.updateRig(id, input, now, version),
     remove: (r, id, now) => r.deleteRig(id, now),
-    view: async (row, repo) => (await rigContext(repo))(row),
+    view: async (row, repo) => (await rigContext(repo, [row.id]))(row),
   });
 
   app.openapi(equipmentBundleRoute, async (c) => {
@@ -615,11 +629,13 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
       repo.rigs(),
     ]);
     // Teleskope und Kameras nur einmal laden (die Einzelliste lädt sie je Rig).
+    const measured = await repo.measuredOverheads(rigs.map((r) => r.id));
     const rigOf = (row: RigRow) =>
       rigView(
         row,
         telescopes.find((t) => t.id === row.telescopeId),
         cameras.find((k) => k.id === row.cameraId),
+        measured.get(row.id) ?? null,
       );
     c.header('cache-control', 'no-store');
     return c.json(
@@ -644,7 +660,7 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
       expectedVersion(c.req.valid('header')['if-match']),
     );
     c.header('etag', `"${String(row.settingsVersion)}"`);
-    return c.json((await rigContext(repo))(row), 200);
+    return c.json((await rigContext(repo, [row.id]))(row), 200);
   });
 
   app.openapi(getFilterWheelRoute, async (c) => {
