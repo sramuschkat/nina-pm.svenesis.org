@@ -19351,14 +19351,31 @@ export interface components {
             filterShortName: string;
             exposureS: number;
             planned: number | null;
+            plannedSeries: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                fromUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                untilUtc: string;
+            } | null;
+            plannedLater: boolean;
             acquired: number;
             rejected: number;
-            rejectedIndividual: number;
-            rejectedCorrection: number;
             accepted: number;
             bonus: number;
             bonusRejected: number;
             integrationS: number;
+            night: {
+                acquired: number;
+                rejected: number;
+                rejectedIndividual: number;
+                rejectedCorrection: number;
+            };
         };
         NightSessionCapture: {
             /**

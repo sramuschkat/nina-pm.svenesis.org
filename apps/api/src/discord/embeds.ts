@@ -478,7 +478,8 @@ export function reportEmbeds(
       field(
         r.filterShortName,
         `${
-          r.planned === null
+          // Transit-Serie: Soll ist ein Zeitfenster, keine Anzahl (07.10.2026).
+          r.planned === null || (r.plannedSeries !== null && r.planned === 0)
             ? t('value.framesNoPlan', { acquired: r.accepted })
             : t('value.frames', { acquired: r.accepted, planned: r.planned })
         }${r.bonus > 0 ? ` ${t('value.bonus', { n: r.bonus })}` : ''} · ${t('value.integrationShort', { h: hours(r.integrationS) })}`,
