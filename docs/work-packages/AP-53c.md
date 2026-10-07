@@ -51,7 +51,7 @@ FA-SIM-05, FA-SIM-07, FA-SIM-08, FA-NIN-13, FA-NIN-18. Neu vorgeschlagen ist **F
 - **Planprotokoll** mit Spalte **Ist** wie in AP-53b (✓ gespeichert, ↷ übersprungen mit Grund, ✕ fehlgeschlagen, ▶ läuft, ○ geplant). Vergangene Einträge kommen aus den Ist-Daten, künftige aus dem gespeicherten Plan. Kopfzeile mit Zählern.
 - **Verwender:**
   - Web-Simulator (S-40), wenn „Heute Nacht“ läuft oder eine vergangene Nacht mit Session gewählt ist. Für künftige Nächte bleibt alles wie heute.
-  - Zeitleiste auf „Heute Nacht“ (`TonightPage`, Zeilen Plan und Filter): Ist und Plan in einer Zeile.
+  - Zeitleiste auf „Heute Nacht“ (`TonightPage`, Zeilen Plan und Filter): Ist und Plan in einer Zeile. Auf der Rig-Karte steht der Hinweis „Rig plant noch mit Rev. n von hh:mm“, wenn sich die Eingabe seit dem gespeicherten Plan geändert hat (Entscheidung 4).
   - Plugin-Simulator (FA-NIN-18) für die laufende Nacht.
   - AP-53b-Fenster: Blöcke aus dem gespeicherten Plan wie entschieden. Das Ist kommt offline aus dem lokalen Protokoll, sonst aus `executed`. Das vereinheitlicht die Datenquelle mit dem Plugin-Simulator.
 - **Verträge zuerst:** `SimulationInput`, `SimulationInputQuery`, `ExecutedNight` in `packages/shared/src/contracts/simulation.ts`, `nina.NinaSimulation.executed`. Neue Ereignisarten nur, falls nötig, über `enums.json`.
@@ -63,17 +63,17 @@ FA-SIM-05, FA-SIM-07, FA-SIM-08, FA-NIN-13, FA-NIN-18. Neu vorgeschlagen ist **F
 - Eingriffe aus der Ist-Ansicht (Block wiederholen, Aufnahmen verwerfen).
 - Nachtbericht und Session-Detail (S-50) bekommen die Grafik erst, wenn Sven es wünscht. Die Daten sind dieselben.
 
-## Offene Entscheidungen (Sven)
-1. **Rest-Plan:** aus der letzten gespeicherten Revision (Vorschlag, zeigt exakt, was die Rig tut) oder neu gerechnet ab jetzt mit dem rekonstruierten Nachtzustand (zeigt, was ein Refresh jetzt ergäbe)?
-2. **Ursprungsplan als Umriss:** mitliefern (Schalter, Standard aus) oder weglassen?
-3. **Vergangene Nächte im Web-Simulator:** Ist + Plan der letzten Revision anzeigen (Vorschlag) oder für vergangene Nächte wie bisher nur neu rechnen?
-4. **Hash-Hinweis „Rig plant noch mit Revision n“** auch auf „Heute Nacht“ (Rig-Karte) oder nur im Simulator?
+## Entscheidungen (Sven, 07.10.2026)
+1. **Rest-Plan aus der letzten gespeicherten Revision.** Die Grafik zeigt ab jetzt genau, was das Plugin ausführt. Eine Neurechnung ab jetzt gibt es nur für eine Nacht ohne gespeicherten Plan und für *Was-wäre-wenn*.
+2. **Ursprungsplan als Umriss:** Schalter *Ursprungsplan*, Standard aus.
+3. **Vergangene Nächte mit Session:** Der Web-Simulator zeigt Ist und letzte Revision. Künftige Nächte und Nächte ohne Session rechnet er wie bisher.
+4. **Hinweis „Rig plant noch mit Rev. n“** erscheint im Web- und Plugin-Simulator und auf der Rig-Karte von „Heute Nacht“.
 
 ## Automatisierte Abnahme
 - [ ] Vertragstest: `GET /simulations/input` liefert für dasselbe Rig, dieselbe Nacht und dieselbe Zeit **byte-gleich** dieselbe `canonicalInputJson` wie `POST /plan` ohne `tonight`. Das gilt mit Transit, ohne Transit und mit unbekanntem Autofokus-Trigger.
 - [ ] Web: `planNight(applyOverrides(input, {}))` ergibt denselben Hash wie der Server. Jede Überlagerung ändert nur die betroffenen Felder. Die Simulator-Tests laufen ohne eigene `buildPlanInput`-Zusammensetzung.
 - [ ] Ist-Aggregation: Beispielnacht nach 06./07.10. (Transit 558 × RED, 12 min `transit_interrupt`-Schleife, IC 1795, Flip, Flats) → erwartete Blöcke, Segmente, Lücken und Zähler. Zwei Sessions in einer Nacht werden zusammengeführt.
-- [ ] Hash-Hinweis: drei Zustände (gleich, Was-wäre-wenn, Rig auf älterer Revision) in Komponenten-Tests
+- [ ] Hash-Hinweis: drei Zustände (gleich, Was-wäre-wenn, Rig auf älterer Revision) in Komponenten-Tests; „Rig auf älterer Revision“ auch auf der Rig-Karte von „Heute Nacht“
 - [ ] Plugin: `NinaSimulation.executed` deserialisiert, `PlanChart` zeichnet Ist blass und Plan kräftig, Grenze an der Jetzt-Linie. Ohne `executed` (älterer Server) bleibt die Anzeige wie heute.
 - [ ] E2E (Playwright): Simulator „Heute Nacht“ mit laufender Session aus dem Seed zeigt erledigte Blöcke vor der Jetzt-Linie. Die Zeitleiste auf „Heute Nacht“ zeigt den Transit.
 - [ ] Rechte-Tests generiert, CI grün, Changelog-Fragment, AP- und Anforderungs-IDs im PR
