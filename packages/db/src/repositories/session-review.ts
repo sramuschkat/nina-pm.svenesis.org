@@ -5,7 +5,13 @@
  * Ereignisse, Flats; *Als geprüft
  * markieren*; Ziel einer Korrektur prüfen (Zeile eines Projekts am Rig der Session).
  */
-import { ProblemError, sessionKpis, type KpiPlanEntry, type RejectReason } from '@nina-pm/shared';
+import {
+  ProblemError,
+  sessionEfficiency,
+  sessionKpis,
+  type KpiPlanEntry,
+  type RejectReason,
+} from '@nina-pm/shared';
 import { sql } from 'kysely';
 import { TenantRepo } from './base';
 
@@ -31,6 +37,64 @@ export interface NightSessionRow {
   readonly bonusFrames: number;
   readonly integrationS: number;
   readonly unassigned: number;
+}
+
+/** Zusätze eines Listeneintrags S-60 (AP-64). */
+export interface NightSessionExtras {
+  readonly efficiency: { exposureS: number; usableDarkS: number; pct: number | null } | null;
+  readonly weather: { ratingIndex: number | null; nightMean: number | null } | null;
+  readonly projects: {
+    projectId: string;
+    projectName: string;
+    createdBy: string | null;
+    transit: boolean;
+    frames: number;
+    filters: { filter: string; frames: number }[];
+  }[];
+}
+export type NightSessionListRow = NightSessionRow & NightSessionExtras;
+
+/** Nutzbare Nacht (FA-AUS-17, Entscheidung Sven 26.09.2026): ab 1 h Belichtung akzeptierter Lights. */
+const USABLE_NIGHT_S = 3600;
+
+/** Cursor der Liste: Nacht, Beginn und ID der letzten Zeile, base64url. */
+export function encodeCursor(s: Pick<NightSessionRow, 'night' | 'startedAt' | 'id'>): string {
+  return Buffer.from(`${s.night}|${s.startedAt}|${s.id}`, 'utf8').toString('base64url');
+}
+export function decodeCursor(c: string): { night: string; startedAt: string; id: string } {
+  const [night, startedAt, id] = Buffer.from(c, 'base64url').toString('utf8').split('|');
+  if (
+    !night ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(night) ||
+    !startedAt ||
+    !Number.isFinite(Date.parse(startedAt)) ||
+    !id ||
+    !/^[0-9a-f-]{36}$/i.test(id)
+  )
+    throw new ProblemError('validation.failed', [{ path: 'cursor', message: 'ungültig' }]);
+  return { night, startedAt, id };
+}
+
+/** Wetter-Schnappschuss zum Sessionbeginn: Klasse und Nachtmittel (wie der Nachtbericht). */
+function snapshotWeather(raw: unknown): NightSessionExtras['weather'] {
+  let o: unknown;
+  try {
+    o = parseJson<unknown>(raw);
+  } catch {
+    return null;
+  }
+  if (!o || typeof o !== 'object') return null;
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const r = o as Record<string, unknown>;
+  const ratingIndex = n(r.ratingIndex);
+  const nightMean = n(r.nightMean);
+  return {
+    ratingIndex:
+      ratingIndex !== null && Number.isInteger(ratingIndex) && ratingIndex >= 0 && ratingIndex <= 4
+        ? ratingIndex
+        : null,
+    nightMean: nightMean !== null && nightMean >= 0 && nightMean <= 1 ? nightMean : null,
+  };
 }
 
 export interface NightSessionFilter {
@@ -180,7 +244,8 @@ export class SessionReviewRepository extends TenantRepo {
 
   /** Frames, Bonus, Integration und Unzugeordnete je Session (FK 8.4: gespeicherte Lights). */
   private async counts(ids: readonly string[]) {
-    if (ids.length === 0) return new Map<string, { f: number; b: number; s: number; u: number }>();
+    if (ids.length === 0)
+      return new Map<string, { f: number; b: number; s: number; u: number; e: number }>();
     const rows = await this.db
       .selectFrom('capture')
       .select((eb) => [
@@ -197,6 +262,10 @@ export class SessionReviewRepository extends TenantRepo {
         sql<number>`SUM(CASE WHEN frame_type = 'light' AND assignment = 'unassigned' THEN 1 ELSE 0 END)`.as(
           'u',
         ),
+        // Belichtung aller gespeicherten Lights (Effizienz wie `sessionKpis`, AP-64).
+        sql<number>`SUM(CASE WHEN frame_type = 'light' AND result = 'saved' THEN exposure_s ELSE 0 END)`.as(
+          'e',
+        ),
         eb.fn.countAll<number>().as('n'),
       ])
       .where('tenantId', '=', this.ctx.tenantId)
@@ -204,7 +273,10 @@ export class SessionReviewRepository extends TenantRepo {
       .groupBy('sessionId')
       .execute();
     return new Map(
-      rows.map((r) => [r.sessionId, { f: num(r.f), b: num(r.b), s: num(r.s), u: num(r.u) }]),
+      rows.map((r) => [
+        r.sessionId,
+        { f: num(r.f), b: num(r.b), s: num(r.s), u: num(r.u), e: num(r.e) },
+      ]),
     );
   }
 
@@ -247,6 +319,262 @@ export class SessionReviewRepository extends TenantRepo {
       .execute();
     const counts = await this.counts(rows.map((r) => r.id));
     return rows.map((r) => SessionReviewRepository.view(r, counts.get(r.id)));
+  }
+
+  /**
+   * Liste der Nächte S-60 (AP-64) seitenweise: Reihenfolge wie `list`, Fortsetzung per Cursor (Nacht, Beginn, ID);
+   * je Session Effizienz, Wetter-Schnappschuss und Projekt-Chips.
+   */
+  async page(
+    f: NightSessionFilter & { readonly cursor?: string | undefined },
+  ): Promise<{ items: NightSessionListRow[]; nextCursor: string | null }> {
+    let q = this.base();
+    if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
+    if (f.unreviewed) q = q.where('s.reviewed', '=', false);
+    if (f.from) q = q.where('s.night', '>=', f.from);
+    if (f.to) q = q.where('s.night', '<=', f.to);
+    const after = f.cursor ? decodeCursor(f.cursor) : null;
+    if (after)
+      q = q.where((eb) =>
+        eb.or([
+          eb('s.night', '<', after.night),
+          eb.and([
+            eb('s.night', '=', after.night),
+            eb('s.startedAt', '<', new Date(after.startedAt)),
+          ]),
+          eb.and([
+            eb('s.night', '=', after.night),
+            eb('s.startedAt', '=', new Date(after.startedAt)),
+            eb('s.id', '>', after.id),
+          ]),
+        ]),
+      );
+    const rows = await q
+      .orderBy('s.night', 'desc')
+      .orderBy('s.startedAt', 'desc')
+      .orderBy('s.id')
+      .limit(f.limit + 1)
+      .execute();
+    const shown = rows.slice(0, f.limit);
+    const counts = await this.counts(shown.map((r) => r.id));
+    const base = shown.map((r) => SessionReviewRepository.view(r, counts.get(r.id)));
+    const extra = await this.extras(base, counts);
+    // Cursor mit Millisekunden aus der Datenbankzeile (die Anzeige kürzt sie).
+    const last = shown.at(-1);
+    return {
+      items: base.map((s) => ({ ...s, ...(extra.get(s.id) as NightSessionExtras) })),
+      nextCursor:
+        rows.length > f.limit && last
+          ? encodeCursor({
+              night: String(last.night),
+              startedAt: new Date(last.startedAt).toISOString(),
+              id: last.id,
+            })
+          : null,
+    };
+  }
+
+  /** Effizienz, Wetter und Projekt-Chips je Session (AP-64). */
+  private async extras(
+    sessions: readonly NightSessionRow[],
+    counts: Map<string, { e: number }>,
+  ): Promise<Map<string, NightSessionExtras>> {
+    const ids = sessions.map((s) => s.id);
+    const out = new Map<string, NightSessionExtras>();
+    if (ids.length === 0) return out;
+    const t = this.ctx.tenantId;
+    const [darkness, snapshots, chips] = await Promise.all([
+      this.firstDarkness(ids),
+      this.db
+        .selectFrom('session')
+        .select(['id', 'forecastSnapshot'])
+        .where('tenantId', '=', t)
+        .where('id', 'in', ids)
+        .execute(),
+      this.db
+        .selectFrom('capture as c')
+        .innerJoin('project as p', (j) =>
+          j.onRef('p.id', '=', 'c.projectId').onRef('p.tenantId', '=', 'c.tenantId'),
+        )
+        .select([
+          'c.sessionId',
+          'c.projectId',
+          'p.name as projectName',
+          'p.createdBy',
+          'p.projectType',
+          'c.filterShortName',
+          sql<number>`count(*)`.as('frames'),
+          sql<string>`min(c.captured_at)`.as('firstAt'),
+        ])
+        .where('c.tenantId', '=', t)
+        .where('c.sessionId', 'in', ids)
+        .where('c.frameType', '=', 'light')
+        .where('c.result', '=', 'saved')
+        .where('c.assignment', '=', 'assigned')
+        .where('c.rejected', '=', false)
+        .groupBy([
+          'c.sessionId',
+          'c.projectId',
+          'p.name',
+          'p.createdBy',
+          'p.projectType',
+          'c.filterShortName',
+        ])
+        .execute(),
+    ]);
+    const weatherOf = new Map(snapshots.map((s) => [s.id, snapshotWeather(s.forecastSnapshot)]));
+    for (const s of sessions) {
+      // Projekte in der Reihenfolge ihrer ersten Aufnahme, Filter ebenso (wie die Nacht lief).
+      const mine = chips
+        .filter((c) => c.sessionId === s.id && c.projectId !== null)
+        .sort((a, b) => Date.parse(String(a.firstAt)) - Date.parse(String(b.firstAt)));
+      const projects = new Map<string, NightSessionExtras['projects'][number]>();
+      for (const c of mine) {
+        const id = c.projectId as string;
+        const p = projects.get(id) ?? {
+          projectId: id,
+          projectName: c.projectName,
+          createdBy: c.createdBy ?? null,
+          transit: c.projectType === 'exoplanet',
+          frames: 0,
+          filters: [],
+        };
+        projects.set(id, {
+          ...p,
+          frames: p.frames + num(c.frames),
+          filters: [...p.filters, { filter: c.filterShortName, frames: num(c.frames) }],
+        });
+      }
+      out.set(s.id, {
+        efficiency: sessionEfficiency({
+          startedAt: s.startedAt,
+          endedAt: s.endedAt,
+          darkness: darkness.get(s.id) ?? null,
+          exposureS: counts.get(s.id)?.e ?? 0,
+        }),
+        weather: weatherOf.get(s.id) ?? null,
+        projects: [...projects.values()],
+      });
+    }
+    return out;
+  }
+
+  /** Astronomische Dunkelheit des ersten Plans je Session (Bezug der Effizienz, wie das Detail). */
+  private async firstDarkness(
+    ids: readonly string[],
+  ): Promise<Map<string, { fromUtc: string | null; toUtc: string | null }>> {
+    const out = new Map<string, { fromUtc: string | null; toUtc: string | null }>();
+    if (ids.length === 0) return out;
+    const firsts = await this.db
+      .selectFrom('nightPlan')
+      .select(['sessionId', sql<number>`min(revision)`.as('revision')])
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where('sessionId', 'in', [...ids])
+      .groupBy('sessionId')
+      .execute();
+    if (firsts.length === 0) return out;
+    const plans = await this.db
+      .selectFrom('nightPlan')
+      .select(['sessionId', 'revision', 'summary'])
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where((eb) =>
+        eb.or(
+          firsts.map((f) =>
+            eb.and([
+              eb('sessionId', '=', f.sessionId as string),
+              eb('revision', '=', num(f.revision)),
+            ]),
+          ),
+        ),
+      )
+      .execute();
+    for (const p of plans) {
+      const d = parseJson<PlanSummary | null>(p.summary)?.darkness;
+      out.set(String(p.sessionId), {
+        fromUtc: d?.astronomicalStartUtc ?? null,
+        toUtc: d?.astronomicalEndUtc ?? null,
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Kennzahlen S-60 (AP-64) für Rig und Zeitraum: Nächte mit Session, davon nutzbar (≥ 1 h akzeptierte Lights in der
+   * Nacht), Integration, Lights, Projekte, Effizienz Ø (Summe Belichtung / Summe nutzbare Dunkelzeit) und Ungeprüfte.
+   */
+  async summary(f: Omit<NightSessionFilter, 'limit' | 'unreviewed'>): Promise<{
+    nights: number;
+    usableNights: number;
+    integrationS: number;
+    lights: number;
+    projects: number;
+    efficiencyPct: number | null;
+    unreviewed: number;
+    firstUnreviewedId: string | null;
+  }> {
+    let q = this.db
+      .selectFrom('session as s')
+      .select(['s.id', 's.night', 's.startedAt', 's.endedAt', 's.reviewed'])
+      .where('s.tenantId', '=', this.ctx.tenantId);
+    if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
+    if (f.from) q = q.where('s.night', '>=', f.from);
+    if (f.to) q = q.where('s.night', '<=', f.to);
+    const sessions = await q
+      .orderBy('s.night', 'desc')
+      .orderBy('s.startedAt', 'desc')
+      .orderBy('s.id')
+      .execute();
+    const ids = sessions.map((s) => s.id);
+    const [counts, darkness, projects] = await Promise.all([
+      this.counts(ids),
+      this.firstDarkness(ids),
+      ids.length === 0
+        ? Promise.resolve([] as { projectId: string | null }[])
+        : this.db
+            .selectFrom('capture')
+            .select('projectId')
+            .distinct()
+            .where('tenantId', '=', this.ctx.tenantId)
+            .where('sessionId', 'in', ids)
+            .where('frameType', '=', 'light')
+            .where('result', '=', 'saved')
+            .where('assignment', '=', 'assigned')
+            .where('rejected', '=', false)
+            .execute(),
+    ]);
+    const perNight = new Map<string, number>();
+    let integrationS = 0;
+    let lights = 0;
+    let exposure = 0;
+    let dark = 0;
+    for (const s of sessions) {
+      const c = counts.get(s.id);
+      const night = String(s.night).slice(0, 10);
+      perNight.set(night, (perNight.get(night) ?? 0) + (c?.s ?? 0));
+      integrationS += c?.s ?? 0;
+      lights += (c?.f ?? 0) + (c?.b ?? 0);
+      const eff = sessionEfficiency({
+        startedAt: iso(s.startedAt) as string,
+        endedAt: iso(s.endedAt),
+        darkness: darkness.get(s.id) ?? null,
+        exposureS: c?.e ?? 0,
+      });
+      if (eff && eff.usableDarkS > 0) {
+        exposure += eff.exposureS;
+        dark += eff.usableDarkS;
+      }
+    }
+    const unreviewed = sessions.filter((s) => !s.reviewed);
+    return {
+      nights: perNight.size,
+      usableNights: [...perNight.values()].filter((v) => v >= USABLE_NIGHT_S).length,
+      integrationS,
+      lights,
+      projects: projects.filter((p) => p.projectId !== null).length,
+      efficiencyPct: dark > 0 ? Math.round((exposure / dark) * 1000) / 10 : null,
+      unreviewed: unreviewed.length,
+      firstUnreviewedId: unreviewed[0]?.id ?? null,
+    };
   }
 
   async byId(id: string): Promise<NightSessionRow | undefined> {

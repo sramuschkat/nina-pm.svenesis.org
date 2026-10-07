@@ -22,6 +22,11 @@ export const NightSessionQuery = z.object({
   from: NightKey.optional(),
   to: NightKey.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
+  /** Fortsetzung (AP-64, Liste lädt seitenweise): `nextCursor` der vorigen Seite. */
+  cursor: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,200}$/)
+    .optional(),
 });
 
 export const NightSession = z
@@ -50,9 +55,82 @@ export const NightSession = z
   .meta({ id: 'NightSession' });
 export type NightSession = z.infer<typeof NightSession>;
 
+/**
+ * Projekt-Chip einer Nacht (AP-64, S-60 Nächte): gespeicherte, zugeordnete, nicht verworfene Lights dieser Session
+ * je Filter (mit Bonus); Exoplaneten-Projekte zeigen die Oberfläche als Transit-Serie („Transit · RED 558“).
+ */
+export const NightSessionProject = z
+  .object({
+    projectId: Uuid,
+    projectName: z.string(),
+    /** Ersteller (`app_user.id`) – neben dem Projektnamen (Entscheidung Sven 07.10.2026). */
+    createdBy: Uuid.nullable(),
+    transit: z.boolean(),
+    frames: z.number().int().min(0),
+    filters: z.array(z.object({ filter: z.string(), frames: z.number().int().min(0) })),
+  })
+  .meta({ id: 'NightSessionProject' });
+export type NightSessionProject = z.infer<typeof NightSessionProject>;
+
+/**
+ * Effizienz einer Session (wie `NightSessionKpis`, FA-AUS-05): Belichtung gespeicherter Lights / nutzbare
+ * Dunkelzeit (Laufzeit ∩ astronomische Dunkelheit des ersten Plans); `null`, solange die Session läuft oder ohne Plan.
+ */
+export const NightSessionEfficiency = z
+  .object({
+    exposureS: z.number().min(0),
+    usableDarkS: z.number().min(0),
+    pct: z.number().min(0).nullable(),
+  })
+  .meta({ id: 'NightSessionEfficiency' });
+
+/** Listeneintrag S-60 (AP-64): Session plus Effizienz, Wetterbewertung zum Sessionbeginn und Projekt-Chips. */
+export const NightSessionListItem = NightSession.extend({
+  efficiency: NightSessionEfficiency.nullable(),
+  /** Wetter-Schnappschuss zum Sessionbeginn (AP-30); `null` ohne Schnappschuss. */
+  weather: z
+    .object({
+      ratingIndex: z.number().int().min(0).max(4).nullable(),
+      nightMean: z.number().min(0).max(1).nullable(),
+    })
+    .nullable(),
+  projects: z.array(NightSessionProject),
+}).meta({ id: 'NightSessionListItem' });
+export type NightSessionListItem = z.infer<typeof NightSessionListItem>;
+
 export const NightSessionList = z
-  .object({ items: z.array(NightSession) })
+  .object({
+    items: z.array(NightSessionListItem),
+    /** Weitere Seite (Cursor für `cursor`); `null` am Ende. */
+    nextCursor: z.string().nullable(),
+  })
   .meta({ id: 'NightSessionList' });
+
+/** Kennzahlen der Nächte für Rig und Zeitraum (AP-64, S-60): `GET /web/v1/sessions/summary`. */
+export const NightSessionSummaryQuery = z.object({
+  rigId: Uuid.optional(),
+  from: NightKey.optional(),
+  to: NightKey.optional(),
+});
+
+export const NightSessionSummary = z
+  .object({
+    /** Nächte mit mindestens einer Session. */
+    nights: z.number().int().min(0),
+    /** Davon nutzbar: ≥ 1 h Belichtung akzeptierter Lights in der Nacht (wie Klarnacht-Statistik, FA-AUS-17). */
+    usableNights: z.number().int().min(0),
+    /** Gemeldete Belichtung nicht verworfener, zugeordneter Lights (mit Bonus). */
+    integrationS: z.number().min(0),
+    lights: z.number().int().min(0),
+    projects: z.number().int().min(0),
+    /** Summe Belichtung / Summe nutzbare Dunkelzeit über beendete Sessions mit Plan; `null` ohne solche. */
+    efficiencyPct: z.number().min(0).nullable(),
+    unreviewed: z.number().int().min(0),
+    /** Neueste ungeprüfte Session (Link „Jetzt prüfen“). */
+    firstUnreviewedId: Uuid.nullable(),
+  })
+  .meta({ id: 'NightSessionSummary' });
+export type NightSessionSummary = z.infer<typeof NightSessionSummary>;
 
 /**
  * Soll/Ist je Zeile der Session (FA-AUS-03). Entscheidung Sven 07.10.2026: **Soll** = Belichtungen des ersten

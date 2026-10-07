@@ -218,6 +218,95 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
   });
 });
 
+describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
+  it('Einträge mit Effizienz, Wetter und Projekt-Chips; seitenweise mit Cursor', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    await t.q(
+      `UPDATE session SET forecast_snapshot = '{"ratingIndex": 3, "nightMean": 0.81}'::jsonb WHERE created_offline = false`,
+    );
+    const list = await t.web('/sessions');
+    expect(list.status).toBe(200);
+    expect(list.body.nextCursor).toBeNull();
+    const items = list.body.items as Body[];
+    const online = items.find((x) => x.createdOffline === false) as Body;
+    expect(online.weather).toEqual({ ratingIndex: 3, nightMean: 0.81 });
+    // Chips: nicht verworfene, zugeordnete Lights dieser Session je Filter, Ersteller des Projekts.
+    expect(online.projects).toEqual([
+      {
+        projectId: t.pid,
+        projectName: 'NGC 281',
+        createdBy: t.user,
+        transit: false,
+        frames: 4,
+        filters: [{ filter: 'Ha', frames: 4 }],
+      },
+    ]);
+    // Effizienz wie die Kennzahlen des Details (dieselbe Rechnung, AP-31).
+    const kpis = (await t.web(`/sessions/${online.id as string}`)).body.kpis as Body;
+    expect(online.efficiency).toEqual({
+      exposureS: kpis.exposureS,
+      usableDarkS: kpis.usableDarkS,
+      pct: kpis.efficiencyPct,
+    });
+
+    const first = await t.web('/sessions?limit=1');
+    expect(first.body.items as Body[]).toHaveLength(1);
+    const cursor = first.body.nextCursor as string;
+    expect(cursor).toMatch(/^[A-Za-z0-9_-]+$/);
+    const second = await t.web(`/sessions?limit=1&cursor=${cursor}`);
+    expect(second.status).toBe(200);
+    expect((second.body.items as Body[]).map((x) => x.id)).toEqual([items[1]?.id]);
+    expect(second.body.nextCursor).toBeNull();
+    expect((await t.web('/sessions?cursor=bm9wZQ')).status).toBe(422);
+  });
+
+  it('Kennzahlen je Rig und Zeitraum, mandantengebunden', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    const items = (await t.web('/sessions')).body.items as Body[];
+    const summary = await t.web(`/sessions/summary?rigId=${t.rig.id}&from=${NIGHT}&to=${NIGHT}`);
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({
+      nights: 1,
+      // 5 Lights der Nacht (1 offline + 4), 1530 s Belichtung < 1 h → nicht nutzbar.
+      usableNights: 0,
+      lights: 5,
+      projects: 1,
+      unreviewed: 2,
+      firstUnreviewedId: items[0]?.id,
+    });
+    expect(summary.body.integrationS).toBeGreaterThan(1230);
+    // 1 h Belichtung in der Nacht → nutzbar.
+    await t.q('UPDATE capture SET exposure_s = 900 WHERE frame_type = $1', ['light']);
+    expect((await t.web('/sessions/summary')).body.usableNights).toBe(1);
+    // Anderes Rig bzw. anderer Zeitraum: nichts.
+    const empty = {
+      nights: 0,
+      usableNights: 0,
+      integrationS: 0,
+      lights: 0,
+      projects: 0,
+      efficiencyPct: null,
+      unreviewed: 0,
+      firstUnreviewedId: null,
+    };
+    expect((await t.web(`/sessions/summary?rigId=${id()}`)).body).toEqual(empty);
+    expect((await t.web('/sessions/summary?from=2026-09-19')).body).toEqual(empty);
+    expect(((await t.web(`/sessions?rigId=${id()}`)).body.items as Body[]).length).toBe(0);
+    expect(((await t.web('/sessions?to=2026-09-17')).body.items as Body[]).length).toBe(0);
+    // Fremder Mandant sieht weder Sessions noch Kennzahlen.
+    const other = await s.seed.tenant('beta');
+    const identity = await s.seed.identity({ mfaEnabled: true });
+    await s.seed.member(identity.id, other, 'admin');
+    const cookies = { [COOKIE_NAMES.session]: await s.seed.session(identity.id, other, 'tenant') };
+    const foreign = await s.request('/api/web/v1/sessions/summary', { cookies });
+    expect(await foreign.json()).toEqual(empty);
+    const foreignList = await s.request('/api/web/v1/sessions', { cookies });
+    expect(((await foreignList.json()) as { items: unknown[] }).items).toEqual([]);
+  });
+});
+
 describe('Korrektur (FA-AUS-06, DAT-1)', () => {
   it('Verbleibend steigt, Projekt zurück nach Aktiv, eine capture_night-Zeile je Nacht', async () => {
     const t = await setup();

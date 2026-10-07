@@ -11055,8 +11055,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Sessions je Rig und Nacht (neueste zuerst)
-         * @description Aktion: `session.read` · FA-AUS-01, FA-AUS-07, S-60
+         * Sessions je Rig und Nacht (neueste zuerst, seitenweise) mit Effizienz, Wetterbewertung und Projekt-Chips
+         * @description Aktion: `session.read` · FA-AUS-01, FA-AUS-05, FA-AUS-07, S-60, AP-64
          */
         get: {
             parameters: {
@@ -11067,6 +11067,7 @@ export interface paths {
                     from?: string;
                     to?: string;
                     limit?: number;
+                    cursor?: string;
                 };
                 header?: never;
                 path?: never;
@@ -11081,6 +11082,68 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["NightSessionList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sessions/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz, ungeprüft)
+         * @description Aktion: `session.read` · FA-AUS-05, FA-AUS-07, FA-AUS-17, S-60, AP-64
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUID */
+                    rigId?: string;
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Kennzahlen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NightSessionSummary"];
                     };
                 };
                 /** @description Nicht angemeldet */
@@ -19223,9 +19286,10 @@ export interface components {
             command: "refresh_targets" | "reset_plan";
         };
         NightSessionList: {
-            items: components["schemas"]["NightSession"][];
+            items: components["schemas"]["NightSessionListItem"][];
+            nextCursor: string | null;
         };
-        NightSession: {
+        NightSessionListItem: {
             /**
              * Format: uuid
              * @description UUID
@@ -19267,6 +19331,50 @@ export interface components {
             bonusFrames: number;
             integrationS: number;
             unassigned: number;
+            efficiency: components["schemas"]["NightSessionEfficiency"];
+            weather: {
+                ratingIndex: number | null;
+                nightMean: number | null;
+            } | null;
+            projects: components["schemas"]["NightSessionProject"][];
+        };
+        NightSessionEfficiency: {
+            exposureS: number;
+            usableDarkS: number;
+            pct: number | null;
+        } | null;
+        NightSessionProject: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            projectName: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string | null;
+            transit: boolean;
+            frames: number;
+            filters: {
+                filter: string;
+                frames: number;
+            }[];
+        };
+        NightSessionSummary: {
+            nights: number;
+            usableNights: number;
+            integrationS: number;
+            lights: number;
+            projects: number;
+            efficiencyPct: number | null;
+            unreviewed: number;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            firstUnreviewedId: string | null;
         };
         NightSessionDetail: {
             session: {
