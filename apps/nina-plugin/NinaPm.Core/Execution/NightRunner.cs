@@ -337,6 +337,7 @@ public sealed class NightRunner(
             {
                 log.Event("SAFETY_PAUSE", ("atUtc", clock.UtcNow));
                 Journal.Append(JournalNight, clock.UtcNow, JournalKinds.SafetyPause, new JournalData());
+                ReportEvent(EventsKind.Safety_pause, null);
                 interrupted = true;
                 nightHost.OnInterrupted();
             }
@@ -391,6 +392,7 @@ public sealed class NightRunner(
             interrupted = false;
             log.Event("SAFETY_RESUME", ("atUtc", clock.UtcNow));
             Journal.Append(JournalNight, clock.UtcNow, JournalKinds.SafetyResume, new JournalData());
+            ReportEvent(EventsKind.Safety_resume, null);
             forcedPlan = NinaPlanRequestReason.Resume;
         }
 
@@ -623,6 +625,10 @@ public sealed class NightRunner(
                 new JournalData { PlanId = plan.NightPlanId, Revision = plan.Revision, Reason = reason.ToString().ToLowerInvariant() });
             Loop.PlanReceived();
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
+            // Planwechsel für das Ist auf dem Server (AP-53c): Revision und Grund.
+            ReportEvent(stored is not null && stored.Plan.NightPlanId != plan.NightPlanId ? EventsKind.Plan_rebuilt : EventsKind.Plan_built, null,
+                data: new Dictionary<string, object> { ["revision"] = plan.Revision, ["reason"] = reason.ToString().ToLowerInvariant() },
+                nightPlanId: plan.NightPlanId);
             // Nach der Session: Hinweise des Planaufbaus (SiteCheck, Sequenz) erreichen dann auch den Server.
             nightHost.PlanBuilt(Targets, plan);
             return;
@@ -1011,27 +1017,44 @@ public sealed class NightRunner(
                 (b, from) =>
                 {
                     runningSince = from;
+                    var title = TargetTitle.For(b, Targets);
                     Journal.Append(stored.Plan.Night, from, JournalKinds.BlockStart, new JournalData
                     {
                         PlanId = stored.Plan.NightPlanId, BlockId = b.Id, ProjectId = b.ProjectId, PanelId = b.PanelId,
-                        Title = TargetTitle.For(b, Targets), Transit = b.Kind == BlocksKind.Transit,
+                        Title = title, Transit = b.Kind == BlocksKind.Transit,
                         RaDeg = b.RaDeg, DecDeg = b.DecDeg, RotationDeg = b.RotationDeg,
                     });
+                    // Für das Ist auf dem Server (AP-53c): Beginn des Anfahrens als Zeitpunkt, Art und Titel in data.
+                    ReportEvent(EventsKind.Block_start, null, b.Id, projectId: b.ProjectId, occurredAtUtc: from, nightPlanId: stored.Plan.NightPlanId,
+                        data: new Dictionary<string, object>
+                        {
+                            ["kind"] = b.Kind == BlocksKind.Transit ? "transit" : "regular", ["title"] = title,
+                            ["panelId"] = b.PanelId?.ToString() ?? "",
+                        });
                 },
-                (b, e) => Journal.Append(stored.Plan.Night, clock.UtcNow, JournalKinds.Skipped, new JournalData
+                (b, e) =>
                 {
-                    BlockId = b.Id, ProjectId = b.ProjectId, Seq = e.Seq, Filter = e.Filter, ExposureS = e.ExposureS, Reason = "late",
-                })))
+                    Journal.Append(stored.Plan.Night, clock.UtcNow, JournalKinds.Skipped, new JournalData
+                    {
+                        BlockId = b.Id, ProjectId = b.ProjectId, Seq = e.Seq, Filter = e.Filter, ExposureS = e.ExposureS, Reason = "late",
+                    });
+                    ReportEvent(EventsKind.Skipped_timeaware, "late", b.Id, projectId: b.ProjectId, nightPlanId: stored.Plan.NightPlanId,
+                        data: new Dictionary<string, object> { ["seq"] = e.Seq, ["filter"] = e.Filter ?? "", ["exposureS"] = e.ExposureS ?? 0 });
+                }))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             resetRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             if (outcome.Started) JournalBlockEnd(block, outcome.Reason, outcome.Exposures);
-            else Journal.Append(stored.Plan.Night, clock.UtcNow, JournalKinds.BlockSkipped, new JournalData
+            else
             {
-                PlanId = stored.Plan.NightPlanId, BlockId = block.Id, ProjectId = block.ProjectId, PanelId = block.PanelId,
-                Title = TargetTitle.For(block, Targets), Transit = block.Kind == BlocksKind.Transit, Reason = outcome.Reason,
-            });
+                Journal.Append(stored.Plan.Night, clock.UtcNow, JournalKinds.BlockSkipped, new JournalData
+                {
+                    PlanId = stored.Plan.NightPlanId, BlockId = block.Id, ProjectId = block.ProjectId, PanelId = block.PanelId,
+                    Title = TargetTitle.For(block, Targets), Transit = block.Kind == BlocksKind.Transit, Reason = outcome.Reason,
+                });
+                ReportEvent(EventsKind.Block_skipped, outcome.Reason, block.Id, projectId: block.ProjectId, nightPlanId: stored.Plan.NightPlanId);
+            }
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).
             if (outcome.Reason is "target_removed" or "transit_interrupt"
@@ -1121,6 +1144,8 @@ public sealed class NightRunner(
         if (runningSince is null) return;
         Journal.Append(ExecutingPlan?.Night ?? JournalNight, clock.UtcNow, JournalKinds.BlockEnd,
             new JournalData { BlockId = block.Id, ProjectId = block.ProjectId, Reason = reason, Exposures = exposures });
+        ReportEvent(EventsKind.Block_end, reason, block.Id, projectId: block.ProjectId,
+            data: exposures is { } n ? new Dictionary<string, object> { ["exposures"] = n } : null);
     }
 
     private void RecordBlockEnd(string unit, DateTimeOffset startedAt)
@@ -1161,7 +1186,7 @@ public sealed class NightRunner(
 
     /// <summary>Ereignis melden (<c>sessionEventKinds</c>; bei <c>warning</c> ein Code aus <c>pluginWarningCodes</c>).</summary>
     public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null, IDictionary<string, object>? data = null,
-        double? durationS = null)
+        double? durationS = null, Guid? projectId = null, DateTimeOffset? occurredAtUtc = null, Guid? nightPlanId = null)
     {
         var journalKind = kind switch
         {
@@ -1173,8 +1198,12 @@ public sealed class NightRunner(
         if (journalKind is not null)
             Journal.Append(JournalNight, clock.UtcNow, journalKind, new JournalData { BlockId = blockId, DurationS = durationS });
         if (SessionId is not { } session) return;
-        var planId = ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
-        var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId, Data = data, DurationS = durationS };
+        var planId = nightPlanId ?? ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
+        var e = new Events
+        {
+            Id = Uuid7.New(clock), OccurredAtUtc = occurredAtUtc ?? clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId,
+            BlockId = blockId, ProjectId = projectId, Data = data, DurationS = durationS,
+        };
         store.EnqueueOutbox(OutboxKinds.Event, JsonConvert.SerializeObject(e, NinaJson.Settings()), session, planId);
     }
 
@@ -1351,6 +1380,7 @@ public sealed class NightRunner(
             JournalBlockEnd(block, "interrupted", null);
             log.Event("SAFETY_PAUSE", ("atUtc", clock.UtcNow));
             Journal.Append(JournalNight, clock.UtcNow, JournalKinds.SafetyPause, new JournalData());
+            ReportEvent(EventsKind.Safety_pause, null);
             interrupted = true;
             nightHost.OnInterrupted();
             return;

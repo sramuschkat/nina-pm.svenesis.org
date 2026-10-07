@@ -9670,6 +9670,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/simulations/input": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Engine-Eingabe, Ist und gespeicherter Plan einer Nacht
+         * @description Aktion: `simulation.run` · FA-SIM-05, FA-SIM-10, AP-53c
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUID */
+                    rigId: string;
+                    night: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Eingabe der Nacht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SimulationInput"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/simulations/transits": {
         parameters: {
             query?: never;
@@ -17708,6 +17787,468 @@ export interface components {
             comment: string | null;
             projectVersion: number;
         };
+        SimulationInput: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            currentNight: string;
+            inputHash: string;
+            input: components["schemas"]["PlanInput"];
+            projectNames: {
+                [key: string]: string;
+            };
+            moonProfileNames: {
+                [key: string]: string;
+            };
+            filterColors: {
+                [key: string]: string;
+            };
+            executed: components["schemas"]["ExecutedNight"];
+            storedPlan: components["schemas"]["StoredPlan"];
+            firstPlan: components["schemas"]["StoredPlan"];
+        };
+        PlanInput: {
+            /** @enum {string} */
+            mode: "productive" | "compat";
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            site: {
+                latitudeDeg: number;
+                longitudeDeg: number;
+                elevationM: number;
+            };
+            tzdataVersion: string;
+            timeZoneTransitions: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc: string;
+                utcOffsetMinutes: number;
+            }[];
+            rig: {
+                id: string;
+                hasRotator: boolean;
+                defaultRotationDeg: number | null;
+                rotationToleranceDeg: number;
+                hasFilterWheel: boolean;
+            };
+            scheduler: {
+                /** @enum {string} */
+                strategy: "proportional" | "manual_priority";
+                sortChain: ("lowest_peak_altitude" | "setting_soonest" | "most_remaining" | "constrained" | "most_moon_limited" | "mosaic_grouping" | "card_order" | "due_soonest")[];
+                bonusEnabled: boolean;
+                overshootPct: number;
+                mosaicPanelsIndependent: boolean;
+                ditherEnabled: boolean;
+                ditherEvery: number;
+                filterSwitchEnabled: boolean;
+                filterSwitchEvery: number;
+                filterSwitchTolerancePct: number;
+                /** @enum {string} */
+                flatsSource: "panel" | "sky";
+                flip: {
+                    enabled: boolean;
+                    afterMin: number;
+                    maxAfterMin: number;
+                    pauseBeforeMin: number;
+                    durationS: number;
+                };
+                overhead: {
+                    slewCenterS: number;
+                    filterChangeS: number;
+                    ditherSettleS: number;
+                    afEveryMin: number;
+                    afDurationS: number;
+                    downloadS: number;
+                };
+            };
+            moonProfiles: {
+                id: string;
+                separationDeg: number;
+                widthDays: number;
+                relaxScale: number;
+                moonMinAltDeg: number;
+                moonMaxAltDeg: number;
+                maxIlluminationPct: number;
+                moonMustBeDown: boolean;
+            }[];
+            projects: {
+                id: string;
+                raDeg: number;
+                decDeg: number;
+                rotationDeg: number;
+                priority: number;
+                minAltitudeDeg: number;
+                minTimeOnTargetH: number;
+                /** @enum {string} */
+                twilight: "astronomical" | "nautical" | "civil";
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                startDate: string | null;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                dueDate: string | null;
+                panels: {
+                    id: string;
+                    index: number;
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
+                    lines: {
+                        id: string;
+                        filter: string;
+                        ninaFilterName: string | null;
+                        exposureS: number;
+                        planned: number;
+                        accepted: number;
+                        pending: number;
+                        enabled: boolean;
+                        moonProfileId: string | null;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                    }[];
+                }[];
+                transit: {
+                    observationId: string;
+                    lineId: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    windowStartUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    windowEndUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    lockedAtUtc: string;
+                } | null;
+            }[];
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startAtUtc: string | null;
+            tonight: {
+                pastBlocks: {
+                    unitId: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    fromUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    toUtc: string;
+                }[];
+                exposedSecByUnit: {
+                    [key: string]: number;
+                };
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lastAutofocusUtc: string | null;
+                filterCycle: {
+                    unitId: string;
+                    lineId: string;
+                    subsOnLine: number;
+                }[];
+                flipDoneByPanel: {
+                    [key: string]: boolean;
+                };
+                currentUnitId: string | null;
+            } | null;
+        };
+        ExecutedNight: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            sessions: number;
+            blocks: components["schemas"]["ExecutedBlock"][];
+            segments: components["schemas"]["ExecutedSegment"][];
+            events: components["schemas"]["ExecutedEvent"][];
+            gaps: components["schemas"]["ExecutedGap"][];
+            counters: components["schemas"]["ExecutedCounters"];
+        } | null;
+        ExecutedBlock: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            blockId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            nightPlanId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            panelId: string | null;
+            title: string;
+            /** @enum {string} */
+            kind: "regular" | "transit";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endUtc: string | null;
+            endReason: string | null;
+            exposures: number;
+            running: boolean;
+        };
+        ExecutedSegment: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            blockId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string | null;
+            filter: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endUtc: string;
+            saved: number;
+            failed: number;
+            exposureS: number;
+        };
+        ExecutedEvent: {
+            /** @enum {string} */
+            kind: "plan_built" | "plan_rebuilt" | "block_skipped" | "skipped_timeaware" | "safety_pause" | "safety_resume" | "af" | "flip" | "flats_start" | "flats_end";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            blockId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string | null;
+            code: string | null;
+            durationS: number | null;
+            revision: number | null;
+        };
+        ExecutedGap: {
+            /** @enum {string} */
+            kind: "idle" | "safety" | "flip" | "empty_blocks" | "skipped";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fromUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            toUtc: string;
+            reason: string | null;
+            count: number;
+        };
+        ExecutedCounters: {
+            saved: number;
+            skipped: number;
+            failed: number;
+        };
+        StoredPlan: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            nightPlanId: string;
+            revision: number;
+            reason: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAtUtc: string;
+            stale: boolean;
+            /** @enum {string|null} */
+            staleCause: "targets" | "settings" | null;
+            blocks: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "regular" | "transit";
+                projectId: string;
+                panelId: string | null;
+                transitObservationId: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                twilightEndUtc: string | null;
+                raDeg: number;
+                decDeg: number;
+                rotationDeg: number;
+                /** @enum {string} */
+                rotationMode: "rotator" | "fixed_camera";
+                meridianFlip: {
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    waitStartUtc: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    plannedUtc: string;
+                    durationS: number;
+                    inTransitWindow: boolean;
+                    planned: boolean;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    gapStartUtc: string | null;
+                    gapDurationS: number | null;
+                } | null;
+                entries: ({
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "slew_center" | "slew_center_rotate";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "filter";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                    filter: string;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "expose";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    exposureLineId: string;
+                    filter: string;
+                    exposureS: number;
+                    gain: number | null;
+                    offset: number | null;
+                    binning: number;
+                    readoutMode: string | null;
+                    bonus: boolean;
+                    lastOfNight: boolean;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "expose_series";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    untilUtc: string;
+                    exposureLineId: string;
+                    filter: string;
+                    exposureS: number;
+                    gain: number | null;
+                    offset: number | null;
+                    binning: number;
+                    readoutMode: string | null;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "dither" | "autofocus_hint" | "wait" | "meridian_flip";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "end";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                })[];
+            }[];
+        } | null;
         SimulationTransits: {
             items: {
                 /**
@@ -20292,6 +20833,8 @@ export interface components {
             unallocated: components["schemas"]["NinaSimulationUnallocated"][];
             protocol: components["schemas"]["NinaSimulationProtocolRow"][];
             warnings: components["schemas"]["NinaSimulationWarning"][];
+            executed?: components["schemas"]["ExecutedNight"];
+            storedPlan?: components["schemas"]["StoredPlanInfo"];
         };
         NinaSimulationTimeZoneSegment: {
             /**
@@ -20566,6 +21109,23 @@ export interface components {
             durationS?: number;
             message?: string;
         };
+        StoredPlanInfo: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            nightPlanId: string;
+            revision: number;
+            reason: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAtUtc: string;
+            stale: boolean;
+            /** @enum {string|null} */
+            staleCause: "targets" | "settings" | null;
+        } | null;
         NinaPlanResponse: {
             /**
              * Format: uuid

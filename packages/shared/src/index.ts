@@ -28,3 +28,4 @@ export * from './transit-lock';
 export * from './exo-exposure';
 export * from './flats-coverage';
 export * from './simulation-view';
+export * from './executed-night';

@@ -15,6 +15,7 @@ import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { siteNights } from '../lib/night-table';
 import type { ApiServices } from '../routes/services';
+import { nightActual } from './actual';
 import { BOOTSTRAP_NIGHTS, nightPlanInput, rigData, runEngine } from './sync';
 
 type Simulation = z.output<typeof nina.NinaSimulation>;
@@ -82,6 +83,10 @@ export async function simulation(
   const steps: number[] = [];
   for (let t = start; t <= end; t += ALTITUDE_STEP_S) steps.push(t);
   const moonMid = moonAt((start + end) / 2, engineSite);
+  // Ist und gespeicherter Plan der Nacht (AP-53c): das Plugin zeichnet daraus Erledigtes und den Hinweis „Rig plant
+  // noch mit Rev. n“; vergangene Nächte ohne Session und künftige Nächte liefern `null`.
+  const actual = await nightActual(svc, p, d, { night, currentNight: current, now, names });
+  const stored = actual.storedPlan;
 
   return {
     night,
@@ -145,5 +150,16 @@ export async function simulation(
       return row;
     }) as Simulation['protocol'],
     warnings: plan.warnings as Simulation['warnings'],
+    executed: actual.executed,
+    storedPlan: stored
+      ? {
+          nightPlanId: stored.nightPlanId,
+          revision: stored.revision,
+          reason: stored.reason,
+          createdAtUtc: stored.createdAtUtc,
+          stale: stored.stale,
+          staleCause: stored.staleCause,
+        }
+      : null,
   };
 }

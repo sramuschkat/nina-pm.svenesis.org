@@ -13,6 +13,7 @@ import {
   warningLevels,
 } from '../../generated/enums';
 import { Message, NightKey, Sha256, Text, UtcInstant, Uuid, Version } from './common';
+import { ExecutedNight, StoredPlanInfo } from '../executed';
 
 export const NinaSimulationQuery = z
   .object({ night: NightKey })
@@ -258,6 +259,13 @@ export const NinaSimulation = z
           .meta({ id: 'NinaSimulationWarning' }),
       )
       .max(1000),
+    /**
+     * Ist der Nacht aus den Session-Ereignissen und Aufnahmen (AP-53c): nur für die laufende und vergangene Nächte mit
+     * Session, sonst `null`. Ältere Server liefern das Feld nicht.
+     */
+    executed: ExecutedNight.nullable().optional(),
+    /** Letzte gespeicherte Planrevision der Nacht und ob die Rig noch mit älterer Eingabe plant (AP-53c). */
+    storedPlan: StoredPlanInfo.nullable().optional(),
   })
   .meta({ id: 'NinaSimulation' });
 export type NinaSimulation = z.infer<typeof NinaSimulation>;
