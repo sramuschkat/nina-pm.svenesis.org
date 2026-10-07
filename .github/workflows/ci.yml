@@ -300,10 +300,13 @@ jobs:
             timeout 240 pnpm exec playwright install-deps chromium && break
             [ "$attempt" = 2 ] && exit 1
             echo "install-deps: Versuch $attempt abgebrochen, neuer Versuch über archive.ubuntu.com"
-            # Hängender Azure-Spiegel (07.10.2026 zweimal: `Ign: azure.archive.ubuntu.com …`, archive.ubuntu.com
-            # antwortete): für den zweiten Versuch auf den Hauptspiegel umstellen.
+            # Hängender Azure-Spiegel (07.10.2026 dreimal: `Ign: azure.archive.ubuntu.com …`, archive.ubuntu.com
+            # antwortete): Die Runner-Quellen zeigen auf die Spiegelliste `/etc/apt/apt-mirrors.txt` (Azure zuerst);
+            # für den zweiten Versuch den Azure-Eintrag daraus entfernen, sonst wartet apt je Datei erst auf Azure.
+            sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt 2>/dev/null || true
             sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
               /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+            grep -q . /etc/apt/apt-mirrors.txt 2>/dev/null || echo 'http://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
             sudo pkill -TERM -x apt-get || true
             for _ in $(seq 1 30); do
               sudo fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1 || break
