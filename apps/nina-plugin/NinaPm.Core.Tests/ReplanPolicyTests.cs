@@ -200,6 +200,24 @@ public sealed class ReplanPolicyTests
     }
 
     [Fact]
+    public void Frist_schon_vorbei_zaehlt_nur_mit_offenem_Transitblock_im_Plan()
+    {
+        // Rig-Nacht 06./07.10.2026: WASP-3b-Serie endete um 00:55 (Mindesthöhe), das Fenster lief bis 01:07 – jeder Block
+        // danach endete sofort mit transit_interrupt (212×). Fenster hier ab 02:08:00, Frist 02:05:30.
+        var targets = Example<NinaTargets>("targets.response");
+        var obs = Exo(targets).Exoplanet!.Observation!;
+        var regular = new Blocks { Kind = BlocksKind.Regular, StartUtc = T("2026-09-18T01:00:00Z") };
+        var before = T("2026-09-18T02:00:00Z");
+        var after = T("2026-09-18T02:30:00Z");
+        // Vor der Frist: wie bisher, unabhängig vom Plan.
+        Assert.Equal(T("2026-09-18T02:05:30Z"), ReplanPolicy.TransitDeadline(targets, regular, 150, before, new HashSet<Guid>()));
+        // Nach der Frist, Transit im Plan noch offen (z. B. Regelblock lief über): Frist bleibt → Wechsel zum Transit.
+        Assert.Equal(T("2026-09-18T02:05:30Z"), ReplanPolicy.TransitDeadline(targets, regular, 150, after, new HashSet<Guid> { obs.Id }));
+        // Nach der Frist, Transit gelaufen bzw. gestrichen: keine Frist mehr.
+        Assert.Null(ReplanPolicy.TransitDeadline(targets, regular, 150, after, new HashSet<Guid>()));
+    }
+
+    [Fact]
     public void Pruefung_im_Block_in_der_Stunde_vor_einem_Fenster_alle_5_min()
     {
         var targets = Example<NinaTargets>("targets.response"); // Fenster ab 02:08:00
