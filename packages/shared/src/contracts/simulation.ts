@@ -71,6 +71,11 @@ export const SimulationInput = z
     executed: ExecutedNight.nullable(),
     storedPlan: StoredPlan.nullable(),
     firstPlan: StoredPlan.nullable(),
+    /**
+     * Vom Plugin beendete bzw. übersprungene Blöcke (`block_end`, `block_skipped`) – auch leere, die im Ist nur als
+     * Lücke stehen: Das Web zeigt sie nicht mehr als „geplant“ (07.10.2026).
+     */
+    endedBlockIds: z.array(Uuid).max(5000).optional(),
   })
   .meta({ id: 'SimulationInput' });
 export type SimulationInput = z.infer<typeof SimulationInput>;

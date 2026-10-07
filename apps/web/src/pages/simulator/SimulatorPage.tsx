@@ -272,6 +272,7 @@ export function SimulatorPage() {
             executed: serverInput.data.executed as never,
             storedPlan: serverInput.data.storedPlan as never,
             firstPlan: serverInput.data.firstPlan as never,
+            endedBlockIds: serverInput.data.endedBlockIds,
           }
         : null,
     };
@@ -384,7 +385,8 @@ export function SimulatorPage() {
         nav={<NinaTabs />}
         actions={
           <>
-            {canSave && result ? (
+            {/* Laufende Nacht aus dem gespeicherten Plan: den hat die Rig schon, nichts zu speichern (07.10.2026). */}
+            {canSave && result && !result.fromStored ? (
               <button
                 type="button"
                 className={styles.button}
@@ -576,6 +578,10 @@ export function SimulatorPage() {
                 {result.unallocated.length > 0 ? (
                   <article className={styles.card} aria-label={t('simulator.unallocated')}>
                     <h3>{t('simulator.unallocated')}</h3>
+                    {result.fromStored ? (
+                      // Weder im gespeicherten Plan noch im Ist; die Gründe nennt die Rechnung ab jetzt.
+                      <p className={styles.muted}>{t('simulator.unallocatedComputed')}</p>
+                    ) : null}
                     <ul className={styles.plain}>
                       {result.unallocated.map((u) => (
                         <li key={u.projectId}>
@@ -791,17 +797,26 @@ function downloadCsv(text: string, night: string) {
 
 const checkOk = (c: Check): boolean | null => (c === 'none' ? null : c === 'ok');
 
+const DONE_CARD = {
+  running: { tag: 'simulator.card.runningTonight', title: 'simulator.card.runningTitle' },
+  planned: { tag: 'simulator.card.plannedTonight', title: 'simulator.card.plannedTitle' },
+  done: { tag: 'simulator.card.doneTonight', title: 'simulator.card.doneTitle' },
+} as const;
+
 /**
- * Läuft an der Rig bzw. heute Nacht abgearbeitet (07.10.2026): Ist der Nacht statt Belichtungsplan und Prüfungen;
- * abgearbeitet ausgegraut, laufend mit geplantem Ende aus dem gespeicherten Plan.
+ * Läuft an der Rig, im gespeicherten Plan noch geplant bzw. heute Nacht abgearbeitet (07.10.2026) – ohne Zielkarte der
+ * Eingabe: Ist der Nacht statt Belichtungsplan und Prüfungen; abgearbeitet ausgegraut, sonst mit Zeitraum der offenen
+ * Blöcke aus dem gespeicherten Plan.
  */
 function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comments: number }) {
   const { t } = useTranslation();
+  const text = DONE_CARD[card.state];
   return (
     <article
-      className={card.running ? styles.card : `${styles.card} ${styles.cardDone}`}
+      className={card.state === 'done' ? `${styles.card} ${styles.cardDone}` : styles.card}
       aria-label={card.name}
-      title={t(card.running ? 'simulator.card.runningTitle' : 'simulator.card.doneTitle')}
+      title={t(text.title)}
+      data-state={card.state}
     >
       <h3 className={styles.cardTitle}>
         <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
@@ -816,9 +831,7 @@ function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comm
         </Link>
         <CommentCount count={comments} />
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
-        <span className={styles.tag}>
-          {t(card.running ? 'simulator.card.runningTonight' : 'simulator.card.doneTonight')}
-        </span>
+        <span className={styles.tag}>{t(text.tag)}</span>
       </h3>
       <dl className={styles.facts}>
         <dt>{t('simulator.card.creator')}</dt>
@@ -913,6 +926,12 @@ function TargetCardView({
         </Link>
         <CommentCount count={comments} />
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
+        {card.state === 'running' ? (
+          // Laufende Nacht aus dem gespeicherten Plan (07.10.2026): dieser Block läuft jetzt an der Rig.
+          <span className={styles.tag} title={t('simulator.card.runningTitle')}>
+            {t('simulator.card.runningTonight')}
+          </span>
+        ) : null}
       </h3>
       <dl className={styles.facts}>
         <dt>{t('simulator.card.creator')}</dt>
@@ -923,6 +942,12 @@ function TargetCardView({
         <dd>
           {card.fromUtc && card.toUtc ? `${hm(card.fromUtc, tz)} – ${hm(card.toUtc, tz)}` : '–'}
         </dd>
+        {card.doneExposures > 0 ? (
+          <>
+            <dt>{t('simulator.card.doneSoFar')}</dt>
+            <dd>{card.doneExposures}</dd>
+          </>
+        ) : null}
         <dt>{t('simulator.card.hours')}</dt>
         <dd>{hours} h</dd>
         <dt>{t('simulator.card.altitude')}</dt>

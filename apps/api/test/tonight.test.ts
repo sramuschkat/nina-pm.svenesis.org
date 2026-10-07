@@ -172,6 +172,24 @@ describe('Heute Nacht (S-02, AP-35)', () => {
     expect(r.forecast.covered).toBe(false);
   });
 
+  it('Morgen nach dem Fensterende: läuft die Session der alten Nacht noch (Flats, Transit), bleibt sie die laufende', async () => {
+    // Analyse 07.10.2026: um 08:00 CDT sprang „Heute Nacht“ zur nächsten Nacht und verbarg laufende Flats.
+    const t = await setup();
+    s.clock.set(new Date('2026-09-18T13:30:00Z'));
+    expect((await t.tonight()).night).toBe('2026-09-18');
+    const tenant = await s.pg.admin.query('SELECT tenant_id FROM rig WHERE id = $1', [t.rig.id]);
+    const tenantId = (tenant.rows[0] as { tenant_id: string }).tenant_id;
+    await s.pg.admin.query(
+      "INSERT INTO session (tenant_id, rig_id, night, started_at, status) VALUES ($1, $2, '2026-09-17', '2026-09-18T00:30:00Z', 'running')",
+      [tenantId, t.rig.id],
+    );
+    const lingering = await t.tonight();
+    expect(lingering).toMatchObject({ night: '2026-09-17', currentNight: '2026-09-17' });
+    // Session beendet bzw. Mittag erreicht: wieder die folgende Nacht.
+    await s.pg.admin.query("UPDATE session SET status = 'completed' WHERE rig_id = $1", [t.rig.id]);
+    expect((await t.tonight()).night).toBe('2026-09-18');
+  });
+
   it('Nachtwahl (30.09.2026): laufende Nacht bis +6 mit Mondkalender; außerhalb 422', async () => {
     const t = await setup();
     s.clock.set(new Date('2026-09-18T18:00:00Z'));

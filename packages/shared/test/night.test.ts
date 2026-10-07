@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ProblemError } from '../src/errors';
-import { currentNight, type NightRow } from '../src/night';
+import { currentNight, nightOfEndedWindow, type NightRow } from '../src/night';
 
 interface Vectors {
   tables: Record<string, NightRow[]>;
@@ -47,6 +47,14 @@ describe('currentNight (NT-01, night.md §1.1/§4) – gemeinsame Testvektoren',
       }
     });
   }
+
+  it('nightOfEndedWindow: Morgen nach dem Fensterende bis Mittag die alte Nacht, sonst null (07.10.2026)', () => {
+    const table = { nights: vectors.tables.starfront0917 ?? [] };
+    expect(nightOfEndedWindow(table, '2026-09-18T12:59:59Z')).toBeNull();
+    expect(nightOfEndedWindow(table, '2026-09-18T13:30:00Z')).toBe('2026-09-17');
+    expect(currentNight(table, '2026-09-18T13:30:00Z')).toBe('2026-09-18');
+    expect(nightOfEndedWindow(table, '2026-09-18T18:00:00Z')).toBeNull();
+  });
 
   it('verlangt einen UTC-Zeitpunkt mit Z', () => {
     expect(() =>

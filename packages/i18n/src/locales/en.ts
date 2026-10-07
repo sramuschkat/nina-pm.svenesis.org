@@ -310,6 +310,8 @@ export const en: Messages = {
     withDrafts: 'Simulate with my drafts and submitted objects (local only)',
     withDraftsShort: 'with my drafts',
     unallocated: 'Not allocated',
+    unallocatedComputed:
+      "Neither in the rig's stored plan nor exposed tonight – reasons from the plan from now.",
     noReason: 'no diagnostic reason',
     card: {
       open: 'Open “{{name}}”',
@@ -332,8 +334,11 @@ export const en: Messages = {
       transit: 'Transit',
       doneTonight: 'Done tonight',
       runningTonight: 'Running on the rig',
-      runningTitle:
-        'The rig works on this project from the stored plan; the plan from now no longer allocates it (e.g. too little darkness left)',
+      runningTitle: 'This block of the stored plan is running on the rig now',
+      plannedTonight: 'Planned (stored plan)',
+      plannedTitle:
+        "The rig's stored plan still has a block although the project is no longer in the input (the rig replans at the next sync)",
+      doneSoFar: 'Exposed tonight',
       doneExposures: 'Frames',
       doneTitle:
         'Exposed this night, no longer allocated in the remaining plan (finished, paused or transit over)',
@@ -2903,6 +2908,8 @@ export const en: Messages = {
       targets: '{{n}} projects',
       nothing: 'nothing planned',
       frames: '{{n}} frames',
+      framesIfOn: '{{n}} frames if delivered',
+      saved: '{{n}} exposed',
       ninaNone: 'no NINA instance',
       ninaSeen: 'NINA last seen {{time}}',
       ninaNever: 'NINA never seen',
@@ -2925,6 +2932,8 @@ export const en: Messages = {
       noEvents: 'no events',
       planPending: 'Calculating plan …',
       planError: 'Could not calculate the plan',
+      computeError:
+        "The plan from now could not be calculated – showing the actual night and the rig's stored plan.",
       planEmpty: 'nothing planned',
     },
     title: 'Tonight',
@@ -2945,6 +2954,10 @@ export const en: Messages = {
     noProjects: 'No projects are planned for this night.',
     doneTonight: 'Done tonight · {{n}} frames · {{from}} – {{to}}',
     runningTonight: 'Running on the rig (stored plan) · {{n}} frames so far · {{from}} – {{to}}',
+    plannedTonight: 'Planned (stored plan) · {{n}} frames so far · {{from}} – {{to}}',
+    runningTag: 'running on the rig',
+    deliveryOff:
+      '“Deliver to NINA” is off for this rig: NINA gets no targets tonight. Plan and frames only show what the rig would do if it were on.',
     idle: '{{n}} more active projects without frames this night.',
     col: {
       project: 'Project',

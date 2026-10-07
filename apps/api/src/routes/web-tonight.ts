@@ -4,7 +4,8 @@
  *   (`currentNight`, NT-01 – nach Ende des Nachtfensters schon die folgende) bzw. eine gewählte der folgenden sechs
  *   Nächte (Wunsch Sven 30.09.2026, so weit reicht das Astro-Wetter) mit Nachtfenster, Dunkelheit, Mond, Wetter der
  *   Nacht (Farbband), geplanten Projekten mit erwarteten Frames aus der gespeicherten Prognose (AP-33), den
- *   NINA-Instanzen und dem Mondkalender der sieben Nächte. Die Nacht rechnet der Server, nie der Browser.
+ *   NINA-Instanzen und dem Mondkalender der sieben Nächte. Die Nacht rechnet der Server, nie der Browser. Läuft die
+ *   Session der Nacht nach Ende ihres Nachtfensters noch (Flats, Transit), bleibt sie bis Mittag die laufende Nacht.
  * - `PUT /web/v1/projects/{id}/lines/{lineId}/tonight {disabled}` (`project.status`, Admin): Zeile **nur für die
  *   kommende Nacht** ab- bzw. wieder einschalten (FA-FOL-05). Die Nacht ist die aktuelle Nacht des Rig-Standorts
  *   des Projekts; ab dem nächsten lokalen Mittag plant die Zeile von selbst wieder mit.
@@ -16,6 +17,7 @@ import {
   can,
   currentNightRow,
   LineTonightInput,
+  nightOfEndedWindow,
   ProblemError,
   ProjectView,
   TONIGHT_NIGHTS,
@@ -116,7 +118,18 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
       if (rigId && rig.id !== rigId) continue;
       const site = siteOf.get(rig.siteId);
       if (!site) continue;
-      const current = currentNightRow(siteNights(site, now, undefined, 2), isoUtc(now)).night;
+      const around = siteNights(site, now, undefined, 2);
+      let current = currentNightRow(around, isoUtc(now)).night;
+      // Morgen nach dem Fensterende: läuft die Session der alten Nacht noch (Flats, Rest eines Transits), bleibt sie die
+      // laufende Nacht – sonst sprang die Seite zur nächsten und verbarg das Laufende (Analyse 07.10.2026).
+      const ended = nightOfEndedWindow(around, isoUtc(now));
+      if (
+        ended &&
+        (
+          await repos.sessionReview().list({ rigId: rig.id, from: ended, to: ended, limit: 10 })
+        ).some((x) => x.status === 'running')
+      )
+        current = ended;
       const table = buildNightTable(site, current, TONIGHT_NIGHTS);
       const row = wantedNight
         ? table.nights.find((n) => n.night === wantedNight)

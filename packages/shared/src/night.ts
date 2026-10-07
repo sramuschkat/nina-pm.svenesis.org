@@ -58,6 +58,22 @@ export function currentNight(site: NightTable, now: string): string {
   return currentNightRow(site, now).night;
 }
 
+/**
+ * Nacht, deren Nachtfenster schon zu Ende ist, deren Mittag-zu-Mittag-Zeitraum aber noch läuft (Morgen nach dem
+ * Fensterende, `currentNight` zeigt schon die folgende Nacht) – sonst `null`. „Heute Nacht“ zeigt diese Nacht weiter,
+ * solange ihre Session noch läuft (Flats nach der Dämmerung, Rest eines Transits; Analyse 07.10.2026).
+ */
+export function nightOfEndedWindow(site: NightTable, now: string): string | null {
+  const t = ms(now, 'now');
+  const row = site.nights.find(
+    (n, i) =>
+      ms(n.noonStartUtc, `nights[${i}].noonStartUtc`) <= t &&
+      t < ms(n.noonEndUtc, `nights[${i}].noonEndUtc`),
+  );
+  if (!row) return null;
+  return ms(row.nightWindowEndUtc, 'nightWindowEndUtc') <= t ? row.night : null;
+}
+
 function tooShort(message: string): ProblemError {
   return new ProblemError('engine.input_invalid', [{ path: 'nights', message }], message);
 }

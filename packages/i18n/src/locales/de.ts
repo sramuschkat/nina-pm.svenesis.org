@@ -310,6 +310,8 @@ export const de = {
     withDrafts: 'Mit meinen Entwürfen und eingereichten Objekten simulieren (nur lokal)',
     withDraftsShort: 'mit meinen Entwürfen',
     unallocated: 'Nicht zugeteilt',
+    unallocatedComputed:
+      'Weder im gespeicherten Plan der Rig noch heute belichtet – Gründe aus der Rechnung ab jetzt.',
     noReason: 'ohne Diagnosegrund',
     card: {
       open: '„{{name}}“ öffnen',
@@ -332,8 +334,11 @@ export const de = {
       transit: 'Transit',
       doneTonight: 'Heute Nacht abgearbeitet',
       runningTonight: 'Läuft an der Rig',
-      runningTitle:
-        'Die Rig arbeitet das Projekt nach dem gespeicherten Plan ab; die Rechnung ab jetzt teilt es nicht mehr zu (z. B. zu wenig Dunkelzeit übrig)',
+      runningTitle: 'Dieser Block des gespeicherten Plans läuft jetzt an der Rig',
+      plannedTonight: 'Geplant (gespeicherter Plan)',
+      plannedTitle:
+        'Im gespeicherten Plan der Rig kommt noch ein Block, obwohl das Projekt nicht mehr in der Eingabe steht (die Rig plant beim nächsten Abgleich neu)',
+      doneSoFar: 'Heute belichtet',
       doneExposures: 'Aufnahmen',
       doneTitle:
         'In dieser Nacht belichtet, im Rest-Plan nicht mehr zugeteilt (fertig, pausiert oder Transit vorbei)',
@@ -2913,6 +2918,8 @@ export const de = {
       targets: '{{n}} Projekte',
       nothing: 'nichts geplant',
       frames: '{{n}} Frames',
+      framesIfOn: '{{n}} Frames, wenn ausgeliefert',
+      saved: '{{n}} belichtet',
       ninaNone: 'keine NINA-Instanz',
       ninaSeen: 'NINA zuletzt {{time}}',
       ninaNever: 'NINA noch nie gesehen',
@@ -2935,6 +2942,8 @@ export const de = {
       noEvents: 'keine Ereignisse',
       planPending: 'Plan wird gerechnet …',
       planError: 'Plan konnte nicht gerechnet werden',
+      computeError:
+        'Die Rechnung ab jetzt ist fehlgeschlagen – gezeigt werden Ist und gespeicherter Plan der Rig.',
       planEmpty: 'nichts geplant',
     },
     title: 'Heute Nacht',
@@ -2956,6 +2965,10 @@ export const de = {
     doneTonight: 'Heute Nacht abgearbeitet · {{n}} Aufnahmen · {{from}} – {{to}}',
     runningTonight:
       'Läuft an der Rig (gespeicherter Plan) · {{n}} Aufnahmen bisher · {{from}} – {{to}}',
+    plannedTonight: 'Geplant (gespeicherter Plan) · {{n}} Aufnahmen bisher · {{from}} – {{to}}',
+    runningTag: 'läuft an der Rig',
+    deliveryOff:
+      '„An NINA ausliefern“ ist für dieses Rig aus: NINA bekommt heute keine Ziele. Plan und Frames zeigen nur, was das Rig eingeschaltet täte.',
     idle: '{{n}} weitere aktive Projekte ohne Frames in dieser Nacht.',
     col: {
       project: 'Projekt',

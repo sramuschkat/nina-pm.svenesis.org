@@ -11,6 +11,7 @@ import type {
   OutlineBlock,
   TimelineBlock,
 } from '../../components/night-chart';
+import { openStoredBlocks } from './rig-night';
 
 export type ActualState = 'done' | 'saved' | 'skipped' | 'failed' | 'running' | 'planned' | 'gap';
 
@@ -39,6 +40,8 @@ export interface ActualViewInput {
   readonly executed: ExecutedNight | null;
   /** Letzte Revision; `null` bei Was-wäre-wenn (dann gilt `computed`). */
   readonly stored: StoredPlan | null;
+  /** Vom Plugin beendete bzw. übersprungene Blöcke (`GET /simulations/input`): nicht mehr „geplant“. */
+  readonly endedBlockIds?: readonly string[] | undefined;
   readonly first: StoredPlan | null;
   readonly nowMs: number;
   /** Die Nacht läuft (sonst ist sie vorbei: kein Kommendes). */
@@ -176,6 +179,16 @@ export function actualView(i: ActualViewInput): ActualView | null {
   const bars: FilterBar[] = [];
   const gaps: ChartGap[] = [];
   const rows: ActualProtocolRow[] = [];
+  // Nr. je Belichtungszeile (Projekt und Filter) über die ganze Nacht (07.10.2026): Ist-Abschnitte zählen ihre
+  // gespeicherten Aufnahmen (Nr. = letzte des Abschnitts), Geplantes zählt weiter – vorher Ist ohne Nr., Plan ab 1.
+  const numbers = new Map<string, number>();
+  const lineKey = (projectId: string | null | undefined, filter: string | null | undefined) =>
+    `${projectId ?? ''}|${filter ?? ''}`;
+  const count = (key: string, n: number) => {
+    const v = (numbers.get(key) ?? 0) + n;
+    numbers.set(key, v);
+    return v;
+  };
   for (const b of ex?.blocks ?? []) {
     const to = b.endUtc ? sec(b.endUtc) : nowS;
     blocks.push({
@@ -209,6 +222,10 @@ export function actualView(i: ActualViewInput): ActualView | null {
       tense: 'past',
     });
     const block = ex?.blocks.find((b) => b.blockId !== null && b.blockId === s.blockId);
+    const no =
+      s.saved > 0 && block?.kind !== 'transit'
+        ? count(lineKey(s.projectId, s.filter), s.saved)
+        : null;
     rows.push({
       ...row({
         key: `ist:seg:${String(k)}`,
@@ -218,6 +235,7 @@ export function actualView(i: ActualViewInput): ActualView | null {
         atUtc: s.startUtc,
         untilUtc: s.endUtc,
         projectName: name(s.projectId, block?.title),
+        no,
         filter: s.filter,
         exposureS: s.exposureS,
       }),
@@ -289,20 +307,12 @@ export function actualView(i: ActualViewInput): ActualView | null {
 
   // ---- Kommendes ----
   const fromStored = i.stored !== null;
-  // Nr. wie im Simulator (simulation-view.ts): laufende Belichtungsnummer je Zeile, Transit-Serien ohne Nummer.
-  const numbers = new Map<string, number>();
-  const next = (key: string) => {
-    const n = (numbers.get(key) ?? 0) + 1;
-    numbers.set(key, n);
-    return n;
-  };
+  // Transit-Serien ohne Nummer (wie simulation-view.ts).
   if (i.running) {
     if (i.stored) {
-      const done = new Set(
-        (ex?.blocks ?? []).filter((b) => !b.running && b.blockId).map((b) => b.blockId),
-      );
-      for (const b of i.stored.blocks as unknown as StoredBlock[]) {
-        if (sec(b.endUtc) <= nowS || done.has(b.id)) continue;
+      // Offen: nicht beendet, nicht übersprungen, nicht vor dem zuletzt begonnenen Ist-Block (rig-night.ts).
+      const open = openStoredBlocks(i.stored, ex, i.endedBlockIds, i.nowMs);
+      for (const b of open as unknown as StoredBlock[]) {
         const from = Math.max(sec(b.startUtc), nowS);
         blocks.push({
           id: b.id,
@@ -326,10 +336,7 @@ export function actualView(i: ActualViewInput): ActualView | null {
               untilUtc: e.untilUtc ?? null,
               durationS: e.durationS ?? null,
               projectName: name(b.projectId),
-              no:
-                e.cmd === 'expose'
-                  ? next(e.exposureLineId ?? `${b.projectId}|${e.filter ?? ''}`)
-                  : null,
+              no: e.cmd === 'expose' ? count(lineKey(b.projectId, e.filter), 1) : null,
               filter: e.filter ?? '',
               exposureS: e.exposureS ?? null,
               gain: e.gain ?? null,
@@ -354,7 +361,11 @@ export function actualView(i: ActualViewInput): ActualView | null {
           bars.push({ ...f, fromUtc: Math.max(f.fromUtc, nowS), tense: 'planned' });
       for (const r of i.computed.protocol)
         if (sec(r.atUtc) >= nowS)
-          rows.push({ ...r, actual: { state: 'planned', reason: null, count: null, past: false } });
+          rows.push({
+            ...r,
+            no: r.cmd === 'expose' ? count(lineKey(r.projectId, r.filter), 1) : r.no,
+            actual: { state: 'planned', reason: null, count: null, past: false },
+          });
     }
   }
 

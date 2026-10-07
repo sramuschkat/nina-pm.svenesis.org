@@ -2,7 +2,9 @@
  * Ist einer Nacht (AP-53c, FA-SIM-10) aus den Session-Ereignissen und Light-Aufnahmen aller Sessions eines Rigs –
  * dieselben Regeln wie das Nachtjournal des Plugins (`NightViewBuilder`, AP-53b, execution.md §10.1):
  * - Blöcke von `block_start` (Beginn des Anfahrens) bis `block_end`; Plugins vor 0.4.13 melden keine Blöcke – dann
- *   ergibt sich der Block aus seinen Aufnahmen (erste bis letzte, `capture.block_id`).
+ *   ergibt sich der Block aus seinen Aufnahmen (erste bis letzte, `capture.block_id`). Sein Beginn ist dann der Beginn
+ *   des Blocks im gespeicherten Plan, sofern der höchstens `DERIVED_LEAD_MAX_S` vor der ersten Aufnahme liegt und nicht
+ *   in den vorigen Block reicht – sonst stünden Anfahren, Zentrieren und Autofokus als roter „Leerlauf“ da (07.10.2026).
  * - Blöcke ohne Belichtung, die im Abstand ≤ 2 min mit demselben Grund aufeinander folgen (z. B. die
  *   `transit_interrupt`-Schleife der Rig-Nacht 06./07.10.2026), werden **eine** Lücke „n leere Blöcke“.
  * - Lücken zwischen erledigten Blöcken ab 2 min: Safety-Pause, übersprungene Blöcke (mit Grund), sonst Leerlauf; der
@@ -52,6 +54,8 @@ export interface ExecutedNightOptions {
   readonly names: ReadonlyMap<string, string>;
   /** Art je Block-ID aus den gespeicherten Planrevisionen (für Blöcke ohne `block_start`). */
   readonly blockKinds?: ReadonlyMap<string, 'regular' | 'transit'>;
+  /** Geplanter Beginn je Block-ID aus den gespeicherten Planrevisionen (Blöcke ohne `block_start`, Plugin vor 0.4.13). */
+  readonly blockStarts?: ReadonlyMap<string, string>;
 }
 
 export const GAP_MIN_S = 120;
@@ -59,6 +63,8 @@ export const EMPTY_MERGE_MAX_S = 120;
 export const BAR_SPLIT_S = 900;
 /** Ein offener Block gilt nur so lange als laufend, wie es Aktivität gibt. */
 export const RUNNING_STALE_S = 1800;
+/** Höchstens so lange vor der ersten Aufnahme beginnt ein aus Aufnahmen abgeleiteter Block (Anfahren, Autofokus). */
+export const DERIVED_LEAD_MAX_S = 1200;
 
 const ms = (iso: string) => Date.parse(iso);
 const iso = (t: number) => new Date(t).toISOString().replace('.000Z', 'Z');
@@ -169,6 +175,20 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
       b.lastActivity = Math.max(b.lastActivity, ms(e.occurredAt));
   }
   blocks.sort((a, b) => a.start - b.start);
+  // Abgeleitete Blöcke: Beginn laut gespeichertem Plan (Anfahren, Zentrieren, Autofokus vor der ersten Aufnahme), nie
+  // früher als DERIVED_LEAD_MAX_S vor ihr und nie vor dem Ende des vorigen Blocks.
+  for (const [k, b] of blocks.entries()) {
+    const planned =
+      b.blockId && derived.get(b.blockId) === b ? o.blockStarts?.get(b.blockId) : undefined;
+    if (!planned) continue;
+    const prev = blocks[k - 1];
+    const from = Math.max(
+      ms(planned),
+      b.start - DERIVED_LEAD_MAX_S * 1000,
+      prev?.end ?? prev?.start ?? 0,
+    );
+    if (from < b.start) b.start = from;
+  }
   const lastStarted = blocks.at(-1);
   const live = (b: Work) =>
     o.running && b === lastStarted && now - b.lastActivity <= RUNNING_STALE_S * 1000;

@@ -7078,6 +7078,13 @@ components:
           $ref: "#/components/schemas/StoredPlan"
         firstPlan:
           $ref: "#/components/schemas/StoredPlan"
+        endedBlockIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            description: UUID
+          maxItems: 5000
       required:
         - night
         - currentNight
