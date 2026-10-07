@@ -37,6 +37,15 @@ export const NinaDeliveryItem = z
     filters: z.array(NinaDeliveryFilter),
     /** Nicht gelöschte Kommentare am Projekt (FA-PRJ-17) – nur Web, nicht Teil von `targets`. */
     commentCount: z.number().int().min(0),
+    /**
+     * Heute Nacht abgearbeitet (07.10.2026): in dieser Nacht belichtet, aber nicht mehr in `targets` (fertig, pausiert,
+     * Transit vorbei) – alle Projektarten. Die Web-Ansicht zeigt das Projekt ausgegraut; sonst fehlt das Feld.
+     * `acquired` = gespeicherte Lights dieser Nacht, `untilUtc` = Ende der letzten Aufnahme.
+     */
+    doneTonight: z
+      .object({ acquired: z.number().int().min(0), untilUtc: UtcInstant })
+      .nullable()
+      .optional(),
   })
   .meta({ id: 'NinaDeliveryItem' });
 export type NinaDeliveryItem = z.infer<typeof NinaDeliveryItem>;

@@ -10396,6 +10396,21 @@ components:
         commentCount:
           type: integer
           minimum: 0
+        doneTonight:
+          type:
+            - object
+            - "null"
+          properties:
+            acquired:
+              type: integer
+              minimum: 0
+            untilUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - acquired
+            - untilUtc
       required:
         - id
         - name

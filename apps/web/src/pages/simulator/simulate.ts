@@ -78,6 +78,21 @@ export interface TargetCard extends Omit<SimCard, 'projectIndex' | 'lines'> {
 
 export type UnallocatedProject = SimUnallocated;
 
+/**
+ * Heute Nacht abgearbeitet (07.10.2026): Projekt mit Ist-Blöcken dieser Nacht, das der Rest-Plan nicht mehr zuteilt
+ * (fertig, pausiert, Transit vorbei) – ausgegraute Zielkarte statt „Nicht zugeteilt“, für alle Projektarten.
+ */
+export interface DoneCard {
+  readonly projectId: string;
+  readonly name: string;
+  readonly createdBy: string | null;
+  readonly color: string;
+  readonly transit: boolean;
+  readonly exposures: number;
+  readonly fromUtc: string;
+  readonly toUtc: string | null;
+}
+
 export type ProtocolRow = ActualProtocolRow;
 
 /** Herkunft der Eingabe für den Hash-Hinweis (AP-53c). */
@@ -93,6 +108,8 @@ export interface SimulationResult {
   readonly plan: NightPlan;
   readonly chart: Omit<NightChartProps, 'state'>;
   readonly cards: readonly TargetCard[];
+  /** Heute Nacht abgearbeitet, nicht mehr im Rest-Plan: ausgegraut nach den Zielkarten. */
+  readonly doneCards: readonly DoneCard[];
   readonly unallocated: readonly UnallocatedProject[];
   readonly protocol: readonly ProtocolRow[];
   /** Filter-Kurzname je Zeile (Diagnose je Zeile). */
@@ -167,6 +184,41 @@ function storedInfo(p: StoredPlan): Omit<StoredPlan, 'blocks'> {
     staleCause: p.staleCause,
   };
 }
+
+/**
+ * Ist-Blöcke dieser Nacht je Projekt, das keine Zielkarte im Rest-Plan hat (07.10.2026) – Simulator-Zielkarten und
+ * Tabelle „Plan für diese Nacht“.
+ */
+export function doneTonight(
+  executedBlocks: readonly ExecutedNight['blocks'][number][],
+  planned: ReadonlySet<string>,
+  names: ReadonlyMap<string, string>,
+  creators: ReadonlyMap<string, string>,
+  colorOfProject: (id: string) => string,
+): DoneCard[] {
+  const by = new Map<string, DoneCard>();
+  for (const b of executedBlocks) {
+    if (planned.has(b.projectId)) continue;
+    const cur = by.get(b.projectId);
+    const toUtc = b.endUtc === null || cur?.toUtc === null ? null : maxIso(cur?.toUtc, b.endUtc);
+    by.set(b.projectId, {
+      projectId: b.projectId,
+      name: names.get(b.projectId) ?? b.title,
+      createdBy: creators.get(b.projectId) ?? null,
+      color: colorOfProject(b.projectId),
+      transit: (cur?.transit ?? false) || b.kind === 'transit',
+      exposures: (cur?.exposures ?? 0) + b.exposures,
+      fromUtc: cur && cur.fromUtc < b.startUtc ? cur.fromUtc : b.startUtc,
+      toUtc,
+    });
+  }
+  // Ohne gespeicherte Aufnahme nur Transits (Fenster vorbei); sonst wäre ein bloß angefahrenes Ziel „abgearbeitet“.
+  return [...by.values()]
+    .filter((c) => c.exposures > 0 || c.transit)
+    .sort((a, b) => a.fromUtc.localeCompare(b.fromUtc));
+}
+
+const maxIso = (a: string | undefined, b: string) => (a !== undefined && a > b ? a : b);
 
 export function simulate(req: SimulationRequest): SimulationResult {
   // Entwürfe ohne Panel kann die Engine nicht planen (engine.input_invalid) – sie fehlen im Plan.
@@ -298,14 +350,23 @@ export function simulate(req: SimulationRequest): SimulationResult {
     color: colorOf(projectIndex),
     lines: c.lines.map((l) => ({ ...l, color: filterColor(l.filter) })),
   }));
+  const doneCards = doneTonight(
+    req.server?.executed?.blocks ?? [],
+    new Set(cards.map((c) => c.projectId)),
+    names,
+    creators,
+    colorOfProject,
+  );
+  const isDone = new Set(doneCards.map((c) => c.projectId));
   return {
     plan,
     chart,
     cards,
+    doneCards,
     unallocated: [
-      ...view.unallocated,
+      ...view.unallocated.filter((u) => !isDone.has(u.projectId)),
       ...req.projects
-        .filter((p) => withoutTransit(req, p))
+        .filter((p) => withoutTransit(req, p) && !isDone.has(p.id))
         .map((p) => ({
           projectId: p.id,
           name: p.name,

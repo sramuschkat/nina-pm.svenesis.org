@@ -19205,6 +19205,14 @@ export interface components {
                 accepted: number;
             }[];
             commentCount: number;
+            doneTonight?: {
+                acquired: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                untilUtc: string;
+            } | null;
         };
         NinaRigCommandCreated: {
             commandIds: string[];

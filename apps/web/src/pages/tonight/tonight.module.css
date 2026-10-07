@@ -298,6 +298,10 @@
   font-size: var(--npm-font-small);
 }
 /* „Rig plant noch mit Rev. n“ (AP-53c). */
+/* Heute Nacht abgearbeitet (07.10.2026): ausgegraut unter den geplanten Projekten. */
+.rowDone {
+  opacity: 0.55;
+}
 .staleBadge {
   padding: 2px var(--npm-space-2);
   border-radius: 999px;

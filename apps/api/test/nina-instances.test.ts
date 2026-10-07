@@ -424,4 +424,37 @@ describe('An NINA ausgeliefert (S-41, FA-NIN-22)', () => {
     expect((await t.web(`/rigs/${t.rig.id}/delivery`)).body.items).toEqual([]);
     expect((await t.web(`/rigs/${id()}/delivery`)).status).toBe(404);
   });
+
+  it('heute Nacht belichtet, dann pausiert: bleibt ausgegraut mit Anzahl und Ende der letzten Aufnahme (07.10.2026)', async () => {
+    const t = await setup();
+    const sessionId = id();
+    await s.pg.admin.query(
+      'INSERT INTO session (id, tenant_id, rig_id, night, started_at) VALUES ($1, $2, $3, $4, $5)',
+      [sessionId, t.tenantId, t.rig.id, '2026-09-18', '2026-09-18T02:00:00Z'],
+    );
+    const capture = (capturedAt: string, result: string) =>
+      s.pg.admin.query(
+        `INSERT INTO capture (id, tenant_id, session_id, project_id, panel_id, exposure_line_id, night, captured_at,
+           filter_short_name, exposure_s, result, file_name)
+         SELECT $1, $2, $3, l.project_id, l.panel_id, l.id, '2026-09-18', $4, 'Ha', 300, $5, 'x.fits'
+         FROM exposure_line l WHERE l.id = $6`,
+        [id(), t.tenantId, sessionId, capturedAt, result, t.lineId],
+      );
+    await capture('2026-09-18T03:00:00Z', 'saved');
+    await capture('2026-09-18T03:05:00Z', 'saved');
+    await capture('2026-09-18T03:10:00Z', 'failed');
+    // Noch ausgeliefert: normale Karte ohne Markierung.
+    const shipped = await t.web(`/rigs/${t.rig.id}/delivery`);
+    expect(shipped.body.items).toEqual([expect.objectContaining({ id: t.pid })]);
+    expect((shipped.body.items as Body[])[0]).not.toHaveProperty('doneTonight');
+    await s.pg.admin.query("UPDATE project SET status = 'on_hold' WHERE id = $1", [t.pid]);
+    const r = await t.web(`/rigs/${t.rig.id}/delivery`);
+    expect(r.body.items).toEqual([
+      expect.objectContaining({
+        id: t.pid,
+        status: 'on_hold',
+        doneTonight: { acquired: 2, untilUtc: '2026-09-18T03:10:00Z' },
+      }),
+    ]);
+  });
 });

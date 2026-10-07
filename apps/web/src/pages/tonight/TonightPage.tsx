@@ -38,6 +38,7 @@ import { useJob } from '../../lib/use-job';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { useNightPlan, type NightPlanState } from '../simulator/use-night-plan';
+import type { DoneCard } from '../simulator/simulate';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
 import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
 import { CommentCount } from '../../components/CommentCount';
@@ -327,7 +328,26 @@ function RigCard({
           nightUsage(plan.result.plan),
         )
       : null;
-  const rows = live?.projects ?? rig.projects;
+  // Heute Nacht abgearbeitet (07.10.2026): belichtet, aber im Rest-Plan nicht mehr – ausgegraut unter den geplanten.
+  type Row = TonightRig['projects'][number] & { readonly done?: DoneCard };
+  const planned = live?.projects ?? rig.projects;
+  const rows: Row[] = [
+    ...planned,
+    ...(live ? (plan.done ?? []) : [])
+      .filter((d) => !planned.some((p) => p.projectId === d.projectId))
+      .map((d) => ({
+        projectId: d.projectId,
+        name: d.name,
+        createdBy: d.createdBy ?? '',
+        priority: 0,
+        frames: 0,
+        hours: 0,
+        lines: [],
+        done: d,
+      })),
+  ];
+  const hm = (atUtc: string) =>
+    `${formatZonedTime(atUtc, timeZone)} ${formatTzAbbr(atUtc, timeZone)}`;
   const idle = live?.idle ?? rig.idleProjects;
   const covered = live !== null || rig.forecast.covered;
   const headingId = useId();
@@ -345,7 +365,7 @@ function RigCard({
   useEffect(() => {
     if (done) void client.invalidateQueries({ queryKey: TONIGHT_KEY });
   }, [done, client]);
-  const columns: DataColumn<TonightRig['projects'][number]>[] = [
+  const columns: DataColumn<Row>[] = [
     {
       id: 'name',
       header: t('tonight.col.project'),
@@ -362,14 +382,14 @@ function RigCard({
       id: 'creator',
       header: t('tonight.col.creator'),
       priority: 3,
-      cell: (p) => <Person id={p.createdBy} />,
+      cell: (p) => <Person id={p.createdBy || null} />,
     },
     {
       id: 'frames',
       header: t('tonight.col.frames'),
       align: 'end',
       sortValue: (p) => p.frames,
-      cell: (p) => p.frames,
+      cell: (p) => (p.done ? '–' : p.frames),
     },
     {
       id: 'hours',
@@ -377,20 +397,29 @@ function RigCard({
       align: 'end',
       priority: 2,
       sortValue: (p) => p.hours,
-      cell: (p) => `${n(p.hours)} h`,
+      cell: (p) => (p.done ? '–' : `${n(p.hours)} h`),
     },
     {
       id: 'lines',
       header: t('tonight.col.lines'),
-      cell: (p) => (
-        <TonightLines
-          projectId={p.projectId}
-          lines={p.lines}
-          colorOf={colorOf}
-          onChanged={() => run.mutate()}
-          readOnly={rig.night !== rig.currentNight}
-        />
-      ),
+      cell: (p) =>
+        p.done ? (
+          <span className={styles.muted}>
+            {t('tonight.doneTonight', {
+              n: p.done.exposures,
+              from: hm(p.done.fromUtc),
+              to: p.done.toUtc ? hm(p.done.toUtc) : '…',
+            })}
+          </span>
+        ) : (
+          <TonightLines
+            projectId={p.projectId}
+            lines={p.lines}
+            colorOf={colorOf}
+            onChanged={() => run.mutate()}
+            readOnly={rig.night !== rig.currentNight}
+          />
+        ),
     },
   ];
   return (
@@ -453,6 +482,7 @@ function RigCard({
             rows={rows}
             rowKey={(p) => p.projectId}
             rowLabel={(p) => p.name}
+            rowProps={(p) => (p.done ? { className: styles.rowDone, 'data-done': 'true' } : {})}
             label={t('tonight.plannedLabel', { rig: rig.rigName })}
             empty={t('tonight.noProjects')}
           />

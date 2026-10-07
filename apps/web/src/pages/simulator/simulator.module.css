@@ -143,6 +143,10 @@
   /* Gewählt deutlich sichtbar (01.10.2026): Ring in Zielfarbe statt nur Randfarbe. */
   box-shadow: 0 0 0 2px var(--card-color, var(--npm-accent));
 }
+/* Heute Nacht abgearbeitet (07.10.2026): ausgegraut nach den Zielkarten. */
+.cardDone {
+  opacity: 0.55;
+}
 .card[data-selected='true'] .cardPick {
   text-decoration: underline;
 }

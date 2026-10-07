@@ -330,6 +330,10 @@ export const en: Messages = {
       flipInWindow: 'Flip in the transit window {{time}}',
       transitBox: 'Transit run: dither off, filter changes off, priority',
       transit: 'Transit',
+      doneTonight: 'Done tonight',
+      doneExposures: 'Frames',
+      doneTitle:
+        'Exposed this night, no longer allocated in the remaining plan (finished, paused or transit over)',
       check: {
         altitude: 'Altitude (maximum ≥ minimum altitude)',
         time: 'Time (≥ minimum time on target)',
@@ -2134,7 +2138,8 @@ export const en: Messages = {
     delivery: {
       creator: 'Created by',
       title: 'Delivered to NINA',
-      info: 'NINA receives these targets on its next plan build: approved, active, with planning need and on a rig with “Deliver to NINA”. It is the same list the plugin fetches.',
+      info: 'NINA receives these targets on its next plan build: approved, active, with planning need and on a rig with “Deliver to NINA”. It is the same list the plugin fetches. Exoplanets only appear in the night of their locked transit. Projects worked tonight that are no longer delivered (finished, paused, transit over) stay greyed out as done.',
+      doneTonight: 'Done tonight · {{n}} frames · last until {{time}}',
       filterSite: 'Site',
       filterTelescope: 'Telescope',
       filterCamera: 'Camera',
@@ -2928,6 +2933,7 @@ export const en: Messages = {
     compute: 'Calculate forecast',
     computing: 'Calculating forecast …',
     noProjects: 'No projects are planned for this night.',
+    doneTonight: 'Done tonight · {{n}} frames · {{from}} – {{to}}',
     idle: '{{n}} more active projects without frames this night.',
     col: {
       project: 'Project',
