@@ -4,7 +4,7 @@
  * gespeicherten Plan aus der Rechnung ab jetzt. Dazu Lücken mit Grund, der Ursprungsplan als Umriss und Protokollzeilen
  * mit Spalte „Ist“. Rein (keine Uhr): `nowMs` kommt von der Seite. Dieselben Regeln wie die Fenster im Plugin (AP-53b).
  */
-import type { ExecutedNight, SimProtocolRow, StoredPlan } from '@nina-pm/shared';
+import type { ExecutedNight, SimProtocolRow, SimSkyFields, StoredPlan } from '@nina-pm/shared';
 import type {
   ChartGap,
   FilterBar,
@@ -57,11 +57,13 @@ export interface ActualViewInput {
   readonly names: ReadonlyMap<string, string>;
   /** Beschriftung einer Lücke (übersetzt). */
   readonly gapLabel: (kind: ChartGap['kind'], reason: string | null, count: number) => string;
+  /** Höhe, Mondabstand, Dunkelheit und LA je Zeile des gespeicherten Plans (`protocolSky`); ohne leer. */
+  readonly sky?: (block: StoredBlock, entry: StoredEntry) => SimSkyFields;
 }
 
 const sec = (iso: string) => Date.parse(iso) / 1000;
 
-interface StoredEntry {
+export interface StoredEntry {
   readonly seq: number;
   readonly cmd: string;
   readonly atUtc: string;
@@ -77,7 +79,7 @@ interface StoredEntry {
   readonly exposureLineId?: string | null;
 }
 
-interface StoredBlock {
+export interface StoredBlock {
   readonly id: string;
   readonly kind: string;
   readonly projectId: string;
@@ -209,7 +211,13 @@ export function actualView(i: ActualViewInput): ActualView | null {
         atUtc: b.startUtc,
         projectName: name(b.projectId, b.title),
       }),
-      actual: { state: b.running ? 'running' : 'done', reason: null, count: null, past: true },
+      // Mit gespeicherter Aufnahme ist das Anfahren erledigt; „läuft“ zeigt dann die laufende Planzeile.
+      actual: {
+        state: b.running && b.exposures === 0 ? 'running' : 'done',
+        reason: null,
+        count: null,
+        past: true,
+      },
     });
   }
   for (const [k, s] of (ex?.segments ?? []).entries()) {
@@ -312,6 +320,10 @@ export function actualView(i: ActualViewInput): ActualView | null {
     if (i.stored) {
       // Offen: nicht beendet, nicht übersprungen, nicht vor dem zuletzt begonnenen Ist-Block (rig-night.ts).
       const open = openStoredBlocks(i.stored, ex, i.endedBlockIds, i.nowMs);
+      const rawById = new Map(
+        (i.stored.blocks as unknown as StoredBlock[]).map((b) => [b.id, b] as const),
+      );
+      let runningSeen = false;
       for (const b of open as unknown as StoredBlock[]) {
         const from = Math.max(sec(b.startUtc), nowS);
         blocks.push({
@@ -324,8 +336,18 @@ export function actualView(i: ActualViewInput): ActualView | null {
           tense: 'planned',
         });
         bars.push(...storedFilterBars(b, nowS, i.filterColor));
-        for (const e of b.entries) {
-          if (sec(e.atUtc) < nowS && !(e.untilUtc && sec(e.untilUtc) > nowS)) continue;
+        // Ungekürzte Einträge: die gerade laufende Zeile (Belichtung, Warten, Flip …) begann vor jetzt und fehlt im
+        // gekürzten Block – sie steht als „läuft“ mit ihrer Planzeit; die Nr. zählt sie mit (wie das Plugin-Fenster).
+        const raw = rawById.get(b.id) ?? b;
+        for (const e of raw.entries) {
+          const at = sec(e.atUtc);
+          const len = isExpose(e.cmd)
+            ? Math.max(e.exposureS ?? 0, e.durationS ?? 0)
+            : (e.durationS ?? 0);
+          const to = e.cmd === 'expose_series' ? sec(e.untilUtc ?? b.endUtc) : at + len;
+          const isRunning = !runningSeen && e.cmd !== 'end' && at < nowS && to > nowS;
+          if (at < nowS && e.cmd !== 'end' && !isRunning) continue;
+          if (isRunning) runningSeen = true;
           rows.push({
             ...row({
               key: `${b.id}:${String(e.seq)}`,
@@ -347,8 +369,14 @@ export function actualView(i: ActualViewInput): ActualView | null {
               raDeg: b.raDeg,
               decDeg: b.decDeg,
               bonus: e.bonus ?? false,
+              ...(i.sky ? i.sky(b, e) : {}),
             }),
-            actual: { state: 'planned', reason: null, count: null, past: false },
+            actual: {
+              state: isRunning ? 'running' : 'planned',
+              reason: null,
+              count: null,
+              past: false,
+            },
           });
         }
       }
@@ -376,6 +404,11 @@ export function actualView(i: ActualViewInput): ActualView | null {
       color: i.colorOfProject(b.projectId),
     }),
   );
+  // Eine laufende Planzeile trägt den Laufzeiger – der Blockstart im Ist ist dann erledigt.
+  if (rows.some((r) => !r.actual?.past && r.actual?.state === 'running'))
+    for (const [n, r] of rows.entries())
+      if (r.actual?.past && r.actual.state === 'running')
+        rows[n] = { ...r, actual: { ...r.actual, state: 'done' } };
   const ordered = rows
     .map((r, n) => ({ r, n }))
     .sort((a, b) => Date.parse(a.r.atUtc) - Date.parse(b.r.atUtc) || a.n - b.n)
