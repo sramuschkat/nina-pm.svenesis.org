@@ -3,6 +3,7 @@
  * Seiten importieren Symbole **nur** von hier, damit dasselbe Symbol überall dasselbe bedeutet. Kein Emoji.
  */
 import {
+  Activity,
   ArchiveRestore,
   ArrowDown,
   ArrowLeft,
@@ -49,11 +50,11 @@ import {
   MoonStar,
   Mountain,
   Orbit,
-  Pencil,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Pencil,
   Play,
   PlugZap,
   Plus,
@@ -91,6 +92,8 @@ export const areaIcons = {
   planning: Compass,
   projects: FolderKanban,
   nina: PlugZap,
+  /** Rig-Zustand (Telemetrie Mini-PC und Powerbox, AP-67, eigener Menüpunkt seit 08.10.2026). */
+  rigStatus: Activity,
   weather: CloudSun,
   evaluation: ChartLine,
   administration: Users,

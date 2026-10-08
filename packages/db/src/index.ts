@@ -123,7 +123,7 @@ export {
   type GuardRow,
   type WithTxOptions,
 } from './tx';
-export type { Database, JobTable } from './types';
+export type { Database, JobTable, TelemetryStat } from './types';
 export {
   AuditRepository,
   listSystemAudit,
@@ -183,6 +183,18 @@ export {
   type SessionToClose,
   type StaleSession,
 } from './repositories/session-ops';
+export {
+  RigTelemetryRepository,
+  TELEMETRY_RAW_DAYS,
+  TELEMETRY_ROLLUP_DAYS,
+  deleteRigTelemetryBatch,
+  hourStats,
+  purgeRigTelemetry,
+  rollupRigTelemetry,
+  type TelemetryHourRow,
+  type TelemetryRawRow,
+  type TelemetrySampleInput,
+} from './repositories/rig-telemetry';
 export {
   SessionReviewRepository,
   type NightSessionFilter,

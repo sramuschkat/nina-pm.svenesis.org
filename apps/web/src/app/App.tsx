@@ -39,6 +39,7 @@ import { QueuePage } from '../pages/projects/QueuePage';
 import { DeliveryPage } from '../pages/nina/DeliveryPage';
 import { SequencerHelpPage } from '../pages/nina/SequencerHelpPage';
 import { InstancesPage } from '../pages/nina/InstancesPage';
+import { TelemetryPage } from '../pages/nina/TelemetryPage';
 import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { EVALUATION_PATHS } from '../pages/sessions/evaluation';
 import { NightPage } from '../pages/sessions/NightPage';
@@ -192,6 +193,11 @@ export function createRouter() {
               path: 'wetter',
               element: <RequireAction action="project.read" />,
               children: [{ index: true, element: <WeatherPage /> }],
+            },
+            {
+              path: 'rig-zustand',
+              element: <RequireAction action="session.read" />,
+              children: [{ index: true, element: <TelemetryPage /> }],
             },
             {
               path: 'nina',

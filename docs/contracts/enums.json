@@ -275,6 +275,10 @@
   "skipped_timeaware",
   "past_mismatch"
  ],
+ "telemetrySources": [
+  "pc",
+  "power_box"
+ ],
  "heartbeatStates": [
   "running",
   "idle",

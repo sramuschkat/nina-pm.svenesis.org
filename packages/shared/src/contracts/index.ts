@@ -28,4 +28,5 @@ export * from './session-log';
 export * from './catalog';
 export * from './exo';
 export * from './weather';
+export * from './telemetry';
 export * as nina from './nina';

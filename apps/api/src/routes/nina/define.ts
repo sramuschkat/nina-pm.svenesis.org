@@ -41,7 +41,7 @@ export function defineNinaRoute<
 export function batchLimit(
   field: string,
   max: number,
-  code: 'capture.batch_too_large' | 'event.batch_too_large',
+  code: 'capture.batch_too_large' | 'event.batch_too_large' | 'telemetry.batch_too_large',
 ): MiddlewareHandler<ApiEnv> {
   return async (c, next) => {
     const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;

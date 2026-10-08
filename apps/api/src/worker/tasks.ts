@@ -30,6 +30,11 @@ export interface MaintenanceDeps {
    * nach dem Wetter; schreibt nur bei jüngerer Cache-Zeile und nicht mehr ab Beginn der Dunkelheit).
    */
   readonly nightForecasts?: () => Promise<number>;
+  /**
+   * Rig-Telemetrie (AP-67, `tick-hourly`): abgeschlossene Stunden verdichten (auch spät eingetroffene Werte), danach
+   * Rohwerte älter als 90 Tage in Stapeln löschen; liefert die Anzahl verdichteter Stunden.
+   */
+  readonly rigTelemetry?: () => Promise<number>;
   /** Fehlende Vorschaubilder der Projekte → Jobs `thumbnail` (AP-25, `tick-hourly`). */
   readonly thumbnails?: () => Promise<number>;
   /** Bahndaten der Raumstationen und des Hubble-Teleskops → `catalog/sky/` (Ereignisse der Nacht, `daily`). */
@@ -112,6 +117,9 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
               run: async () => void (await maintenance.reconcileSiteNights?.()),
             },
           ]
+        : []),
+      ...(maintenance?.rigTelemetry
+        ? [{ name: 'rig_telemetry', run: async () => void (await maintenance.rigTelemetry?.()) }]
         : []),
       ...(maintenance?.thumbnails
         ? [{ name: 'thumbnails', run: async () => void (await maintenance.thumbnails?.()) }]

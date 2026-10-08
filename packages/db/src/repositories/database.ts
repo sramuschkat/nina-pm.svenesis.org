@@ -27,6 +27,7 @@ import { NotificationRepository } from './notification';
 import { PreferenceRepository } from './preference';
 import { TenantAdminRepository, type SystemActor } from './tenant-admin';
 import { TenantRepository } from './tenant';
+import { RigTelemetryRepository } from './rig-telemetry';
 
 export interface OpenDatabase {
   readonly db: Kysely<Database>;
@@ -52,6 +53,7 @@ export interface OpenDatabase {
     exoProjects: () => ExoProjectRepository;
     transits: () => TransitRepository;
     discord: () => DiscordRepository;
+    telemetry: () => RigTelemetryRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -88,6 +90,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       exoProjects: () => new ExoProjectRepository(db, ctx),
       transits: () => new TransitRepository(db, ctx),
       discord: () => new DiscordRepository(db, ctx),
+      telemetry: () => new RigTelemetryRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

@@ -576,6 +576,17 @@ export const forecastApi = {
     apiFetch<{ jobId: string }>(`${V1}/forecast/run`, json('POST', { rigId })),
 };
 
+export type TelemetryView = Schemas['TelemetryView'];
+export type TelemetrySeries = Schemas['TelemetrySeries'];
+
+/** Rig-Zustand S-43 (AP-67): Telemetrie eines Rigs (Mini-PC, Powerbox) für einen Zeitraum. */
+export const telemetryApi = {
+  get: (rigId: string, from: string, to: string) =>
+    apiFetch<TelemetryView>(
+      `${V1}/rigs/${rigId}/telemetry?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    ),
+};
+
 export type TonightView = Schemas['TonightView'];
 export type TonightRig = Schemas['TonightRig'];
 export type TonightLine = Schemas['TonightLine'];

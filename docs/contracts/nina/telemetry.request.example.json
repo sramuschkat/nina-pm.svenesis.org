@@ -1,0 +1,21 @@
+{
+  "source": "power_box",
+  "samples": [
+    {
+      "atUtc": "2026-10-08T06:09:30Z",
+      "values": {
+        "airC": 18.21,
+        "dewPointC": 13.52,
+        "humidityPct": 74.0,
+        "voltageV": 12.8,
+        "currentA": 1.34,
+        "dewHeater1Pct": 40,
+        "dewHeater2Pct": 40
+      }
+    },
+    {
+      "atUtc": "2026-10-08T06:10:30Z",
+      "values": { "airC": 18.18, "dewPointC": 13.55, "humidityPct": 74.2, "voltageV": 12.8, "currentA": 1.31 }
+    }
+  ]
+}

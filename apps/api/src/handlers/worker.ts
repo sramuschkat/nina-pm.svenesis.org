@@ -16,6 +16,8 @@ import {
   siteNightRunDone,
   tenantIdsForStorage,
   weatherSites,
+  purgeRigTelemetry,
+  rollupRigTelemetry,
 } from '@nina-pm/db';
 import { ENGINE_VERSION } from '@nina-pm/engine';
 import { s3TenantUsageReader } from '../files/tenant-files';
@@ -194,6 +196,14 @@ const maintenanceFor = (startedAt: number) => ({
     );
     logger.info('thumbnail_tick', { runs });
     return runs;
+  },
+  rigTelemetry: async () => {
+    const db = (await lambdaDatabase()).db;
+    const now = new Date();
+    const hours = await rollupRigTelemetry(db, now);
+    const purged = await purgeRigTelemetry(db, now);
+    if (hours > 0 || purged > 0) logger.info('rig_telemetry', { hours, purged });
+    return hours;
   },
   reconcileSiteNights: async () => {
     const runs = await reconcileSiteTick(effort, jobs, new Date());

@@ -53,6 +53,7 @@ const cases: [string, z.ZodType][] = [
   ['events.request', nina.NinaEventBatch],
   ['heartbeat.request', nina.NinaHeartbeat],
   ['heartbeat.response', nina.NinaHeartbeatResponse],
+  ['telemetry.request', nina.NinaTelemetryBatch],
 ];
 
 describe('contracts/nina: Beispiele validieren gegen die Schemas', () => {

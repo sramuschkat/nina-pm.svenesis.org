@@ -1184,6 +1184,10 @@ async function projectExamples(): Promise<Record<string, Example>> {
         url: `/api/web/v1/rigs/${common.rigId}/delivery`,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      'GET /api/web/v1/rigs/{id}/telemetry': {
+        url: `/api/web/v1/rigs/${common.rigId}/telemetry?from=2026-09-17T00:00:00Z&to=2026-09-18T00:00:00Z`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'POST /api/web/v1/nina-instances/{id}/revoke': {
         url: `/api/web/v1/nina-instances/${instance.id}/revoke`,
         method: 'POST',

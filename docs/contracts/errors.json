@@ -345,6 +345,13 @@
    "titleEn": "At most 200 events per request"
   },
   {
+   "code": "telemetry.batch_too_large",
+   "http": 413,
+   "i18nKey": "errors.telemetry.batchTooLarge",
+   "titleDe": "Höchstens 1.000 Messpunkte je Anfrage",
+   "titleEn": "At most 1,000 samples per request"
+  },
+  {
    "code": "plan.targets_etag_mismatch",
    "http": 409,
    "i18nKey": "errors.plan.targetsEtagMismatch",

@@ -164,6 +164,14 @@ beforeAll(async () => {
       method: 'POST',
       body: { state: 'idle', pluginVersion: '1.0.0', engineVersion: '0.6.0' },
     },
+    'POST /api/nina/v1/telemetry': {
+      url: '/api/nina/v1/telemetry',
+      method: 'POST',
+      body: {
+        source: 'pc',
+        samples: [{ atUtc: '2026-09-18T14:00:00Z', values: { cpuMaxC: 55, loadPct: 20 } }],
+      },
+    },
   };
 });
 afterAll(() => stack.close());

@@ -16,6 +16,8 @@ const EVALUATION_TABLES = [
   'session_log',
   'site_night_stat',
   'site_night_forecast',
+  'rig_telemetry_sample',
+  'rig_telemetry_hourly',
 ] as const;
 
 export interface EvaluationCounts {

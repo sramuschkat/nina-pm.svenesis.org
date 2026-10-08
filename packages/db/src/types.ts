@@ -676,6 +676,34 @@ export interface SiteNightForecastTable {
   recordedAt: Timestamp;
 }
 
+export interface RigTelemetrySampleTable {
+  tenantId: string;
+  rigId: string;
+  source: string;
+  atUtc: Timestamp;
+  /** Messgröße → Wert (`nina.TELEMETRY_METRICS`). */
+  metrics: Record<string, number>;
+  receivedAt: Timestamp;
+}
+
+/** Je Messgröße der Stunde: Minimum, Mittel, Maximum, Anzahl. */
+export interface TelemetryStat {
+  min: number;
+  avg: number;
+  max: number;
+  n: number;
+}
+
+export interface RigTelemetryHourlyTable {
+  tenantId: string;
+  rigId: string;
+  source: string;
+  hourUtc: Timestamp;
+  samples: number;
+  stats: Record<string, TelemetryStat>;
+  updatedAt: Timestamp;
+}
+
 export interface SessionTable {
   id: string;
   tenantId: string;
@@ -1035,6 +1063,8 @@ export interface Database {
   sessionLog: SessionLogTable;
   siteNightStat: SiteNightStatTable;
   siteNightForecast: SiteNightForecastTable;
+  rigTelemetrySample: RigTelemetrySampleTable;
+  rigTelemetryHourly: RigTelemetryHourlyTable;
   sessionEvent: SessionEventTable;
   capture: CaptureTable;
   correction: CorrectionTable;
