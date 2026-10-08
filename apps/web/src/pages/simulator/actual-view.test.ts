@@ -215,6 +215,81 @@ describe('actualView', () => {
     expect(ahead[0]?.moonOk).toBe(true);
   });
 
+  it('Rig liegt zurück: laufend ist die nächste Belichtung nach dem Ist, ab dem Ende der letzten Aufnahme', () => {
+    // Sammelliste 08.10.2026, Punkt 6: SII 2 stand mit der Planzeit 01:00:53 da, tatsächlich lief sie ab ≈ 01:09:40.
+    const run: ExecutedNight = {
+      ...executed,
+      blocks: [
+        ...executed.blocks,
+        {
+          blockId: B2,
+          nightPlanId: null,
+          projectId: P,
+          panelId: null,
+          title: 'NGC 281',
+          kind: 'regular',
+          startUtc: '2026-09-18T04:50:00Z',
+          endUtc: null,
+          endReason: null,
+          exposures: 2,
+          running: true,
+        },
+      ],
+      segments: [
+        ...executed.segments,
+        {
+          blockId: B2,
+          projectId: P,
+          filter: 'Ha',
+          startUtc: '2026-09-18T04:55:00Z',
+          endUtc: '2026-09-18T05:08:00Z',
+          saved: 2,
+          failed: 0,
+          exposureS: 300,
+        },
+      ],
+    } as ExecutedNight;
+    const plan = {
+      ...stored,
+      blocks: [
+        {
+          ...(stored.blocks[0] as object),
+          startUtc: '2026-09-18T04:50:00Z',
+          entries: [
+            { seq: 1, cmd: 'slew_center', atUtc: '2026-09-18T04:50:00Z', durationS: 90 },
+            expose(2, '2026-09-18T04:52:00Z'),
+            expose(3, '2026-09-18T04:57:30Z'),
+            { seq: 4, cmd: 'dither', atUtc: '2026-09-18T05:02:30Z', durationS: 18 },
+            expose(5, '2026-09-18T05:02:48Z'),
+            { seq: 6, cmd: 'dither', atUtc: '2026-09-18T05:07:48Z', durationS: 18 },
+            expose(7, '2026-09-18T05:08:06Z'),
+            { seq: 8, cmd: 'end', atUtc: '2026-09-18T06:00:00Z' },
+          ],
+        },
+      ],
+    } as unknown as StoredPlan;
+    const v = actualView({
+      executed: run,
+      stored: plan,
+      first: null,
+      nowMs: Date.parse('2026-09-18T05:10:00Z'),
+      running: true,
+      computed: { blocks: [], filterBars: [], protocol: [] },
+      colorOfProject: () => 'var(--npm-chart-series-1)',
+      filterColor: () => 'var(--npm-chart-marker)',
+      names: new Map([[P, 'NGC 281']]),
+      gapLabel: () => '',
+    });
+    const ahead = (v?.protocol ?? []).filter((r) => !r.actual?.past);
+    // Verzug 05:08:00 − 05:02:48 = 312 s: Belichtung 5 läuft ab 05:08, Dither und Belichtung 7 verschoben.
+    expect(ahead.map((r) => [r.cmd, r.atUtc, r.actual?.state])).toEqual([
+      ['expose', '2026-09-18T05:08:00.000Z', 'running'],
+      ['dither', '2026-09-18T05:13:00.000Z', 'planned'],
+      ['expose', '2026-09-18T05:13:18.000Z', 'planned'],
+      ['end', '2026-09-18T06:00:00Z', 'planned'],
+    ]);
+  });
+
   it('Blockstart trägt den Laufzeiger, solange noch nichts gespeichert ist und keine Planzeile läuft', () => {
     const v = actualView({
       executed: {

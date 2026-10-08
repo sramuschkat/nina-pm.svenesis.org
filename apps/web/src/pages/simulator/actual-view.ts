@@ -169,6 +169,28 @@ export function storedFilterBars(
   return bars;
 }
 
+/**
+ * Rig liegt im laufenden Block hinter dem Plan: Die nächste Belichtung nach den gespeicherten und fehlgeschlagenen
+ * Aufnahmen dieses Blocks (Ist) hätte vor dem Ende der letzten Aufnahme beginnen sollen. Liefert ihren Eintrag
+ * (`seq`) und den Verzug in s; pünktlich, ohne Aufnahme im Block oder im Transit `null` (dann gilt die Planzeit).
+ */
+export function rigBehind(
+  block: StoredBlock,
+  ex: ExecutedNight | null,
+  nowS: number,
+): { readonly seq: number; readonly delayS: number } | null {
+  if (block.kind === 'transit' || !ex) return null;
+  if (!ex.blocks.some((x) => x.blockId === block.id && x.running)) return null;
+  const segs = ex.segments.filter((s) => s.blockId === block.id);
+  if (segs.length === 0) return null;
+  const done = segs.reduce((n, s) => n + s.saved + s.failed, 0);
+  const lastEnd = Math.max(...segs.map((s) => sec(s.endUtc)));
+  const next = block.entries.filter((e) => e.cmd === 'expose')[done];
+  if (!next || lastEnd > nowS) return null;
+  const delayS = lastEnd - sec(next.atUtc);
+  return delayS > 0 ? { seq: next.seq, delayS } : null;
+}
+
 export function actualView(i: ActualViewInput): ActualView | null {
   const ex = i.executed;
   if (!ex && !(i.running && i.stored)) return null;
@@ -339,14 +361,22 @@ export function actualView(i: ActualViewInput): ActualView | null {
         // Ungekürzte Einträge: die gerade laufende Zeile (Belichtung, Warten, Flip …) begann vor jetzt und fehlt im
         // gekürzten Block – sie steht als „läuft“ mit ihrer Planzeit; die Nr. zählt sie mit (wie das Plugin-Fenster).
         const raw = rawById.get(b.id) ?? b;
+        const behind = rigBehind(raw, ex, nowS);
         for (const e of raw.entries) {
-          const at = sec(e.atUtc);
+          // Rig liegt zurück (Sammelliste 08.10.2026, Punkt 6): laufend ist die nächste Belichtung nach den gespeicherten
+          // bzw. fehlgeschlagenen des Blocks, ab dem Ende der letzten Aufnahme; Späteres um denselben Verzug verschoben.
+          // Vorher stand die Zeile mit ihrer Planzeit da (SII 2 um 01:00:53, tatsächlich ≈ 01:09:40).
+          if (behind && e.seq < behind.seq) continue;
+          const shift = behind && e.cmd !== 'end' ? behind.delayS : 0; // das Blockende bleibt fest
+          const at = sec(e.atUtc) + shift;
           const len = isExpose(e.cmd)
             ? Math.max(e.exposureS ?? 0, e.durationS ?? 0)
             : (e.durationS ?? 0);
           const to = e.cmd === 'expose_series' ? sec(e.untilUtc ?? b.endUtc) : at + len;
-          const isRunning = !runningSeen && e.cmd !== 'end' && at < nowS && to > nowS;
-          if (at < nowS && e.cmd !== 'end' && !isRunning) continue;
+          const isRunning = behind
+            ? e.seq === behind.seq
+            : !runningSeen && e.cmd !== 'end' && at < nowS && to > nowS;
+          if (!behind && at < nowS && e.cmd !== 'end' && !isRunning) continue;
           if (isRunning) runningSeen = true;
           rows.push({
             ...row({
@@ -354,7 +384,7 @@ export function actualView(i: ActualViewInput): ActualView | null {
               blockId: b.id,
               projectId: b.projectId,
               cmd: e.cmd,
-              atUtc: e.atUtc,
+              atUtc: shift > 0 ? new Date(at * 1000).toISOString() : e.atUtc,
               untilUtc: e.untilUtc ?? null,
               durationS: e.durationS ?? null,
               projectName: name(b.projectId),
