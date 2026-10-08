@@ -53,6 +53,20 @@ const TILES: Record<TelemetrySeries['source'], readonly { metric: string; unit: 
   ],
 };
 
+type Source = TelemetrySeries['source'];
+/**
+ * Karten oben: der Speicherplatz gehört zum Mini-PC (Rückmeldung Sven 08.10.2026). Diagramme: erst die Powerbox, dann
+ * der Mini-PC mit dem Speicherplatz.
+ */
+const CARD_GROUPS: readonly { key: Source; sources: readonly Source[] }[] = [
+  { key: 'pc', sources: ['pc', 'storage'] },
+  { key: 'power_box', sources: ['power_box'] },
+];
+const CHART_GROUPS: readonly { key: Source; sources: readonly Source[] }[] = [
+  { key: 'power_box', sources: ['power_box'] },
+  { key: 'pc', sources: ['pc', 'storage'] },
+];
+
 export function TelemetryPage() {
   const { t, i18n } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -110,6 +124,7 @@ export function TelemetryPage() {
     v.toLocaleString(i18n.language, { maximumFractionDigits: Math.abs(v) < 10 ? 2 : 1 });
   const nowMs = nowMin * 60_000;
   const sources = data.data?.sources ?? [];
+  const bySource = new Map(sources.map((x) => [x.source, x] as const));
   const noData = data.isSuccess && sources.every((s) => s.latest === null && s.t.length === 0);
   const fromMs = Date.parse(from);
   const toMs = Date.parse(to);
@@ -184,61 +199,79 @@ export function TelemetryPage() {
       ) : (
         <>
           <div className={styles.tiles}>
-            {sources.map((s) => (
-              <section
-                key={s.source}
-                className={styles.tileCard}
-                aria-label={t(`telemetry.source.${s.source}`)}
-              >
-                <div className={styles.tileHead}>
-                  <h2>{t(`telemetry.source.${s.source}`)}</h2>
-                  {received(s)}
-                </div>
-                <dl className={styles.values}>
-                  {TILES[s.source].map(({ metric, unit }) => {
-                    const v = latestValue(s, metric);
-                    const warn =
-                      v !== null &&
-                      ((metric === 'dewGapK' && v < DEW_GAP_WARN_K) ||
-                        (metric === 'freePct' && v < DISK_FREE_WARN_PCT));
-                    return (
-                      <div key={metric} className={warn ? styles.valueWarn : undefined}>
-                        <dt>{t(`telemetry.metric.${metric}`)}</dt>
-                        <dd>{v === null ? '–' : `${n(v)} ${unit}`}</dd>
-                      </div>
-                    );
-                  })}
-                </dl>
-              </section>
-            ))}
+            {CARD_GROUPS.map((g) => {
+              const main = bySource.get(g.key);
+              if (!main) return null;
+              return (
+                <section
+                  key={g.key}
+                  className={styles.tileCard}
+                  aria-label={t(`telemetry.source.${g.key}`)}
+                >
+                  <div className={styles.tileHead}>
+                    <h2>{t(`telemetry.source.${g.key}`)}</h2>
+                    {received(main)}
+                  </div>
+                  <dl className={styles.values}>
+                    {g.sources.flatMap((src) => {
+                      const s = bySource.get(src);
+                      return s
+                        ? TILES[src].map(({ metric, unit }) => {
+                            const v = latestValue(s, metric);
+                            const warn =
+                              v !== null &&
+                              ((metric === 'dewGapK' && v < DEW_GAP_WARN_K) ||
+                                (metric === 'freePct' && v < DISK_FREE_WARN_PCT));
+                            return (
+                              <div key={metric} className={warn ? styles.valueWarn : undefined}>
+                                <dt>{t(`telemetry.metric.${metric}`)}</dt>
+                                <dd>{v === null ? '–' : `${n(v)} ${unit}`}</dd>
+                              </div>
+                            );
+                          })
+                        : [];
+                    })}
+                  </dl>
+                </section>
+              );
+            })}
           </div>
-          {sources.map((s) => (
-            <section key={s.source} className={styles.section}>
-              <h2 className={styles.sectionTitle}>
-                {t('telemetry.history', { source: t(`telemetry.source.${s.source}`) })}
-              </h2>
-              <div className={styles.charts}>
-                {CHARTS.filter((c) => c.source === s.source).map((c) => (
-                  <TelemetryChart
-                    key={c.key}
-                    spec={c}
-                    data={s}
-                    fromMs={fromMs}
-                    toMs={toMs}
-                    timeZone={timeZone}
-                  />
-                ))}
-              </div>
-              <p className={styles.resolution}>
-                {t(
-                  s.resolution === 'raw' ? 'telemetry.resolutionRaw' : 'telemetry.resolutionHourly',
-                  {
-                    points: s.t.length,
-                  },
-                )}
-              </p>
-            </section>
-          ))}
+          {CHART_GROUPS.map((g) => {
+            const main = bySource.get(g.key);
+            if (!main) return null;
+            return (
+              <section key={g.key} className={styles.section}>
+                <h2 className={styles.sectionTitle}>
+                  {t('telemetry.history', { source: t(`telemetry.source.${g.key}`) })}
+                </h2>
+                <div className={styles.charts}>
+                  {CHARTS.filter((c) => (g.sources as readonly string[]).includes(c.source)).map(
+                    (c) => {
+                      const data = bySource.get(c.source);
+                      return data ? (
+                        <TelemetryChart
+                          key={c.key}
+                          spec={c}
+                          data={data}
+                          fromMs={fromMs}
+                          toMs={toMs}
+                          timeZone={timeZone}
+                        />
+                      ) : null;
+                    },
+                  )}
+                </div>
+                <p className={styles.resolution}>
+                  {t(
+                    main.resolution === 'raw'
+                      ? 'telemetry.resolutionRaw'
+                      : 'telemetry.resolutionHourly',
+                    { points: main.t.length },
+                  )}
+                </p>
+              </section>
+            );
+          })}
         </>
       )}
     </div>

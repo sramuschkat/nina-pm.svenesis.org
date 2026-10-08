@@ -5,7 +5,7 @@
  * empfangen“ und still); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
@@ -219,6 +219,30 @@ describe('S-43 Rig-Zustand', () => {
     expect(screen.getByRole('img', { name: /Temperaturen: CPU max/ })).toBeTruthy();
     expect(screen.getAllByText('Keine Werte im Zeitraum.').length).toBeGreaterThan(0);
     await expectNoSeriousA11y(container);
+  });
+
+  it('Speicherplatz in der Karte Mini-PC; Diagramme erst Powerbox, dann Mini-PC mit Speicherplatz', async () => {
+    state.view = view([
+      pcView,
+      boxView,
+      series('storage', {
+        t: [t1, t2],
+        series: { freePct: { avg: [65, 64.9], min: [65, 64.9], max: [65, 64.9] } },
+        latest: { atUtc: t2, values: { freeGb: 312.5, totalGb: 476.9, freePct: 8.5 } },
+      }),
+    ]);
+    renderAt('/rig-zustand');
+    const card = await screen.findByRole('region', { name: 'Mini-PC' });
+    expect(within(card).getByText('312,5 GB')).toBeTruthy();
+    // unter 10 % frei hervorgehoben
+    expect(within(card).getByText('8,5 %').closest('div')?.className).toMatch(/valueWarn/);
+    expect(screen.queryByRole('region', { name: 'Speicherplatz' })).toBeNull();
+    const titles = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent)
+      .filter((x) => x?.startsWith('Verlauf'));
+    expect(titles).toEqual(['Verlauf Powerbox', 'Verlauf Mini-PC']);
+    expect(screen.getByRole('img', { name: /Freier Speicherplatz/ })).toBeTruthy();
   });
 
   it('Zeitraum wählen lädt neu und steht in der Adresse', async () => {
