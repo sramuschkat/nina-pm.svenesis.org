@@ -4,6 +4,7 @@
  * (NT-E3) und die Vorlagen-Regel (FA-BPL-01/05). Ohne DOM, ohne Abfragen – getestet in `projects.test.tsx`.
  */
 import { designationPrefix, LINE_LOCKED_FIELDS } from '@nina-pm/shared';
+import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import type {
   ExposureTemplateView,
   LineView,
@@ -239,10 +240,30 @@ export function applyCatalogPick(d: ProjectDraft, o: CatalogPick): ProjectDraft 
   };
 }
 
+/**
+ * Zielname ändern: Der Projektname läuft mit, solange er leer ist oder noch dem bisherigen Zielnamen entspricht
+ * (Projekt ohne Katalogsuche, 08.10.2026 – sonst landete z. B. der eigene Vorname als Projektname).
+ */
+export function withTargetName(d: ProjectDraft, targetName: string): ProjectDraft {
+  const follows = d.name.trim() === '' || d.name.trim() === d.targetName.trim();
+  return { ...d, targetName, ...(follows ? { name: targetName } : {}) };
+}
+
+/** Projektname zum Speichern: eingegeben, sonst Zielname, sonst Koordinaten („20h 58m 11.0s +78° 33′ 52″“). */
+export function effectiveName(d: ProjectDraft): string {
+  const name = d.name.trim();
+  if (name) return name;
+  const target = d.targetName.trim();
+  if (target) return target;
+  if (d.raDeg !== null && d.decDeg !== null)
+    return `${formatCoordinate('ra', d.raDeg, 'sexagesimal')} ${formatCoordinate('dec', d.decDeg, 'sexagesimal')}`;
+  return '';
+}
+
 /** Entwurf → Felder der API (leere Texte/Daten als `null`, Rotation leer = 0). */
 export function draftBody(d: ProjectDraft) {
   return {
-    name: d.name.trim(),
+    name: effectiveName(d),
     rigId: d.rigId,
     targetName: orNull(d.targetName),
     targetType: orNull(d.targetType),

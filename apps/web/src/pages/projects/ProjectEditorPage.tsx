@@ -10,6 +10,7 @@
  * (FA-PRJ-01); Zeilen setzen Koordinaten voraus (erst dann gibt es das Hauptpanel).
  */
 import {
+  DSO_TYPE_GROUPS,
   canTransition,
   DEFAULT_CONDITIONS,
   ProjectCreate,
@@ -74,6 +75,7 @@ import {
   type CatalogPick,
   type Conditions,
   type ProjectDraft,
+  withTargetName,
 } from './model';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
@@ -548,6 +550,8 @@ function Editor({
         label={t('projectEditor.field.name')}
         value={draft.name}
         maxLength={200}
+        placeholder={t('projectEditor.field.namePlaceholder')}
+        hint={draft.name.trim() === '' ? t('projectEditor.field.nameHint') : undefined}
         onChange={(v) => set('name', v)}
         error={fieldError('name')}
         disabled={disabled}
@@ -556,14 +560,14 @@ function Editor({
         label={t('projectEditor.field.targetName')}
         value={draft.targetName}
         maxLength={200}
-        onChange={(v) => set('targetName', v)}
+        onChange={(v) => setDraft(withTargetName(draft, v))}
         error={fieldError('targetName')}
         disabled={disabled}
       />
-      <TextField
+      <SelectField
         label={t('projectEditor.field.targetType')}
         value={draft.targetType}
-        maxLength={40}
+        options={targetTypeOptions(draft.targetType, t)}
         onChange={(v) => set('targetType', v)}
         error={fieldError('targetType')}
         disabled={disabled}
@@ -1358,5 +1362,18 @@ export function researchLinks(name: string) {
     { name: 'SIMBAD', href: `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${q}` },
     { name: 'AstroBin', href: `https://www.astrobin.com/search/?q=${q}` },
     { name: 'NED', href: `https://ned.ipac.caltech.edu/byname?objname=${q}` },
+  ];
+}
+
+/**
+ * Objekttyp als Auswahl (08.10.2026): die übersetzten Gruppen der Katalogsuche – dieselben Texte, die die Katalogsuche
+ * speichert –, dazu „kein Typ“ und ein bisher frei eingegebener Wert, damit er beim Öffnen nicht verloren geht.
+ */
+export function targetTypeOptions(current: string, t: (key: string) => string) {
+  const groups = DSO_TYPE_GROUPS.map((g) => t(`catalog.groups.${g}`));
+  return [
+    { value: '', label: t('projectEditor.field.targetTypeNone') },
+    ...groups.map((label) => ({ value: label, label })),
+    ...(current && !groups.includes(current) ? [{ value: current, label: current }] : []),
   ];
 }

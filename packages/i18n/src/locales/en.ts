@@ -1110,9 +1110,12 @@ export const en: Messages = {
     previewLater: 'The preview image from sky surveys follows in a later release.',
     research: 'Research',
     field: {
-      name: 'Name',
+      name: 'Project name',
+      namePlaceholder: 'e.g. LDN 1228 or IC 1795 – Fish Head Nebula',
+      nameHint: 'Leave empty: the name is taken from the target name or the coordinates.',
       targetName: 'Target name',
       targetType: 'Object type',
+      targetTypeNone: '– no type –',
       startDate: 'Start date',
       dueDate: 'Due date',
       nightKeyHint: 'Date of the evening in site time (night key).',
