@@ -13,7 +13,7 @@ async function createViaEditor(page: Page, name: string): Promise<string> {
   await page.goto('/projekte');
   await page.getByRole('link', { name: 'Neues Projekt' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Neues Projekt' })).toBeVisible();
-  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('Projektname', { exact: true }).fill(name);
   await page.getByLabel('Zielname').fill('NGC 281');
   await page.getByLabel('Rektaszension (J2000)').fill('00 52 49');
   await page.getByLabel('Deklination (J2000)').fill('+56 37 48');
