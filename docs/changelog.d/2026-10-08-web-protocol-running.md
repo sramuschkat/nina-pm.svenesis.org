@@ -1,0 +1,7 @@
+### Web: Planprotokoll der laufenden Nacht – laufende Zeile, Laufzeiger, Höhe und Mond (2026-10-08)
+
+Anforderungen: FA-SIM-08, FA-SIM-10; Rig-Nacht 07./08.10.2026 (IC 5146, Plugin 0.4.19), Abgleich mit dem Plugin-Fenster
+
+- **Laufende Belichtung fehlte.** Das Protokoll zeigte vom gespeicherten Plan nur Einträge ab jetzt. Die gerade laufende Zeile hatte vor jetzt begonnen und war noch nicht gespeichert, deshalb fiel sie heraus: Im Web fehlte SII 1 von 00:40:07 bis 00:50:07, und die Nr. der folgenden Belichtungen war um eins verschoben. Jetzt steht diese Zeile mit ihrer Planzeit als „läuft“ (▶) und zählt in der Nr. mit, wie im Plugin-Fenster. Das gilt für jede Zeile, auch für Warten, Flip oder Autofokus.
+- **Laufzeiger am Blockstart.** Läuft ein Block die ganze Nacht, stand ▶ auf „Slew/Zentrieren 20:40“. Hat der Block schon eine gespeicherte Aufnahme, gilt das Anfahren jetzt als erledigt, und den Zeiger trägt die laufende Planzeile. Ohne gespeicherte Aufnahme und ohne laufende Planzeile bleibt er am Blockstart.
+- **Höhe und Mondspalten leer.** Für die Zeilen des gespeicherten Plans fehlten Höhe, Mondabstand, „Mond ok“, „gefordert“, „dunkel“, Mondvermeidung und Mondprofil. Die Rechnung ist jetzt als `protocolSky` aus `simulationView` (`@nina-pm/shared`) herausgelöst. Simulator und „Heute Nacht“ füllen damit auch die Zeilen des gespeicherten Plans, nach derselben Rechnung wie das Protokoll der Rechnung ab jetzt und das Plugin.

@@ -19,6 +19,7 @@
  */
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { protocolSky } from '@nina-pm/shared';
 import { CHART_SERIES_COUNT } from '@nina-pm/ui-tokens';
 import { equipmentApi, projectsApi, simulationApi, type ProjectView } from '../../api/client';
 import { useEquipmentList } from '../equipment/shared';
@@ -67,6 +68,12 @@ export interface NightPlanOptions {
 
 const seriesColor = (i: number) =>
   `var(--npm-chart-series-${String((i % CHART_SERIES_COUNT) + 1)})`;
+
+/** Server-Eingabe mit Projekten und Mondprofilen – Grundlage der Himmelsspalten (`protocolSky`). */
+const skyInput = (input: unknown): input is Parameters<typeof protocolSky>[0] => {
+  const i = input as Partial<Parameters<typeof protocolSky>[0]> | null | undefined;
+  return Array.isArray(i?.projects) && Array.isArray(i.moonProfiles);
+};
 
 export function useNightPlan(
   rigId: string | null,
@@ -239,8 +246,26 @@ export function useNightPlan(
       filterColor: (f) => filterColors[f] ?? 'var(--npm-chart-marker)',
       names: new Map(Object.entries(data.projectNames)),
       gapLabel: () => '',
+      sky:
+        site && moonProfiles.data && skyInput(data.input)
+          ? protocolSky(data.input, {
+              site,
+              moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
+            })
+          : undefined,
     });
-  }, [data, result, nowMs, running, over, current, filterColors, colorOfProject]);
+  }, [
+    data,
+    result,
+    nowMs,
+    running,
+    over,
+    current,
+    filterColors,
+    colorOfProject,
+    site,
+    moonProfiles.data,
+  ]);
   const done = useMemo((): DoneCard[] => {
     if (!data) return [];
     const names = new Map(Object.entries(data.projectNames));

@@ -469,16 +469,23 @@ describe('simulate', () => {
     expect(planned.length).toBeGreaterThan(0);
     expect(Math.min(...planned.map((b) => b.fromUtc))).toBeGreaterThanOrEqual(nowMs / 1000);
     expect(r.chart.filterBars?.[0]).toMatchObject({ tense: 'past', label: 'Ha', count: 2 });
+    // Mit gespeicherter Aufnahme ist das Anfahren erledigt; den Laufzeiger trägt die laufende Planzeile (07./08.10.).
     expect(r.protocol[0]?.actual).toEqual({
-      state: 'running',
+      state: 'done',
       reason: null,
       count: null,
       past: true,
     });
+    const running = r.protocol.filter((x) => x.actual?.state === 'running');
+    expect(running).toHaveLength(1);
+    expect(running[0]?.actual?.past).toBe(false);
+    expect(Date.parse(running[0]?.atUtc ?? '')).toBeLessThan(nowMs);
     expect(r.protocol.some((x) => x.actual?.state === 'saved' && x.actual.count === 2)).toBe(true);
     const future = r.protocol.filter((x) => x.actual?.state === 'planned');
     expect(future.length).toBeGreaterThan(0);
     expect(future.every((x) => Date.parse(x.atUtc) >= nowMs)).toBe(true);
+    // Höhe und Mond auch für die Zeilen des gespeicherten Plans.
+    expect(future.every((x) => x.altDeg !== null && x.moonSepDeg !== null)).toBe(true);
     expect(r.actual?.outline.length).toBe(whole.plan.blocks.length);
     expect(r.source.stored).toMatchObject({ revision: 3, stale: true, staleCause: 'targets' });
     expect(r.actual?.counters).toEqual({ saved: 2, skipped: 0, failed: 0 });

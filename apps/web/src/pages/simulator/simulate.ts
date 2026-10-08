@@ -17,6 +17,7 @@ import {
   buildPlanInput,
   effectiveRig,
   isDeliverable,
+  protocolSky,
   type ExecutedNight,
   type StoredPlan,
   simulationView,
@@ -428,6 +429,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
           filterColor,
           names,
           gapLabel: () => '',
+          sky: protocolSky(planInput, { site: req.site, moonProfileNames: req.moonProfileNames }),
         })
       : null;
   const chart = actual

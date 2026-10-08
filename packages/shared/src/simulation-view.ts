@@ -152,6 +152,63 @@ export interface SimulationViewOptions {
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
+/** Himmelsspalten einer Protokollzeile: Höhe, Mondabstand, Dunkelheit; bei Belichtungen dazu Mond ok und LA. */
+export type SimSkyFields = Pick<
+  SimProtocolRow,
+  'altDeg' | 'moonSepDeg' | 'dark' | 'moonOk' | 'requiredSepDeg' | 'la' | 'moonProfile'
+>;
+
+/**
+ * Himmelsspalten je Eintrag aus der Engine-Eingabe – dieselbe Rechnung für das Protokoll der Rechnung und für die
+ * Zeilen des gespeicherten Plans im Ist + Plan (`actual-view.ts` im Web).
+ */
+export function protocolSky(
+  input: Pick<PlanInput, 'projects' | 'moonProfiles'>,
+  opts: Pick<SimulationViewOptions, 'site' | 'moonProfileNames'>,
+): (
+  block: { readonly projectId: string; readonly raDeg: number; readonly decDeg: number },
+  entry: { readonly cmd: string; readonly atUtc: string; readonly exposureLineId?: string | null },
+) => SimSkyFields {
+  const site = { latDeg: opts.site.latitudeDeg, lonDeg: opts.site.longitudeDeg };
+  const profiles = new Map<string, PlanMoonProfile>(input.moonProfiles.map((p) => [p.id, p]));
+  const lineProfile = new Map(
+    input.projects.flatMap((p) =>
+      p.panels.flatMap((panel) => panel.lines.map((l) => [l.id, l.moonProfileId] as const)),
+    ),
+  );
+  return (b, e) => {
+    const project = input.projects.find((p) => p.id === b.projectId);
+    const t = unixFromIso(e.atUtc);
+    const place = targetAt({ raJ2000Deg: b.raDeg, decJ2000Deg: b.decDeg }, t, site);
+    const moon = moonAt(t, site);
+    const sep = separationDeg(moon.raDeg, moon.decDeg, place.raDeg, place.decDeg);
+    const sky = {
+      altDeg: round1(place.altDeg),
+      moonSepDeg: round1(sep),
+      dark: project ? sunAt(t, site).altDeg < TWILIGHT_DEG[project.twilight] : null,
+    };
+    if (e.cmd !== 'expose' && e.cmd !== 'expose_series')
+      return { ...sky, moonOk: null, requiredSepDeg: null, la: null, moonProfile: '' };
+    const profileId = e.exposureLineId ? lineProfile.get(e.exposureLineId) : undefined;
+    const profile = profileId ? profiles.get(profileId) : undefined;
+    const state = {
+      moonAltDeg: moon.altDeg,
+      illumPct: moon.illumPct,
+      phaseDays: moon.phaseDays,
+      sepDeg: sep,
+    };
+    return {
+      ...sky,
+      moonOk: profile ? moonSafe(profile, state) : true,
+      requiredSepDeg: profile
+        ? round1(requiredSeparationDeg(profile, moon.altDeg, moon.phaseDays))
+        : null,
+      la: profile !== undefined,
+      moonProfile: profile ? (opts.moonProfileNames[profile.id] ?? profile.id) : '',
+    };
+  };
+}
+
 function lineNeed(l: PlanProject['panels'][number]['lines'][number], overshootPct: number) {
   if (!l.enabled) return 0;
   const cap = overshootPct > 0 ? Math.ceil(l.planned * (overshootPct / 100)) : 0;
@@ -228,6 +285,7 @@ export function simulationView(
   // Protokoll (FA-SIM-08) mit Höhe, Mondabstand, Dunkelheit und LA je Eintrag.
   const counter = new Map<string, number>();
   const protocol: SimProtocolRow[] = [];
+  const skyOf = protocolSky(input, opts);
   const empty = {
     no: null,
     filter: '',
@@ -236,22 +294,10 @@ export function simulationView(
     offset: null,
     binning: null,
     readoutMode: null,
-    moonOk: null,
-    requiredSepDeg: null,
-    la: null,
-    moonProfile: '',
     bonus: false,
   };
   for (const b of plan.blocks) {
-    const project = projects.find((p) => p.id === b.projectId);
-    const target = { raJ2000Deg: b.raDeg, decJ2000Deg: b.decDeg };
     for (const e of b.entries) {
-      const t = unixFromIso(e.atUtc);
-      const place = targetAt(target, t, site);
-      const moon = moonAt(t, site);
-      const sep = separationDeg(moon.raDeg, moon.decDeg, place.raDeg, place.decDeg);
-      const sunAlt = sunAt(t, site).altDeg;
-      const dark = project ? sunAlt < TWILIGHT_DEG[project.twilight] : null;
       const common = {
         key: `${b.id}:${String(e.seq)}`,
         blockId: b.id,
@@ -265,22 +311,16 @@ export function simulationView(
         rotationDeg: b.rotationDeg,
         raDeg: b.raDeg,
         decDeg: b.decDeg,
-        altDeg: round1(place.altDeg),
-        moonSepDeg: round1(sep),
-        dark,
+        ...skyOf(b, {
+          cmd: e.cmd,
+          atUtc: e.atUtc,
+          exposureLineId: 'exposureLineId' in e ? e.exposureLineId : null,
+        }),
       };
       if (e.cmd !== 'expose' && e.cmd !== 'expose_series') {
         protocol.push({ ...common, ...empty });
         continue;
       }
-      const info = lineOf.get(e.exposureLineId);
-      const profile = info?.line.moonProfileId ? profiles.get(info.line.moonProfileId) : undefined;
-      const state = {
-        moonAltDeg: moon.altDeg,
-        illumPct: moon.illumPct,
-        phaseDays: moon.phaseDays,
-        sepDeg: sep,
-      };
       const n = (counter.get(e.exposureLineId) ?? 0) + 1;
       counter.set(e.exposureLineId, n);
       protocol.push({
@@ -292,12 +332,6 @@ export function simulationView(
         offset: e.offset,
         binning: e.binning,
         readoutMode: e.readoutMode,
-        moonOk: profile ? moonSafe(profile, state) : true,
-        requiredSepDeg: profile
-          ? round1(requiredSeparationDeg(profile, moon.altDeg, moon.phaseDays))
-          : null,
-        la: profile !== undefined,
-        moonProfile: profile ? (opts.moonProfileNames[profile.id] ?? profile.id) : '',
         bonus: e.cmd === 'expose' ? e.bonus : false,
       });
     }

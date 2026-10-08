@@ -1,6 +1,7 @@
 /**
  * Ist + Plan im Web (AP-53c): Nummerierung je Belichtungszeile über die ganze Nacht (Analyse 07.10.2026) – vorher standen
- * die Ist-Zeilen ohne Nr. und das Geplante begann wieder bei 1.
+ * die Ist-Zeilen ohne Nr. und das Geplante begann wieder bei 1. Rig-Nacht 07./08.10.2026: die laufende Belichtung fehlte
+ * (Nr. um eins verschoben), der Laufzeiger stand am Blockstart, Höhe und Mond waren leer.
  */
 import type { ExecutedNight, StoredPlan } from '@nina-pm/shared';
 import { describe, expect, it } from 'vitest';
@@ -123,6 +124,125 @@ describe('actualView', () => {
       ['saved', 5],
       ['planned', 6],
       ['planned', 7],
+    ]);
+  });
+
+  it('zeigt die laufende Planzeile mit Laufzeiger, Nr. und Himmelsspalten; der Blockstart ist erledigt', () => {
+    const run: ExecutedNight = {
+      ...executed,
+      blocks: [
+        ...executed.blocks,
+        {
+          blockId: B2,
+          nightPlanId: null,
+          projectId: P,
+          panelId: null,
+          title: 'NGC 281',
+          kind: 'regular',
+          startUtc: '2026-09-18T04:50:00Z',
+          endUtc: null,
+          endReason: null,
+          exposures: 1,
+          running: true,
+        },
+      ],
+      segments: [
+        ...executed.segments,
+        {
+          blockId: B2,
+          projectId: P,
+          filter: 'Ha',
+          startUtc: '2026-09-18T04:52:00Z',
+          endUtc: '2026-09-18T04:57:00Z',
+          saved: 1,
+          failed: 0,
+          exposureS: 300,
+        },
+      ],
+      counters: { saved: 6, skipped: 0, failed: 1 },
+    } as ExecutedNight;
+    const plan = {
+      ...stored,
+      blocks: [
+        {
+          ...(stored.blocks[0] as object),
+          startUtc: '2026-09-18T04:50:00Z',
+          entries: [
+            { seq: 1, cmd: 'slew_center', atUtc: '2026-09-18T04:50:00Z', durationS: 90 },
+            expose(2, '2026-09-18T04:52:00Z'),
+            expose(3, '2026-09-18T04:57:30Z'),
+            { seq: 4, cmd: 'dither', atUtc: '2026-09-18T05:02:30Z', durationS: 18 },
+            expose(5, '2026-09-18T05:02:48Z'),
+            { seq: 6, cmd: 'end', atUtc: '2026-09-18T06:00:00Z' },
+          ],
+        },
+      ],
+    } as unknown as StoredPlan;
+    const v = actualView({
+      executed: run,
+      stored: plan,
+      first: null,
+      nowMs: NOW,
+      running: true,
+      computed: { blocks: [], filterBars: [], protocol: [] },
+      colorOfProject: () => 'var(--npm-chart-series-1)',
+      filterColor: () => 'var(--npm-chart-marker)',
+      names: new Map([[P, 'NGC 281']]),
+      gapLabel: () => '',
+      sky: (_b, e) => ({
+        altDeg: e.atUtc === '2026-09-18T04:57:30Z' ? 61.5 : 60,
+        moonSepDeg: 90,
+        dark: true,
+        moonOk: e.cmd === 'expose' ? true : null,
+        requiredSepDeg: null,
+        la: e.cmd === 'expose' ? false : null,
+        moonProfile: '',
+      }),
+    });
+    const rows = v?.protocol ?? [];
+    expect(rows.filter((r) => r.actual?.state === 'running').map((r) => [r.cmd, r.atUtc])).toEqual([
+      ['expose', '2026-09-18T04:57:30Z'],
+    ]);
+    expect(rows.find((r) => r.key === `ist:${B2}:start`)?.actual?.state).toBe('done');
+    const ahead = rows.filter((r) => !r.actual?.past);
+    expect(ahead.map((r) => [r.cmd, r.no, r.actual?.state])).toEqual([
+      ['expose', 7, 'running'],
+      ['dither', null, 'planned'],
+      ['expose', 8, 'planned'],
+      ['end', null, 'planned'],
+    ]);
+    expect(ahead[0]?.altDeg).toBe(61.5);
+    expect(ahead[0]?.moonOk).toBe(true);
+  });
+
+  it('Blockstart trägt den Laufzeiger, solange noch nichts gespeichert ist und keine Planzeile läuft', () => {
+    const v = actualView({
+      executed: {
+        ...executed,
+        blocks: [
+          {
+            ...executed.blocks[0],
+            blockId: null,
+            startUtc: '2026-09-18T04:58:00Z',
+            endUtc: null,
+            exposures: 0,
+            running: true,
+          },
+        ],
+        segments: [],
+      } as ExecutedNight,
+      stored: null,
+      first: null,
+      nowMs: NOW,
+      running: true,
+      computed: { blocks: [], filterBars: [], protocol: [] },
+      colorOfProject: () => 'var(--npm-chart-series-1)',
+      filterColor: () => 'var(--npm-chart-marker)',
+      names: new Map([[P, 'NGC 281']]),
+      gapLabel: () => '',
+    });
+    expect(v?.protocol.filter((r) => r.actual?.state === 'running').map((r) => r.cmd)).toEqual([
+      'slew_center',
     ]);
   });
 });
