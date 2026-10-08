@@ -83,7 +83,7 @@ describe('Sequencer-Hilfe', () => {
       'safety_wait_not_last',
     );
     await expectNoSeriousA11y();
-  });
+  }, 20_000); // lange Seite mit axe: auf dem CI-Runner knapp über 5 s (CI 08.10.2026)
 
   it('DE und EN haben dieselben Abschnitte', () => {
     const ids = (l: 'de' | 'en') => [
