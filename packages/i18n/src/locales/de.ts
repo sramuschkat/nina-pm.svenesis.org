@@ -1116,9 +1116,12 @@ export const de = {
     previewLater: 'Das Vorschaubild aus Himmelsfotos folgt in einem späteren Ausbauschritt.',
     research: 'Recherche',
     field: {
-      name: 'Name',
+      name: 'Projektname',
+      namePlaceholder: 'z. B. LDN 1228 oder IC 1795 – Fischkopfnebel',
+      nameHint: 'Leer lassen: Der Name kommt aus dem Zielnamen bzw. den Koordinaten.',
       targetName: 'Zielname',
       targetType: 'Objekttyp',
+      targetTypeNone: '– kein Typ –',
       startDate: 'Startdatum',
       dueDate: 'Zieltermin',
       nightKeyHint: 'Datum des Abends in Standortzeit (Nacht-Schlüssel).',

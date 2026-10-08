@@ -212,6 +212,7 @@ export function TextField({
   multiline,
   type = 'text',
   list,
+  placeholder,
   ...base
 }: FieldBase & {
   value: string;
@@ -220,6 +221,7 @@ export function TextField({
   multiline?: boolean;
   type?: 'text' | 'url';
   list?: string;
+  placeholder?: string;
 }) {
   const id = useId();
   const common = {
@@ -227,6 +229,7 @@ export function TextField({
     className: styles.input,
     value,
     maxLength,
+    placeholder,
     disabled: base.disabled,
     'aria-invalid': base.error ? true : undefined,
     'aria-describedby': describedBy(id, base.hint, base.error),

@@ -39,7 +39,9 @@ test('S-21: Suche, Nachtwerte am Rig, Projekt anlegen übernimmt das Katalogobje
 
   await row.getByRole('link', { name: 'Projekt anlegen' }).click();
   await page.waitForURL(/\/projekte\/neu\?objekt=NGC\+224/);
-  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('M 31 – Andromeda Galaxy');
+  await expect(page.getByLabel('Projektname', { exact: true })).toHaveValue(
+    'M 31 – Andromeda Galaxy',
+  );
   await expect(page.getByLabel('Zielname')).toHaveValue('M 31');
   await expect(page.getByText('Verknüpft mit M 31 aus dem Objektkatalog.')).toBeVisible();
   await page.getByRole('button', { name: 'Speichern' }).click();
