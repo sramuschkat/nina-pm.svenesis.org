@@ -7,7 +7,7 @@ import { formatNightKey } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { ProjectReport, ReportProject } from '../../api/client';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { FilterChip } from '../../components/FilterChip';
 import { useEquipmentList } from '../equipment/shared';
 import styles from './sessions.module.css';
@@ -38,7 +38,7 @@ export function ProjectSection({
           <span className={styles.reportCreator}>
             <Person id={p.createdBy} compact />
           </span>{' '}
-          <CommentCount count={p.commentCount} />
+          <ProjectCommentCount projectId={p.projectId} count={p.commentCount} />
           <span className={styles.muted}>
             {' '}
             · {p.rigName ?? '–'} · {n(p.percentDone)} % ·{' '}

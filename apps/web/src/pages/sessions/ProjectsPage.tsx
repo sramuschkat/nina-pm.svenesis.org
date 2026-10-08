@@ -19,7 +19,7 @@ import {
   type ForecastView,
   type ReportProject,
 } from '../../api/client';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { FilterChip } from '../../components/FilterChip';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { Person, useMemberNames } from '../../lib/member';
@@ -222,7 +222,7 @@ function ProjectRow({
         <div className={styles.projectName}>
           <span className={styles.projectTitle}>
             <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>
-            <CommentCount count={p.commentCount} />
+            <ProjectCommentCount projectId={p.projectId} count={p.commentCount} />
           </span>
           <Person id={p.createdBy} compact />
           <span className={styles.muted}>

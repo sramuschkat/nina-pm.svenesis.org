@@ -477,6 +477,11 @@ export const de = {
   /** Kommentare am Projekt (FA-PRJ-17): Reiter im Projekt-Editor und Sprechblase in Listen. */
   comments: {
     count: 'Kommentare: {{count}}',
+    preview: {
+      title: 'Letzte Kommentare ({{count}})',
+      older: '… und {{count}} ältere',
+      error: 'Kommentare konnten nicht geladen werden.',
+    },
     new: 'Neuer Kommentar (Markdown, Emoji erlaubt)',
     add: 'Kommentieren',
     empty: 'Noch keine Kommentare.',

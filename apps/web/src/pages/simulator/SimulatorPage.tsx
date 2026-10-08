@@ -57,7 +57,7 @@ import type {
 } from './simulate';
 import { moonProfileLabel } from '../../lib/moon-profile-label';
 import { useUniformWidth } from '../../lib/use-uniform-width';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { useCommentCounts } from '../../lib/use-comment-counts';
 import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
@@ -829,7 +829,7 @@ function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comm
         >
           <actionIcons.external size={ICON_SIZE.table} aria-hidden />
         </Link>
-        <CommentCount count={comments} />
+        <ProjectCommentCount projectId={card.projectId} count={comments} />
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
         <span className={styles.tag}>{t(text.tag)}</span>
       </h3>
@@ -924,7 +924,7 @@ function TargetCardView({
         >
           <actionIcons.external size={ICON_SIZE.table} aria-hidden />
         </Link>
-        <CommentCount count={comments} />
+        <ProjectCommentCount projectId={card.projectId} count={comments} />
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
         {card.state === 'running' ? (
           // Laufende Nacht aus dem gespeicherten Plan (07.10.2026): dieser Block läuft jetzt an der Rig.

@@ -42,7 +42,7 @@ import { useNightPlan, type NightPlanState } from '../simulator/use-night-plan';
 import type { DoneCard } from '../simulator/simulate';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
 import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { useCommentCounts } from '../../lib/use-comment-counts';
 import styles from './tonight.module.css';
 import { MoonCalendar } from './MoonCalendar';
@@ -409,7 +409,7 @@ function RigCard({
       cell: (p) => (
         <>
           <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>{' '}
-          <CommentCount count={comments(p.projectId)} />
+          <ProjectCommentCount projectId={p.projectId} count={comments(p.projectId)} />
           {!p.done && p.state === 'running' ? (
             <span className={styles.muted}> · {t('tonight.runningTag')}</span>
           ) : null}

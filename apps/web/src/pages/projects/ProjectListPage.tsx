@@ -33,7 +33,7 @@ import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
@@ -694,7 +694,7 @@ function ProjectTable({
       cell: (p) => (
         <span className={styles.nameCell}>
           <Link to={`/projekte/${p.id}`}>{p.name}</Link>
-          <CommentCount count={p.commentCount} />
+          <ProjectCommentCount projectId={p.id} count={p.commentCount} />
         </span>
       ),
     },
@@ -1003,7 +1003,7 @@ function ProjectCard({
           ) : null}
           {p.targetType ? <span className={styles.typeTag}>{p.targetType}</span> : null}
           <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />
-          <CommentCount count={p.commentCount} />
+          <ProjectCommentCount projectId={p.id} count={p.commentCount} />
         </h3>
         <Tabs
           label={t('projectList.cardTabs')}

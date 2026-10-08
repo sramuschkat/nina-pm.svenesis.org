@@ -477,6 +477,11 @@ export const en: Messages = {
   /** Project comments (FA-PRJ-17): project editor tab and speech bubble in lists. */
   comments: {
     count: 'Comments: {{count}}',
+    preview: {
+      title: 'Latest comments ({{count}})',
+      older: '… and {{count}} older',
+      error: 'Comments could not be loaded.',
+    },
     new: 'New comment (Markdown, emoji allowed)',
     add: 'Comment',
     empty: 'No comments yet.',

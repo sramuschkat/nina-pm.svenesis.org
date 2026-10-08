@@ -47,7 +47,7 @@ import { SiteWeather } from '../weather/SiteWeather';
 import { useNow, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
 import { MemberAvatarFor, Person } from '../../lib/member';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 
 /** Gleiche Abfrage-Schlüssel wie Warteschlange, Projektliste und Sessions: ein Cache, keine Doppelabrufe. */
 const QUEUE_KEY = ['projects', 'queue'] as const;
@@ -484,7 +484,7 @@ function QueueRow({
         <span className={`${styles.muted} ${styles.byLine}`}>
           <MemberAvatarFor id={q.createdBy} />
           {t('home.queue.by', { name: q.createdByName })}
-          <CommentCount count={q.commentCount} />
+          <ProjectCommentCount projectId={q.projectId} count={q.commentCount} />
         </span>
       </span>
       <EffortChip effort={q.effort} size="sm" />
@@ -540,7 +540,7 @@ function ProjectsCard() {
           <Link className={styles.projectName} to={`/projekte/${p.id}`}>
             {p.name}
           </Link>{' '}
-          <CommentCount count={p.commentCount} />
+          <ProjectCommentCount projectId={p.id} count={p.commentCount} />
         </>
       ),
     },
