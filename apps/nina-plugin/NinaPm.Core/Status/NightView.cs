@@ -106,7 +106,8 @@ public sealed record NightViewInputs(
     DateTimeOffset Now,
     bool FlatsRunning = false,
     BlockActivity? Activity = null,
-    Entries? LastEntry = null);
+    Entries? LastEntry = null,
+    IReadOnlyDictionary<int, EntryOutcome>? Outcomes = null);
 
 /// <summary>
 /// Aufbau der Fenster im Imaging-Reiter (AP-53b, execution.md §10) aus zwei Quellen: **bis jetzt** das Nachtjournal
@@ -468,13 +469,28 @@ public static class NightViewBuilder
                     PanelName(block.ProjectId, block.PanelId), null, "", null, null, null, null, null, block.RotationDeg, block.RaDeg, block.DecDeg,
                     Alt(block.ProjectId, activity.SinceUtc))
                 { DurationS = activity.UntilUtc is { } u ? (u - activity.SinceUtc).TotalSeconds : null });
+            // AP-68: Erledigtes bzw. Entfallenes nach der letzten Belichtung als ✓ bzw. ↷ statt ○ (Dither, Autofokus, Warten);
+            // nach einem Flip im Block steht der Flip als ✓ aus dem Journal da – der geplante Flip nicht noch einmal, Warten
+            // davor und Zentrieren danach entfallen.
+            var flippedInBlock = journal.Any(e => e.Kind == JournalKinds.Flip && e.Data.BlockId == block.Id);
             for (var k = 0; k < entries.Count; k++)
             {
                 var e = entries[k];
                 if (from >= 0 ? k < from : e.AtUtc < now) continue;
-                rows.Add(k == activityIndex
-                    ? EntryRow(block, e, activity!.SinceUtc, ActualState.Running, current: true)
-                    : EntryRow(block, e, e.AtUtc, ActualState.Planned, current: false));
+                if (k == activityIndex)
+                {
+                    rows.Add(EntryRow(block, e, activity!.SinceUtc, ActualState.Running, current: true));
+                    continue;
+                }
+                if (flippedInBlock && e.Cmd == EntriesCmd.Meridian_flip) continue;
+                var outcome = i.Outcomes is { } o && o.TryGetValue(e.Seq, out var x) ? x : (EntryOutcome?)null;
+                if (outcome is null && flippedInBlock && FlipCompanion(entries, k)) outcome = EntryOutcome.Skipped;
+                rows.Add(outcome switch
+                {
+                    EntryOutcome.Done => EntryRow(block, e, e.AtUtc, ActualState.Done, current: false) with { Past = true },
+                    EntryOutcome.Skipped => EntryRow(block, e, e.AtUtc, ActualState.Skipped, current: false) with { Past = true },
+                    _ => EntryRow(block, e, e.AtUtc, ActualState.Planned, current: false),
+                });
             }
         }
         foreach (var b in future.Where(b => running?.Block.Id != b.Id))
@@ -526,8 +542,15 @@ public static class NightViewBuilder
     {
         BlockActivityKind.Flip or BlockActivityKind.WaitFlip => "meridian_flip",
         BlockActivityKind.Centering => "slew_center",
+        BlockActivityKind.Autofocus => "autofocus_hint",
+        BlockActivityKind.Dither => "dither",
         _ => "wait",
     };
+
+    /// <summary><c>wait</c> direkt vor bzw. <c>slew_center</c> direkt nach einem geplanten <c>meridian_flip</c>.</summary>
+    private static bool FlipCompanion(IReadOnlyList<Entries> entries, int k) =>
+        entries[k].Cmd == EntriesCmd.Wait && k + 1 < entries.Count && entries[k + 1].Cmd == EntriesCmd.Meridian_flip
+        || entries[k].Cmd is EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate && k > 0 && entries[k - 1].Cmd == EntriesCmd.Meridian_flip;
 
     private static DateTimeOffset Max(DateTimeOffset a, DateTimeOffset b) => a > b ? a : b;
 

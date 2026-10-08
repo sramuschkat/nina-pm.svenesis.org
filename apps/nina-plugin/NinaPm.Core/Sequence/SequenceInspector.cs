@@ -118,13 +118,14 @@ public static class SequenceInspector
         if (wait < 0) Add("start_wait_missing", "Start: Wait for Sun Altitude missing.");
         if (unpark >= 0 && wait > unpark) Add("start_unpark_before_wait", "Start: Unpark comes before the wait – wait first, then unpark (H3).");
         if (Index("CoolCamera") < 0) Add("start_cool_missing", "Start: Cool Camera missing.");
-        if (Index("RunAutofocus") < 0) Add("start_autofocus_missing", "Start: autofocus before the first target missing (NT-24).");
         foreach (var t in new[] { "CoolCamera", "RunAutofocus" })
             if (unpark >= 0 && Index(t) >= 0 && Index(t) < unpark) Add("start_order", $"Start: {t} comes before unparking.");
 
         // ---- Zielcontainer und „Blöcke“ ----
+        const string afMissing = "Start: autofocus before the first target missing (NT-24).";
         if (box is null)
         {
+            if (Index("RunAutofocus") < 0) Add("start_autofocus_missing", afMissing);
             Add("box_missing", "No NINA-PM Instructions in the sequence.");
             return d;
         }
@@ -138,6 +139,12 @@ public static class SequenceInspector
         var blocks = below.Count >= 4 && parent is not null && !ReferenceEquals(parent, target) && parent.HasCondition("NightLoopCondition")
             ? parent
             : null;
+        // Autofokus vor dem ersten Ziel (NT-24): im Start-Bereich oder im Wiederherstellungsteil von „Ziel“ vor „Blöcke“
+        // (AP-68) – z. B. erst nach Dach und Abdeckung auf, die im Start-Bereich noch zu sind (Starfront-Sequenz 08.10.2026).
+        var restore = target is not null && below.Count >= 3
+            ? SeqNode.Flatten(target.ItemList.Where(n => !n.Disabled).TakeWhile(n => !ReferenceEquals(n, below[2]))).Select(n => n.Type)
+            : [];
+        if (Index("RunAutofocus") < 0 && !restore.Contains("RunAutofocus")) Add("start_autofocus_missing", afMissing);
         if (blocks is null)
             Add("blocks_container_missing", "NINA-PM Instructions belong in a container \"Blöcke\" (blocks) with NINA-PM Night Loop inside \"Ziel\" (target).");
         if (target is null || !target.HasCondition("NightLoopCondition"))

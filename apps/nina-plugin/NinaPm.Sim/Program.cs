@@ -131,6 +131,8 @@ while (!finished && clock.UtcNow < end)
     if (pendingStart)
     {
         pendingStart = false;
+        // Autofokus im Start-Bereich der Sequenz (NT-24), ohne Dauer: sonst fokussierte das Plugin vor dem ersten Block (AP-68).
+        if (run.Setup.StartAutofocus) world.LastAutofocusUtc = clock.UtcNow;
         runtime ??= new SimRuntime(clock, world, apiBase, dbPath, logWriter);
         sequenceStop = new CancellationTokenSource();
         sequence = new SimSequence(runtime, world, logWriter, run.DayLoop);

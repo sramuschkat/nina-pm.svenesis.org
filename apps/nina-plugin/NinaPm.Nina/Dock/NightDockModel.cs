@@ -33,7 +33,7 @@ internal sealed class NightDockModel
     private DispatcherTimer? timer;
     private int subscribers;
 
-    private sealed record SimulationEntry(NinaSimulation? Simulation, DateTimeOffset AttemptUtc, Guid? PlanId, bool Running);
+    private sealed record SimulationEntry(NinaSimulation? Simulation, DateTimeOffset AttemptUtc, Guid? PlanId, bool Running, bool Invalid = false);
 
     public DockSnapshot? Current { get; private set; }
 
@@ -96,14 +96,16 @@ internal sealed class NightDockModel
     {
         var now = NinaPm.Core.Time.SystemClock.Instance.UtcNow;
         simulations.TryGetValue(night, out var entry);
-        if (SimulationRefresh.Due(entry?.AttemptUtc, entry?.PlanId, plan?.NightPlanId, now, runtime.Options.OfflineMode, entry is { Running: true }))
+        if (SimulationRefresh.Due(entry?.AttemptUtc, entry?.PlanId, plan?.NightPlanId, now, runtime.Options.OfflineMode, entry is { Running: true },
+            entry is { Invalid: true }))
         {
             simulations[night] = new SimulationEntry(entry?.Simulation, now, plan?.NightPlanId, true);
             _ = Task.Run(async () =>
             {
                 var outcome = await SimulatorService.RunAsync(runtime.SimulationApi, runtime.Options.OfflineMode, night, runtime.Log,
                     CancellationToken.None).ConfigureAwait(false);
-                simulations[night] = new SimulationEntry(outcome.Ok ? outcome.Simulation : entry?.Simulation, now, plan?.NightPlanId, false);
+                simulations[night] = new SimulationEntry(outcome.Ok ? outcome.Simulation : entry?.Simulation, now, plan?.NightPlanId, false,
+                    outcome.State == SimulatorState.NightInvalid);
             });
         }
         // Ältere Nächte vergessen.

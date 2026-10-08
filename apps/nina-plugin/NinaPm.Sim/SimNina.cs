@@ -98,7 +98,10 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
 
     public bool NinaRecentersAfterFlip => world.Recenter;
 
-    public string? PierSide() => world.PierKnown ? world.Pier : null;
+    public string? PierSide() =>
+        !world.PierKnown ? null
+        : world.PierReportedFromUtc is { } from && clock.UtcNow < from ? (world.Pier == "east" ? "west" : "east")
+        : world.Pier;
 
     public double? MinutesToEarliestFlip() =>
         world.EarliestFlipUtc is { } e ? (e - clock.UtcNow).TotalMinutes : 600;
@@ -111,6 +114,18 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
         await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.FlipDurationS), token).ConfigureAwait(false);
         world.Pier = "east";
         world.Flips++;
+        if (world.PierReportDelayS > 0) world.PierReportedFromUtc = clock.UtcNow.AddSeconds(world.PierReportDelayS);
+    }
+
+    /// <summary>Autofokus des Plugins (NINAs <em>Run Autofocus</em>, AP-68): Dauer wie NINAs Trigger, gemeldet über den Fokussierer.</summary>
+    public async Task<bool> AutofocusAsync(CancellationToken token)
+    {
+        FileLogSink.Sim(logWriterForSim, clock, "NINA autofocus (NINA-PM)");
+        runner()?.Autofocus.Starting(currentFilter);
+        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.AfDurationS), token).ConfigureAwait(false);
+        world.LastAutofocusUtc = clock.UtcNow;
+        runner()?.Autofocus.Completed(currentFilter);
+        return true;
     }
 
     public Task RunTriggersAsync(CancellationToken token) => NinaFlipTriggerAsync(token);
@@ -146,7 +161,10 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
         if (world.ProfileFilters.Count > 0 && currentFilter is null) return ExposureResult.Skipped;
         if (rules.ChooseReadout(entry, world.ReadoutModes).Kind == ReadoutResolutionKind.NotFound) return ExposureResult.Skipped;
         // NINAs Trigger-Walk vor der Belichtung: ab der frühesten Flipzeit flippt der Meridian-Flip-Trigger (±1 Belichtung).
+        // Wie der Adapter (AP-68): nach einem Flip nicht belichten, der Kern zentriert erst.
+        var pierBefore = PierSide();
         await NinaFlipTriggerAsync(token).ConfigureAwait(false);
+        if (pierBefore is not null && PierSide() is { } pierAfter && pierAfter != pierBefore) return ExposureResult.Flipped;
         // Autofokus-Trigger: im Transit ohne Erlaubnis der Beobachtung unterdrückt (dieselbe Regel wie der Adapter).
         const string af = "AutofocusAfterTimeTrigger";
         var afSuppressed = world.AfTrigger && TriggerPolicy.Suppressed(af, transitTriggers);
@@ -228,7 +246,8 @@ public sealed class SimSettings(SimWorld world, double latDeg, double lonDeg) : 
         {
             Autofocus = world.AfTrigger ? ["AutofocusAfterTimeTrigger"] : [],
             Dither = world.DitherTrigger ? ["DitherAfterExposures"] : [],
-            AutofocusAfterTimeMin = null,
+            // Wie der Adapter (Amount des Triggers): sonst plant der Server ohne autofocus_hint (M7) – bis AP-68 fehlte es hier.
+            AutofocusAfterTimeMin = world.AfTrigger && world.AfEveryMin > 0 ? world.AfEveryMin : null,
         },
     };
 }

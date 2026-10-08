@@ -374,7 +374,10 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
         var item = new TakeExposureItem(this, m, block, entry, currentFilter, Uuid7.New(clock), temperatureDeviation);
         item.AttachNewParent(Box);
         var progress = Progress ?? new Progress<ApplicationStatus>();
+        var pierBefore = PierSide();
         await TriggerWalker.RunAsync(Box, after: false, previousItem, item, progress, Runtime, transitTriggers, token);
+        // NINAs Meridian-Flip-Trigger hat vor der Belichtung geflippt: nicht unzentriert belichten, der Kern zentriert erst (AP-68).
+        if (pierBefore is not null && PierSide() is { } pierAfter && pierAfter != pierBefore) return ExposureResult.Flipped;
         try
         {
             await item.Execute(progress, token);
@@ -412,6 +415,36 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     public async Task DitherAsync(CancellationToken token)
     {
         if (m.Guider.GetInfo().Connected) await m.Guider.Dither(token);
+    }
+
+    /// <summary>
+    /// Eigener Autofokus (AP-68) über NINAs <em>Run Autofocus</em> am Container wie <see cref="SlewCenterAsync"/>: NINA legt das
+    /// Ergebnis in die Autofokus-Historie, das setzt <em>Autofokus nach Zeit</em> zurück; Guiding pausiert NINAs Autofokus
+    /// selbst (Profil <c>AutoFocusDisableGuiding</c>). Ohne Fokussierer bzw. Fabrik kein Autofokus; ein Fehlschlag wirft NINA
+    /// als Ausnahme.
+    /// </summary>
+    public async Task<bool> AutofocusAsync(CancellationToken token)
+    {
+        if (m.AutoFocusFactory is not { } factory || m.Focuser is not { } focuser || !focuser.GetInfo().Connected) return false;
+        var item = new NINA.Sequencer.SequenceItem.Autofocus.RunAutofocus(m.Profile, m.ImageHistory, m.Camera, m.FilterWheel, focuser, factory)
+        {
+            WindowServiceFactory = m.WindowServiceFactory,
+        };
+        item.AttachNewParent(Box);
+        try
+        {
+            await item.Execute(Progress ?? new Progress<ApplicationStatus>(), token);
+            return true;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"NINA-PM: autofocus failed: {ex.Message}");
+            return false;
+        }
     }
 
     // ---- IBlockHost: Flip und Rotation (AP-16f, execution.md §4.5) ------------------------------------------

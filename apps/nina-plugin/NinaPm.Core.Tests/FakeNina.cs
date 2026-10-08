@@ -101,8 +101,23 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     /// <summary><c>temperatureDeviation</c> je Belichtung in Reihenfolge.</summary>
     public List<bool> Deviations { get; } = [];
 
+    /// <summary>
+    /// NINAs Trigger flippt vor dem n-ten Belichtungsaufruf (1-basiert), der Adapter belichtet dann nicht (AP-68):
+    /// <see cref="ExposureResult.Flipped"/> nach <see cref="FlipDurationS"/>.
+    /// </summary>
+    public int FlipBeforeExposure { get; set; }
+
+    private int exposeCalls;
+
     public Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
     {
+        if (++exposeCalls == FlipBeforeExposure && Pier is not null)
+        {
+            Calls.Add($"nina-flip@{UtcText.Format(clock.UtcNow)}");
+            Pier = Pier == "west" ? "east" : "west";
+            clock.Advance(TimeSpan.FromSeconds(FlipDurationS));
+            return Task.FromResult(ExposureResult.Flipped);
+        }
         Deviations.Add(temperatureDeviation);
         exposures++;
         OnExposure?.Invoke(exposures);
@@ -138,7 +153,38 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     /// <summary>Pier-Seite der Montierung; <c>null</c> = unbekannt.</summary>
     public string? Pier { get; set; }
 
-    public string? PierSide() => Pier;
+    public string? PierSide()
+    {
+        if (pendingPier is { } p && clock.UtcNow >= p.FromUtc)
+        {
+            Pier = p.Side;
+            pendingPier = null;
+        }
+        return Pier;
+    }
+
+    /// <summary>Montierung meldet die neue Pier-Seite erst so viele Sekunden nach dem Flip (ASI am Starfront-Rig, AP-68).</summary>
+    public double PierReportDelayS { get; set; }
+
+    private (string Side, DateTimeOffset FromUtc)? pendingPier;
+
+    // ---- Autofokus (AP-68) ----
+
+    /// <summary>Dauer eines Autofokus in s.</summary>
+    public double AutofocusS { get; set; } = 180;
+
+    public bool AutofocusSucceeds { get; set; } = true;
+
+    public int Autofocuses { get; private set; }
+
+    public Task<bool> AutofocusAsync(CancellationToken token)
+    {
+        Calls.Add($"af@{UtcText.Format(clock.UtcNow)}");
+        Autofocuses++;
+        clock.Advance(TimeSpan.FromSeconds(AutofocusS));
+        if (AutofocusSucceeds) LastAutofocusUtc = clock.UtcNow;
+        return Task.FromResult(AutofocusSucceeds);
+    }
 
     /// <summary>Zeitpunkt, ab dem NINAs früheste Flipzeit erreicht ist (<c>null</c>: unbekannt).</summary>
     public DateTimeOffset? EarliestFlipUtc { get; set; }
@@ -154,7 +200,12 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     {
         Calls.Add("flip");
         clock.Advance(TimeSpan.FromSeconds(FlipTriggerS));
-        if (FlipOnTriggers && Pier is not null) Pier = Pier == "west" ? "east" : "west";
+        if (FlipOnTriggers && Pier is not null)
+        {
+            var side = Pier == "west" ? "east" : "west";
+            if (PierReportDelayS > 0) pendingPier = (side, clock.UtcNow.AddSeconds(PierReportDelayS));
+            else Pier = side;
+        }
         return Task.CompletedTask;
     }
 

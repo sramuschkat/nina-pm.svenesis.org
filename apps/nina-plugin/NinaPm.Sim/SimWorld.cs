@@ -48,6 +48,10 @@ public sealed class SimWorld(SimSetup setup)
 
     /// <summary>Montierung: Pier-Seite (<c>west</c> vor, <c>east</c> nach dem Flip) und früheste Flipzeit des Ziels.</summary>
     public string Pier { get; set; } = "west";
+
+    /// <summary>Verzögerte Pier-Seite (AP-68): bis zu diesem Zeitpunkt meldet die Montierung noch die Seite vor dem Flip.</summary>
+    public DateTimeOffset? PierReportedFromUtc { get; set; }
+    public double PierReportDelayS { get; set; } = setup.PierReportDelayS;
     public DateTimeOffset? EarliestFlipUtc { get; set; }
     public int Flips { get; set; }
     public bool NetworkDown { get; set; }

@@ -70,7 +70,39 @@ public sealed record BlockRunOptions(
     DateTimeOffset? SoftEndUtc = null,
     Action<Blocks, DateTimeOffset, bool>? Started = null,
     Action<Blocks, Entries>? EntrySkipped = null,
-    Func<Blocks, bool>? FlipDoneTonight = null);
+    Func<Blocks, bool>? FlipDoneTonight = null,
+    AutofocusSettings? Autofocus = null);
+
+/// <summary>
+/// Autofokus des Plugins (AP-68, NT-24): Takt des Rigs (<c>afEveryMin</c>, nur &gt; 0 schaltet ihn ein), geplante Dauer
+/// (<c>afDurationS</c>) und Ende des letzten Blocks dieser Nacht (<c>null</c> = erster Block der Nacht).
+/// </summary>
+public sealed record AutofocusSettings(double EveryMin, double DurationS, DateTimeOffset? LastBlockEndUtc);
+
+/// <summary>
+/// Wann das Plugin selbst fokussiert (AP-68, Rig-Nächte 06.–08.10.2026). Am Eintrag <c>autofocus_hint</c> startet es NINAs
+/// <em>Run Autofocus</em> – das setzt NINAs Timer <em>Autofokus nach Zeit</em> zurück, der Autofokus läuft einmal statt
+/// Warten im Plan-Slot plus NINAs Autofokus zu anderer Zeit. Hat NINA vor kurzem fokussiert (weniger als der halbe Takt,
+/// z. B. Autofokus nach dem Flip), entfällt er. Vor dem ersten Block der Nacht und nach mehr als <see cref="IdleMin"/>
+/// ohne Block fokussiert es, wenn der letzte Autofokus älter als <see cref="StaleAfter"/> ist. Nie in einer Transit-Serie;
+/// vor einem Transit-Block nur, wenn bis zur Serie noch <see cref="TransitReserve"/> bleibt.
+/// </summary>
+public static class AutofocusRules
+{
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan IdleMin = TimeSpan.FromMinutes(20);
+    public static readonly TimeSpan TransitReserve = TimeSpan.FromMinutes(10);
+
+    /// <summary>Am Eintrag <c>autofocus_hint</c>: fokussieren, außer der letzte Autofokus liegt weniger als den halben Takt zurück.</summary>
+    public static bool HintDue(AutofocusSettings? af, DateTimeOffset? lastAutofocusUtc, DateTimeOffset now) =>
+        af is { EveryMin: > 0 } a && (lastAutofocusUtc is not { } last || now - last >= TimeSpan.FromMinutes(a.EveryMin / 2));
+
+    /// <summary>Vor dem Block: erster Block der Nacht bzw. lange ohne Block, und der letzte Autofokus ist alt.</summary>
+    public static bool BeforeBlockDue(AutofocusSettings? af, DateTimeOffset? lastAutofocusUtc, DateTimeOffset now) =>
+        af is { EveryMin: > 0 } a
+        && (a.LastBlockEndUtc is not { } end || now - end > IdleMin)
+        && (lastAutofocusUtc is not { } last || now - last > StaleAfter);
+}
 
 /// <summary>Was ein laufender Block gerade tut, wenn keine Belichtung läuft (Fenster im Imaging-Reiter, Plugin 0.4.18).</summary>
 public enum BlockActivityKind
@@ -92,6 +124,22 @@ public enum BlockActivityKind
 
     /// <summary>Slew bzw. Zentrieren (Blockbeginn oder nach einem Flip).</summary>
     Centering,
+
+    /// <summary>Autofokus des Plugins (Eintrag <c>autofocus_hint</c> oder vor dem Block, AP-68).</summary>
+    Autofocus,
+
+    /// <summary>Dither zwischen zwei Belichtungen.</summary>
+    Dither,
+}
+
+/// <summary>Was aus einem Plan-Eintrag ohne Belichtung im laufenden Block wurde (Protokoll im Fenster, AP-68).</summary>
+public enum EntryOutcome
+{
+    /// <summary>Ausgeführt (Dither, Autofokus, Flip, Zentrieren, Warten).</summary>
+    Done,
+
+    /// <summary>Entfallen: Arbeit schon getan (Flip durch NINA, Autofokus kurz vorher) oder mit verpassten Belichtungen übersprungen.</summary>
+    Skipped,
 }
 
 /// <summary>
@@ -143,6 +191,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     public BlockActivity? Activity { get; private set; }
 
     /// <summary>
+    /// Erledigte bzw. entfallene Einträge ohne Belichtung des laufenden Blocks nach <c>seq</c> (Fenster, AP-68): vorher standen
+    /// Dither, Autofokus und der geplante Flip nach ihrer Ausführung bis zur nächsten Belichtung als „geplant“ da.
+    /// </summary>
+    public IReadOnlyDictionary<int, EntryOutcome> EntryOutcomes => outcomes;
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, EntryOutcome> outcomes = new();
+
+    /// <summary>
     /// Pier-Seite nach einem erkannten Flip je Ziel (Projekt, Panel) in dieser Laufzeit: Flippte NINA in Block A ungeplant,
     /// ist der Plan-Flip desselben Ziels in einem späteren Block B erledigt, solange die Montierung noch auf dieser Seite
     /// steht (Analyse 07.10.2026). Nur zusammen mit <see cref="BlockRunOptions.FlipDoneTonight"/> (Nachtgrenze).
@@ -180,6 +236,13 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         public bool RecenterPending { get; set; }
         public bool Flipped { get; set; }
 
+        /// <summary>
+        /// Plan-Flip ohne erkannten Seitenwechsel (<c>FLIP_UNDETECTED</c>): Pier-Seite davor und Flip-Daten. Meldet die
+        /// Montierung die neue Seite erst später (ASI-Montierung am Starfront-Rig, Rig-Nacht 07./08.10.2026), gilt der Flip
+        /// vor der nächsten Belichtung als erkannt und das Plugin zentriert (AP-68) – vorher blieb er unerkannt.
+        /// </summary>
+        public (string PierBefore, double DurationS, DateTimeOffset EndedUtc, double? ActionS)? UndetectedFlip { get; set; }
+
         /// <summary>Transitserie begonnen (<c>TRANSIT_START</c> gemeldet).</summary>
         public bool SeriesStarted { get; set; }
 
@@ -211,6 +274,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// frei gewordene Flip- bzw. Slew-Zeit mit <c>WAIT_PLAN</c> ab.
     /// </summary>
     private void Credit(Run run, double plannedS) => Shift(run, -TimeSpan.FromSeconds(plannedS), pull: true);
+
+    /// <summary>
+    /// Wie <see cref="Overrun"/>, aber eine kürzere als die geplante Dauer zieht die Planuhr vor (AP-68): für Flip, Zentrieren
+    /// nach dem Flip und Autofokus, deren Arbeit getan ist – sonst wartete die Rig die frei gewordene Zeit mit <c>WAIT_PLAN</c>
+    /// ab (VM-Lauf 07.10.2026: Flip 92 s statt 120 s, Zentrieren entfallen, 125 s Warten).
+    /// </summary>
+    private void Settle(Run run, DateTimeOffset started, double plannedS) =>
+        Shift(run, clock.UtcNow - started - TimeSpan.FromSeconds(plannedS), pull: true);
 
     private static void Shift(Run run, TimeSpan delta, bool pull)
     {
@@ -251,6 +322,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     {
         options ??= new BlockRunOptions();
         var run = new Run(block, options) { DownloadS = options.DownloadS ?? DownloadS };
+        outcomes.Clear();
         var temperatureWarned = false;
         bool CheckCooling()
         {
@@ -312,6 +384,10 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
 
         log.Event("BLOCK_START", ("id", block.Id), ("atUtc", clock.UtcNow));
         options.Started?.Invoke(block, activeFrom, slewSkipped);
+        // Vor dem ersten Block der Nacht bzw. nach langem Warten: Fokus auffrischen (AP-68), auf dem Ziel und vor dem Guiding.
+        // Die Zeit geht über den Startverzug in den Verzug ein.
+        if (AutofocusRules.BeforeBlockDue(options.Autofocus, host.LastAutofocusUtc, clock.UtcNow) && TransitAllowsAutofocus(block))
+            await AutofocusAsync(run, "block_start", seq: null, token).ConfigureAwait(false);
         // Startverzug: tatsächlicher minus geplanter Beginn der Einträge nach dem Zentrieren (§4.2, NT-21).
         var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
         if (plannedEntries is { } p && clock.UtcNow > p) run.Offset = clock.UtcNow - p;
@@ -384,16 +460,52 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     private bool NothingFits(Run run)
     {
         var block = run.Block;
-        var now = clock.UtcNow;
+        // Ab dem Ende von Slew und Zentrieren (geplante Dauer; entfällt der Slew, ab jetzt) und zeitgeführt nicht vor dem
+        // geplanten Zeitpunkt der Belichtung plus Startverzug (AP-68): vorher fuhr die Rig zu einem Block, in den nach dem
+        // Zentrieren keine Belichtung mehr passte (Rig-Nacht 07./08.10.2026, NGC 7380: 22,8 min ohne Belichtung).
+        var slewS = host.CanSkipSlew(block) ? 0
+            : block.Entries.FirstOrDefault(x => x.Cmd is EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate)?.DurationS ?? 0;
+        var ready = clock.UtcNow.AddSeconds(slewS);
+        var timeAware = (run.Options.Mode ?? Mode) == PlaybackMode.TimeAware;
+        var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
+        var late = plannedEntries is { } p && ready > p ? ready - p : TimeSpan.Zero;
         var blockEnd = run.Options.SoftEndUtc is { } soft && soft > block.EndUtc ? soft : block.EndUtc;
         foreach (var e in block.Entries.Where(x => x.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series))
         {
             if (e.LastOfNight == true) return false;
+            var series = e.Cmd == EntriesCmd.Expose_series;
+            var start = timeAware && !series && e.AtUtc + late > ready ? e.AtUtc + late : ready;
             // Weiches Blockende nur für eine Belichtung, die vor endUtc beginnt (PreCheck: endUtc > now).
-            var end = e.Cmd == EntriesCmd.Expose_series ? (e.UntilUtc is { } u && u < block.EndUtc ? u : block.EndUtc) : blockEnd;
-            if (now.AddSeconds((e.ExposureS ?? 0) + run.DownloadS) <= end) return false;
+            var end = series ? (e.UntilUtc is { } u && u < block.EndUtc ? u : block.EndUtc) : start < block.EndUtc ? blockEnd : block.EndUtc;
+            if (start.AddSeconds((e.ExposureS ?? 0) + run.DownloadS) <= end) return false;
         }
         return true;
+    }
+
+    /// <summary>Transit-Block: Autofokus nur vor dem Vorlauf, mit mindestens <see cref="AutofocusRules.TransitReserve"/> bis zur Serie.</summary>
+    private bool TransitAllowsAutofocus(Blocks block) =>
+        block.Kind != BlocksKind.Transit
+        || block.Entries.FirstOrDefault(e => e.Cmd == EntriesCmd.Expose_series) is not { } s
+        || s.AtUtc - clock.UtcNow >= AutofocusRules.TransitReserve;
+
+    /// <summary>
+    /// Autofokus des Plugins über NINAs <em>Run Autofocus</em> (AP-68). Scheitert er, läuft der Block weiter (Hinweis im
+    /// Log); NINAs Fokussierer-Mediator meldet Beginn und Ergebnis wie bei jedem Autofokus (<c>AF</c>, AP-65).
+    /// </summary>
+    private async Task<bool> AutofocusAsync(Run run, string reason, int? seq, CancellationToken token)
+    {
+        log.Event("AF_START", ("block", run.Block.Id), ("reason", reason));
+        Activity = new BlockActivity(BlockActivityKind.Autofocus, clock.UtcNow, Seq: seq);
+        try
+        {
+            if (await host.AutofocusAsync(token).ConfigureAwait(false)) return true;
+            log.Note($"Block {run.Block.Id}: autofocus failed or not possible – the block continues");
+            return false;
+        }
+        finally
+        {
+            Activity = null;
+        }
     }
 
     private BlockOutcome Skip(Blocks block, string reason)
@@ -484,6 +596,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             token.ThrowIfCancellationRequested();
             // Gestoppter Block endet sofort – auch vor dem Zentrieren nach einem Flip (§4.2, Plugin 0.4.18).
             if (options.StopReason?.Invoke() is { } stopped) return (stopped, exposures, skippedTotal);
+            DetectLateFlip(run);
             if (run.RecenterPending) await RecenterAfterFlipAsync(run, plannedS: 0, seq: null, token).ConfigureAwait(false);
             var stepAt = clock.UtcNow;
             var step = Playback.Next(block, cursor, stepAt, run.Offset, mode, darknessEndUtc, run.DownloadS, options.SoftEndUtc, run.PullForward);
@@ -586,6 +699,17 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 CurrentEntry = null;
                 CurrentEntryStartedUtc = null;
             }
+            if (result == ExposureResult.Flipped)
+            {
+                // NINA flippte in den Triggern vor der Belichtung (AP-68): Flipzeit in den Verzug, Flip erkennen, vor der
+                // Belichtung zentrieren, dann die Belichtung neu wählen (Planuhr mit dem neuen Verzug).
+                Overrun(run, started, 0);
+                if (run.UndetectedFlip is not null) DetectLateFlip(run);
+                else DetectUnplannedFlip(run, pierBefore, host.PierSide(), started, 0, earliestFlip);
+                if (!run.Flipped) run.RecenterPending = true;
+                cursor = target - 1;
+                continue;
+            }
             if (result == ExposureResult.Saved) exposures++;
             if (result != ExposureResult.Skipped) Overrun(run, started, (e.ExposureS ?? 0) + run.DownloadS);
             if (series && result != ExposureResult.Saved && clock.UtcNow == started)
@@ -594,7 +718,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 log.Warning("WARNING", ("code", "transit_series_stalled"), ("block", block.Id));
                 return ("error", exposures, skippedTotal);
             }
-            DetectUnplannedFlip(run, pierBefore, host.PierSide(), started, (e.ExposureS ?? 0) + run.DownloadS, earliestFlip);
+            // Nach einem unerkannten Plan-Flip zählen dessen Dauer und Zeitpunkt, nicht die Belichtung (AP-68).
+            if (run.UndetectedFlip is not null) DetectLateFlip(run);
+            else DetectUnplannedFlip(run, pierBefore, host.PierSide(), started, (e.ExposureS ?? 0) + run.DownloadS, earliestFlip);
             // Die Serie wiederholt denselben Eintrag bis untilUtc (Playback entscheidet über das Ende).
             cursor = series ? target - 1 : target;
         }
@@ -651,6 +777,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     {
         run.Flipped = true;
         run.RecenterPending = true;
+        run.UndetectedFlip = null;
         if (after is "east" or "west") flippedPier[(run.Block.ProjectId, run.Block.PanelId)] = after;
         log.Event("FLIP", ("id", run.Block.Id), ("pierBefore", before), ("pierAfter", after), ("durationS", durationS));
         // Mit Dauer (FA-NIN-24); seit 0.4.19 zusätzlich der eigentliche Flip ohne NINAs Warten auf die früheste Flipzeit
@@ -679,7 +806,53 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         {
             Activity = null;
         }
-        Overrun(run, started, plannedS);
+        // Schneller als geplant (oder ohne eigenes Zentrieren, NT-22): die Planuhr rückt vor statt WAIT_PLAN (AP-68).
+        Settle(run, started, plannedS);
+        if (seq is { } s) outcomes[s] = EntryOutcome.Done;
+    }
+
+    /// <summary>Höchstens so lange liest das Plugin die Pier-Seite nach dem Flip-Trigger nach (AP-68).</summary>
+    public static readonly TimeSpan PierSettleMax = TimeSpan.FromSeconds(30);
+
+    /// <summary>Takt beim Nachlesen der Pier-Seite.</summary>
+    public static readonly TimeSpan PierSettleTick = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Pier-Seite nach dem Flip-Trigger (AP-68): Steht sie noch auf der Seite davor, liest das Plugin bis
+    /// <see cref="PierSettleMax"/> im Takt <see cref="PierSettleTick"/> nach – die ASI-Montierung am Starfront-Rig meldet den
+    /// Seitenwechsel verzögert (Rig-Nacht 07./08.10.2026: Flip erst nach der nächsten Belichtung erkannt, nicht zentriert).
+    /// </summary>
+    private async Task<string?> PierAfterFlipAsync(Guid blockId, string? pierBefore, CancellationToken token)
+    {
+        var after = host.PierSide();
+        if (pierBefore is null || after != pierBefore) return after;
+        var until = clock.UtcNow + PierSettleMax;
+        while (clock.UtcNow < until)
+        {
+            var next = clock.UtcNow + PierSettleTick;
+            await host.DelayAsync(next < until ? next : until, token).ConfigureAwait(false);
+            after = host.PierSide();
+            if (after != pierBefore)
+            {
+                log.Note($"Block {blockId}: pier side changed {after ?? "unknown"} after the flip trigger with delay");
+                return after;
+            }
+        }
+        return after;
+    }
+
+    /// <summary>
+    /// Verspätet gemeldeter Plan-Flip (AP-68): nach <c>FLIP_UNDETECTED</c> steht die Montierung vor der nächsten Belichtung
+    /// auf der anderen Seite → Flip erkannt (Dauer und Zeitpunkt vom Trigger), Zentrieren vor der Belichtung (M3).
+    /// </summary>
+    private void DetectLateFlip(Run run)
+    {
+        if (run.UndetectedFlip is not { } u || run.Flipped) return;
+        var now = host.PierSide();
+        if (now is not ("east" or "west") || now == u.PierBefore) return;
+        run.UndetectedFlip = null;
+        log.Note($"Block {run.Block.Id}: pier side {now} reported late – flip recognised before the next exposure");
+        Flipped(run, u.PierBefore, now, u.DurationS, u.EndedUtc, u.ActionS);
     }
 
     /// <summary>
@@ -696,6 +869,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             // NINA hat schon geflippt; die Flipdauer steckt im Verzug. Die geplante Flipzeit ist damit frei (Rig-Nacht
             // 06./07.10.2026: sonst doppelt gezählt, 20 min Leerlauf nach dem Flip).
             Credit(run, entry.DurationS ?? 0);
+            outcomes[entry.Seq] = EntryOutcome.Skipped;
             return null;
         }
         var block = run.Block;
@@ -731,7 +905,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             var earliestFlip = FlipRules.EarliestUtc(triggerStart, host.MinutesToEarliestFlip());
             await host.RunTriggersAsync(token).ConfigureAwait(false);
             var triggerS = (clock.UtcNow - triggerStart).TotalSeconds;
-            var pierAfter = host.PierSide();
+            var pierAfter = await PierAfterFlipAsync(block.Id, pierBefore, token).ConfigureAwait(false);
             double? paAfter = pierBefore is null || pierAfter is null ? (await host.SolveAsync(token).ConfigureAwait(false)).PositionAngleDeg : null;
             var durationS = flip?.DurationS ?? entry.DurationS ?? 0;
             switch (FlipRules.Detect(pierBefore, pierAfter, paBefore, paAfter, triggerS, durationS))
@@ -740,14 +914,21 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                     var flipS = FlipRules.DurationS(clock.UtcNow, triggerStart, planned);
                     var actionS = earliestFlip is { } ef ? Math.Max(0, Math.Round((clock.UtcNow - (ef > triggerStart ? ef : triggerStart)).TotalSeconds)) : (double?)null;
                     Flipped(run, pierBefore ?? "unknown", pierAfter ?? "unknown", flipS, clock.UtcNow, actionS);
-                    break;
+                    // Verzug: Warten auf die früheste Flipzeit und der Flip selbst gegen die geplante Flipdauer (§4.2); ein
+                    // schnellerer Flip zieht die Planuhr vor (AP-68).
+                    Settle(run, started, entry.DurationS ?? durationS);
+                    outcomes[entry.Seq] = EntryOutcome.Done;
+                    return null;
                 default:
-                    // NINA hat nicht (erkennbar) geflippt: Plan-Flip bleibt offen (flipDoneByPanel unverändert, NIN5-1).
+                    // NINA hat nicht (erkennbar) geflippt: Plan-Flip bleibt offen (flipDoneByPanel unverändert, NIN5-1). Meldet
+                    // die Montierung die neue Seite später, holt DetectLateFlip die Erkennung vor der nächsten Belichtung nach.
                     log.Event("FLIP_UNDETECTED", ("id", block.Id));
                     run.Options.Report?.Invoke(EventsKind.Flip_undetected, null, block, null, null, null);
+                    if (pierBefore is "east" or "west")
+                        run.UndetectedFlip = (pierBefore, FlipRules.DurationS(clock.UtcNow, triggerStart, planned), clock.UtcNow,
+                            earliestFlip is { } ef2 ? Math.Max(0, Math.Round((clock.UtcNow - (ef2 > triggerStart ? ef2 : triggerStart)).TotalSeconds)) : null);
                     break;
             }
-            // Verzug: Warten auf die früheste Flipzeit und der Flip selbst gegen die geplante Flipdauer (§4.2).
             Overrun(run, started, entry.DurationS ?? durationS);
             return null;
         }
@@ -768,10 +949,37 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             case EntriesCmd.Filter:
                 await host.ChangeFilterAsync(e, token).ConfigureAwait(false);
                 Overrun(run, started, e.DurationS ?? 0);
+                outcomes[e.Seq] = EntryOutcome.Done;
                 break;
             case EntriesCmd.Dither when !skip:
-                await host.DitherAsync(token).ConfigureAwait(false);
+                Activity = new BlockActivity(BlockActivityKind.Dither, started, Seq: e.Seq);
+                try
+                {
+                    await host.DitherAsync(token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    Activity = null;
+                }
                 Overrun(run, started, e.DurationS ?? 0);
+                outcomes[e.Seq] = EntryOutcome.Done;
+                break;
+            case EntriesCmd.Autofocus_hint when !skip && !run.SeriesStarted && run.Block.Kind != BlocksKind.Transit:
+                // Plan-Slot für den Autofokus (AP-68, NT-24): das Plugin fokussiert selbst und setzt damit NINAs Timer
+                // zurück – vorher wartete es den Slot ab (WAIT_PLAN ≈ 5 min) und NINA fokussierte zu anderer Zeit noch einmal.
+                if (AutofocusRules.HintDue(run.Options.Autofocus, host.LastAutofocusUtc, clock.UtcNow))
+                {
+                    await AutofocusAsync(run, "plan", e.Seq, token).ConfigureAwait(false);
+                    Settle(run, started, e.DurationS ?? 0);
+                    outcomes[e.Seq] = EntryOutcome.Done;
+                }
+                else if (run.Options.Autofocus is { EveryMin: > 0 })
+                {
+                    // NINA hat vor kurzem fokussiert (z. B. nach dem Flip): der Slot ist frei.
+                    log.Event("AF_SKIPPED", ("block", block.Id), ("reason", "recent"), ("plannedS", e.DurationS ?? 0));
+                    Credit(run, e.DurationS ?? 0);
+                    outcomes[e.Seq] = EntryOutcome.Skipped;
+                }
                 break;
             case EntriesCmd.Meridian_flip:
                 // Ein verpasster Flip-Zeitpunkt entbindet nicht vom Flip (NINA flippt ab der frühesten Flipzeit).
@@ -783,11 +991,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             case EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate when run.Flipped:
                 // Nach einem ungeplanten Flip schon vor der nächsten Belichtung zentriert (Zeit im Verzug): geplante Zeit frei.
                 Credit(run, e.DurationS ?? 0);
+                outcomes[e.Seq] = EntryOutcome.Skipped;
                 break;
             case EntriesCmd.Wait when !skip:
                 return await WaitEntryAsync(run, index, nextExpose, token).ConfigureAwait(false);
             default:
-                // autofocus_hint ist Zeitmarke (NT-24); slew_center ohne vorangegangenen Flip ebenso (Panelwechsel = neuer Block).
+                // Mit verpassten Belichtungen übersprungen; ohne Autofokus-Takt des Rigs bleibt autofocus_hint Zeitmarke
+                // (NT-24), slew_center ohne vorangegangenen Flip ebenso (Panelwechsel = neuer Block).
+                if (skip) outcomes[e.Seq] = EntryOutcome.Skipped;
                 break;
         }
         return null;
@@ -811,6 +1022,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             // ist frei. Sonst wartete das Plugin bis Flipzeit + Verzug (Rig-Nacht 06./07.10.2026: 03:22–03:43 CDT).
             log.Event("WAIT_SKIPPED", ("block", block.Id), ("reason", "flipped"), ("plannedS", e.DurationS ?? 0));
             Credit(run, e.DurationS ?? 0);
+            outcomes[e.Seq] = EntryOutcome.Skipped;
             return null;
         }
         var until = e.AtUtc.AddSeconds(e.DurationS ?? 0);
@@ -829,6 +1041,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             Activity = null;
         }
         SyncToPlan(run, until);
+        outcomes[e.Seq] = EntryOutcome.Done;
         return null;
     }
 }

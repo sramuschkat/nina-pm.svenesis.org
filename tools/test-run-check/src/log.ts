@@ -44,6 +44,8 @@ const OPERATION_LINES = [
   'WAIT_ENTRY',
   'WAIT_FLIP',
   'WAIT_BLOCK',
+  'AF_START',
+  'AF_SKIPPED',
 ] as const;
 
 /** Verbindliche Schlüsselnamen (Tabelle „Schlüsselnamen“). */

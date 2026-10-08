@@ -376,9 +376,29 @@ public sealed class NightViewTests : IDisposable
 
     // ---- Plugin 0.4.18 (Analyse 07.10.2026) -------------------------------------------------------------------------
 
-    private NightView RegularRunning(string now, BlockActivity? activity, Entries? last, NinaPlanResponse? plan = null, NinaBootstrap? bootstrap = null) =>
+    private NightView RegularRunning(string now, BlockActivity? activity, Entries? last, NinaPlanResponse? plan = null, NinaBootstrap? bootstrap = null,
+        IReadOnlyDictionary<int, EntryOutcome>? outcomes = null) =>
         NightViewBuilder.Build(new NightViewInputs(Night, journal.Read(Night), plan ?? Plan, new HashSet<Guid>(), (Regular, T("07:35:00")),
-            null, null, Targets, bootstrap ?? Bootstrap, null, SiteTime.Utc, T(now), Activity: activity, LastEntry: last));
+            null, null, Targets, bootstrap ?? Bootstrap, null, SiteTime.Utc, T(now), Activity: activity, LastEntry: last, Outcomes: outcomes));
+
+    [Fact]
+    public void Erledigtes_nach_der_Belichtung_als_erledigt_bzw_entfallen_Flip_nicht_doppelt()
+    {
+        // AP-68 (Rig-Nacht 07./08.10.2026): Dither blieb ○, der geplante Flip stand nach NINAs Flip noch einmal als ○ da.
+        Add("07:35:00", JournalKinds.BlockStart, Start(Regular, "NGC 281 Pacman"));
+        Add("07:47:45", JournalKinds.Capture, Capture(Regular, "Ha", 300, "07:42:40", seq: 4));
+        Add("07:49:45", JournalKinds.Flip, new JournalData { BlockId = Regular.Id, DurationS = 120 });
+        var last = Regular.Entries.Single(e => e.Seq == 4);
+
+        var view = RegularRunning("07:50:00", new BlockActivity(BlockActivityKind.Centering, T("07:49:45")), last,
+            outcomes: new Dictionary<int, EntryOutcome> { [5] = EntryOutcome.Done });
+
+        var dither = Assert.Single(view.Rows, r => r.Cmd == "dither" && r.AtUtc == T("07:47:43"));
+        Assert.Equal((ActualState.Done, true), (dither.State, dither.Past));
+        var flip = Assert.Single(view.Rows, r => r.Cmd == "meridian_flip");
+        Assert.Equal(ActualState.Done, flip.State); // aus dem Journal, kein zweiter geplanter Flip
+        Assert.Equal(ActualState.Skipped, Assert.Single(view.Rows, r => r.Cmd == "slew_center" && r.AtUtc == T("07:51:58")).State);
+    }
 
     [Fact]
     public void Ohne_laufende_Belichtung_zeigt_die_Ansicht_Flip_bzw_Zentrieren_statt_100_Prozent()
