@@ -362,5 +362,7 @@ public sealed class SimulatorTests
         Assert.True(SimulationRefresh.Due(t, plan, Guid.NewGuid(), t.AddMinutes(1), offline: false, running: false));
         Assert.False(SimulationRefresh.Due(t, plan, plan, t.AddMinutes(30), offline: true, running: false));
         Assert.False(SimulationRefresh.Due(t, plan, Guid.NewGuid(), t.AddMinutes(30), offline: false, running: true));
+        // AP-68: Nacht vom Server abgelehnt (vergangene Nacht am Nachmittag) – nicht mehr fragen, auch nicht nach 10 min.
+        Assert.False(SimulationRefresh.Due(t, plan, plan, t.AddMinutes(30), offline: false, running: false, nightInvalid: true));
     }
 }

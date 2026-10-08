@@ -112,6 +112,18 @@ public sealed class SimSetup
     /// <summary>Dauer eines Autofokus (Starfront gemessen 2–5 min).</summary>
     [JsonProperty("afDurationS")] public double AfDurationS { get; set; } = 180;
 
+    /// <summary>
+    /// Montierung meldet die neue Pier-Seite erst so viele Sekunden nach NINAs Flip (ASI-Montierung am Starfront-Rig,
+    /// Rig-Nacht 07./08.10.2026; AP-68).
+    /// </summary>
+    [JsonProperty("pierReportDelayS")] public double PierReportDelayS { get; set; }
+
+    /// <summary>
+    /// Autofokus im Start-Bereich der Sequenz bei jedem Start (NT-24, ohne Dauer). <c>false</c>: kein Autofokus vorher – das
+    /// Plugin fokussiert dann vor dem ersten Block selbst (AP-68).
+    /// </summary>
+    [JsonProperty("startAutofocus")] public bool StartAutofocus { get; set; } = true;
+
     /// <summary>NINA-Profil: Pause vor dem Meridian in Minuten (Starfront 5), an den Server gemeldet.</summary>
     [JsonProperty("flipPauseBeforeMin")] public double FlipPauseBeforeMin { get; set; }
 

@@ -1,0 +1,76 @@
+{
+  "name": "real-starfront-0420",
+  "description": "Plugin 0.4.20 (AP-68): zwei Starfront-Nächte um Neumond mit Rig-Zeiten wie real-rig-newmoon (NINAs Autofokus alle 60 min mit 210 s, Flip mit 5 min Pause und 250 s im Trigger vor der Belichtung). Prüft: das Plugin fokussiert in den Plan-Slots selbst, der Flip vor der Belichtung wird erkannt und vor der nächsten Belichtung zentriert, Plan = Ausführung.",
+  "startUtc": "2026-10-09T22:00:00Z",
+  "real": "starfront",
+  "realRigTimes": true,
+  "untilMin": 2700,
+  "setup": {
+    "readoutModes": ["normal1", "normal2"],
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35,
+    "flipDurationS": 250,
+    "flipPauseBeforeMin": 5,
+    "afTrigger": true,
+    "afEveryMin": 60,
+    "afDurationS": 210
+  },
+  "steps": [],
+  "dayLoop": {
+    "maxNights": 2,
+    "source": "NauticalDusk",
+    "offsetMin": 0
+  },
+  "checks": [
+    {
+      "name": "Autofokus in den Plan-Slots führt das Plugin selbst aus (AF_START reason=plan)",
+      "asserts": [
+        {
+          "log": {
+            "event": "AF_START",
+            "where": {
+              "reason": "plan"
+            }
+          },
+          "min": 3
+        }
+      ]
+    },
+    {
+      "name": "Flip erkannt (west → east), kein flip_undetected, danach zentriert und weiter belichtet",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLIP",
+            "where": {
+              "pierBefore": "west",
+              "pierAfter": "east"
+            }
+          },
+          "min": 1
+        },
+        {
+          "log": {
+            "event": "FLIP_UNDETECTED"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "order": [
+            {
+              "event": "FLIP"
+            },
+            {
+              "event": "CAPTURE",
+              "where": {
+                "result": "saved"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -489,6 +489,8 @@ public static class Texts
             : T($"Warten auf NINAs Flipzeit bis {until}", $"Waiting for NINA's flip time until {until}"),
         "Flip" => T("Meridian-Flip", "Meridian flip"),
         "Centering" => T("Zentrieren", "Centering"),
+        "Autofocus" => T("Autofokus", "Autofocus"),
+        "Dither" => T("Dither", "Dither"),
         _ => kind,
     };
     public static string DockNextBlock(string title, string time) => $"{title} {time}";

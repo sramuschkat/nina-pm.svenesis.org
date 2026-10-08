@@ -31,6 +31,10 @@ public sealed class TonightLog
     [JsonIgnore]
     public bool HasPastBlocks => pastBlocks.Count > 0;
 
+    /// <summary>Ende des zuletzt beendeten Blocks dieser Nacht (Autofokus vor dem Block, AP-68); <c>null</c> ohne Block.</summary>
+    [JsonIgnore]
+    public DateTimeOffset? LastBlockEndUtc => pastBlocks.Count > 0 ? pastBlocks.Max(b => b.ToUtc) : null;
+
     /// <summary>Aktuelle Einheit (zuletzt begonnener Block), <c>null</c> ohne Block in dieser Nacht.</summary>
     [JsonIgnore]
     public string? CurrentUnitId => currentUnitId;

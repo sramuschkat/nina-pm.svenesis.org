@@ -292,7 +292,12 @@ public sealed class BlockExecutorTests
         // Blockende 07:45: Versuche 07:35, 07:36:45, 07:38:30, 07:40:30 (+30), 07:43:00 (+60) – der nächste (+120) läge danach.
         var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
         nina.Center = _ => new CenterResult(false, "kein Solve");
-        var block = Regular(b => b.EndUtc = T("2026-09-18T07:45:00Z"));
+        // Geplantes Zentrieren 60 s statt 330 s: sonst passte nach dem Zentrieren keine Belichtung mehr (AP-68, elapsed).
+        var block = Regular(b =>
+        {
+            b.EndUtc = T("2026-09-18T07:45:00Z");
+            b.Entries[0].DurationS = 60;
+        });
 
         var outcome = await executor.RunAsync(block, null, default);
 
@@ -385,7 +390,8 @@ public sealed class BlockExecutorTests
         var (executor, nina, _, _) = Setup("2026-10-06T10:37:20Z", PlaybackMode.TimeAware);
         nina.SkipSlew = true;
         var fixedDownload = await executor.RunAsync(block, T("2026-10-06T11:15:00Z"), default);
-        Assert.Equal(("completed", 0), (fixedDownload.Reason, fixedDownload.Exposures)); // 10:37:30 + 603 s > 10:47:31
+        // 10:37:30 + 603 s > 10:47:31: passt nicht – seit AP-68 gar nicht erst begonnen statt leer beendet.
+        Assert.Equal((false, "elapsed", 0), (fixedDownload.Started, fixedDownload.Reason, fixedDownload.Exposures));
 
         (executor, nina, _, _) = Setup("2026-10-06T10:37:20Z", PlaybackMode.TimeAware);
         nina.SkipSlew = true;
@@ -1038,5 +1044,171 @@ public sealed class BlockExecutorTests
 
         Assert.Contains(sink.Lines, l => l.EndsWith($"TRANSIT_END id={block.Id}", StringComparison.Ordinal));
         Assert.Equal([EventsKind.Transit_start, EventsKind.Transit_end], reported);
+    }
+    // ---- AP-68: Plugin 0.4.20 (Rig-Nächte 06.–08.10.2026) ----------------------------------------------------------
+
+    private static readonly FlipSettings Flip240 = new(5, 15, 0, 240);
+
+    [Fact]
+    public async Task Pier_Seite_kommt_verzoegert_der_Flip_wird_erkannt_und_zentriert()
+    {
+        // ASI-Montierung am Starfront-Rig: die neue Pier-Seite kommt erst 20 s nach dem Flip.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        var block = Regular();
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+        nina.PierReportDelayS = 20;
+        nina.EarliestFlipUtc = block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip).AtUtc;
+
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Flip: Flip240));
+
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east"));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("FLIP_UNDETECTED"));
+        var trigger = nina.Calls.IndexOf("flip");
+        var center = nina.Calls.IndexOf("center-no-rotate");
+        var next = nina.Calls.FindIndex(trigger, c => c.StartsWith("expose:", StringComparison.Ordinal));
+        Assert.True(trigger < center && center < next);
+    }
+
+    [Fact]
+    public async Task Pier_Seite_kommt_erst_nach_der_naechsten_Belichtung_Flip_wird_nachgeholt()
+    {
+        // Rig-Nacht 07./08.10.2026: FLIP_UNDETECTED, die Seite wechselte erst später – nie zentriert, kein Flip gemeldet.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        var block = Regular();
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+        nina.PierReportDelayS = 200;
+        nina.EarliestFlipUtc = block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip).AtUtc;
+        var flips = 0;
+
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Flip: Flip240, FlipDone: _ => flips++));
+
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP_UNDETECTED"));
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east"));
+        Assert.Equal(1, flips);
+        var center = nina.Calls.IndexOf("center-no-rotate");
+        var exposesAfterFlip = nina.Calls.Skip(nina.Calls.IndexOf("flip")).Where(c => c.StartsWith("expose:", StringComparison.Ordinal)).ToList();
+        // Eine Belichtung noch vor dem Zentrieren (die Seite war unbekannt), die zweite danach.
+        Assert.True(center > nina.Calls.IndexOf(exposesAfterFlip[0]) && center < nina.Calls.IndexOf(exposesAfterFlip[1]));
+    }
+
+    [Fact]
+    public async Task Autofokus_im_Plan_Slot_fuehrt_das_Plugin_selbst_aus()
+    {
+        // Rig-Nacht 07./08.10.2026: im Slot nur WAIT_PLAN ≈ 5 min, NINA fokussierte zu anderer Zeit noch einmal.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        nina.SkipSlew = true;
+        nina.LastAutofocusUtc = T("2026-09-18T06:50:00Z");
+        nina.AutofocusS = 120;
+        var options = new BlockRunOptions(Autofocus: new AutofocusSettings(60, 120, T("2026-09-18T07:30:00Z")));
+
+        await executor.RunAsync(Regular(), null, default, options);
+
+        var af = nina.Calls.FindIndex(c => c.StartsWith("af@", StringComparison.Ordinal));
+        Assert.True(af >= 0 && af < nina.Calls.IndexOf("filter:Ha"));
+        Assert.Equal(2, nina.Autofocuses); // beide Plan-Slots (07:40:30, 08:46:28)
+        Assert.Contains(sink.Lines, l => l.Contains("AF_START") && l.Contains("reason=plan"));
+        Assert.Equal(EntryOutcome.Done, executor.EntryOutcomes[2]);
+    }
+
+    [Fact]
+    public async Task Autofokus_im_Plan_Slot_entfaellt_wenn_NINA_gerade_fokussiert_hat()
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        nina.SkipSlew = true;
+        nina.LastAutofocusUtc = T("2026-09-18T07:30:00Z");
+        var block = Regular(b => b.Entries.RemoveAll(e => e.Seq == 28));
+
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Autofocus: new AutofocusSettings(60, 120, T("2026-09-18T07:30:00Z"))));
+
+        Assert.Equal(0, nina.Autofocuses);
+        Assert.Contains(sink.Lines, l => l.Contains("AF_SKIPPED") && l.Contains("reason=recent"));
+        Assert.Equal(EntryOutcome.Skipped, executor.EntryOutcomes[2]);
+    }
+
+    [Fact]
+    public async Task Ohne_Autofokus_Takt_bleibt_der_Plan_Slot_Zeitmarke()
+    {
+        var (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z");
+        await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Autofocus: new AutofocusSettings(0, 120, null)));
+        Assert.Equal(0, nina.Autofocuses);
+    }
+
+    [Fact]
+    public async Task Autofokus_vor_dem_ersten_Block_der_Nacht_nur_mit_altem_Fokus()
+    {
+        var block = Regular(b => b.Entries.RemoveAll(e => e.Cmd == EntriesCmd.Autofocus_hint));
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.LastAutofocusUtc = T("2026-09-18T06:40:00Z"); // Start-AF 55 min vorher, danach WAIT_BLOCK bis zur Dunkelheit
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Autofocus: new AutofocusSettings(60, 180, null)));
+        var af = nina.Calls.FindIndex(c => c.StartsWith("af@", StringComparison.Ordinal));
+        Assert.True(af > nina.Calls.FindIndex(c => c.StartsWith("center@", StringComparison.Ordinal)) && af < nina.Calls.IndexOf("guide"));
+        Assert.Contains(sink.Lines, l => l.Contains("AF_START") && l.Contains("reason=block_start"));
+
+        // Frisch fokussiert (z. B. im Wiederherstellungsteil nach dem Dach) bzw. Block direkt nach dem vorigen: kein Autofokus.
+        (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z");
+        nina.LastAutofocusUtc = T("2026-09-18T07:20:00Z");
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Autofocus: new AutofocusSettings(60, 180, null)));
+        Assert.Equal(0, nina.Autofocuses);
+
+        (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z");
+        nina.LastAutofocusUtc = T("2026-09-18T06:40:00Z");
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Autofocus: new AutofocusSettings(60, 180, T("2026-09-18T07:25:00Z"))));
+        Assert.Equal(0, nina.Autofocuses);
+    }
+
+    [Fact]
+    public async Task Schneller_Plan_Flip_zieht_die_naechste_Belichtung_vor()
+    {
+        // VM-Lauf 07.10.2026: Flip 92 s statt geplanter 120 s, danach WAIT_PLAN 125 s.
+        var (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular();
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+        nina.FlipTriggerS = 90;
+        nina.EarliestFlipUtc = block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip).AtUtc;
+
+        await executor.RunAsync(block, null, default, new BlockRunOptions(Flip: Flip240));
+
+        var center = nina.Calls.IndexOf("center-no-rotate");
+        var next = nina.Calls.FindIndex(center, c => c.StartsWith("expose:", StringComparison.Ordinal));
+        Assert.DoesNotContain(nina.Calls.Skip(center).Take(next - center), c => c.StartsWith("delay:", StringComparison.Ordinal));
+        Assert.Equal(EntryOutcome.Done, executor.EntryOutcomes[5]); // Dither
+        Assert.Equal(EntryOutcome.Done, executor.EntryOutcomes[6]); // Flip
+    }
+
+    [Fact]
+    public async Task Keine_Fahrt_zu_einem_Block_in_den_nach_dem_Zentrieren_keine_Belichtung_passt()
+    {
+        // Rig-Nacht 07./08.10.2026 (NGC 7380): Slew um 03:24, nach dem Zentrieren passte nichts mehr – 22,8 min ohne Belichtung.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        var block = Regular(b => b.EndUtc = T("2026-09-18T07:44:00Z")); // ohne Slew passte 07:35 + 303 s, mit 330 s Slew nicht
+
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal((false, "elapsed"), (outcome.Started, outcome.Reason));
+        Assert.DoesNotContain(nina.Calls, c => c.StartsWith("center@", StringComparison.Ordinal));
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_SKIPPED") && l.Contains("reason=elapsed"));
+    }
+    [Fact]
+    public async Task NINA_flippt_in_den_Triggern_vor_der_Belichtung_erst_zentrieren_dann_belichten()
+    {
+        // Rig-Nacht 07./08.10.2026: Flip 22:29–22:35 CDT im Trigger-Aufruf vor der Belichtung, Belichtung bis 22:45 unzentriert.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Pier = "west";
+        nina.FlipBeforeExposure = 1; // vor dem geplanten Flip (früheste Flipzeit erreicht, ±1 Belichtung)
+        nina.FlipDurationS = 360;
+        var flips = 0;
+
+        var outcome = await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Flip: Flip240, FlipDone: _ => flips++));
+
+        Assert.Equal(1, flips);
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east") && l.Contains("durationS=360"));
+        var flip = nina.Calls.FindIndex(c => c.StartsWith("nina-flip@", StringComparison.Ordinal));
+        var center = nina.Calls.IndexOf("center-no-rotate");
+        var next = nina.Calls.FindIndex(flip, c => c.StartsWith("expose:", StringComparison.Ordinal));
+        Assert.True(flip < center && center < next);
+        Assert.True(outcome.Exposures > 1);
     }
 }

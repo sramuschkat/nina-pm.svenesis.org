@@ -106,6 +106,23 @@ public sealed class SequenceInspectorTests
     }
 
     [Fact]
+    public void Autofokus_im_Wiederherstellungsteil_von_Ziel_vor_Bloecke_genuegt()
+    {
+        // AP-68 (Starfront-Sequenz 08.10.2026): Run Autofocus erst nach Dach und Abdeckung auf, am Anfang von „Ziel“ – im
+        // Start-Bereich ist das Dach noch zu. Vorher meldete der Server start_autofocus_missing.
+        var s = Sample("one-night-safety.json");
+        var af = Find(s, "RunAutofocus");
+        af.Remove();
+        Values(Find(s, "SequentialContainer", "Ziel"), "Items").Insert(1, af);
+        Assert.Empty(Checks(s));
+
+        // In „Blöcke“ (nach dem ersten Block) zählt er nicht.
+        af.Remove();
+        Values(Find(s, "SequentialContainer", "Blöcke"), "Items").Add(af);
+        Assert.Contains("start_autofocus_missing", Checks(s));
+    }
+
+    [Fact]
     public void Anweisungen_in_Unter_Containern_von_Start_und_Ende_zaehlen()
     {
         // Rig-Nacht 06./07.10.2026: Ende-Bereich als ein Unter-Container → end_secure_missing, end_warm_missing und

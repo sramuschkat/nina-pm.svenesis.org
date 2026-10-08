@@ -1782,6 +1782,7 @@ public sealed class NightRunnerTests : IDisposable
         api.OnPlan = ShortBlockThenGap;
         clock.UtcNow = UtcText.Parse("2026-09-18T07:34:00Z");
         nina.ExposureScale = 0.02;
+        nina.LastAutofocusUtc = clock.UtcNow; // frisch fokussiert: kein Autofokus vor dem ersten Block (AP-68)
         var runner = Runner();
         await runner.RunOnceAsync(default); // Plan 07:34, Sperre bis 07:39
         await runner.RunOnceAsync(default); // bis 07:35 warten

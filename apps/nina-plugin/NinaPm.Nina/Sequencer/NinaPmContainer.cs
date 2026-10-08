@@ -44,9 +44,9 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
         IFilterWheelMediator filterWheel, IRotatorMediator rotator, IGuiderMediator guider, IDomeMediator dome, IDomeFollower domeFollower,
         IPlateSolverFactory plateSolverFactory, IWindowServiceFactory windowServiceFactory, IImageSaveMediator imageSave,
         IImageHistoryVM imageHistory, ISafetyMonitorMediator safetyMonitor, INighttimeCalculator nighttimeCalculator,
-        IFocuserMediator focuser)
+        IFocuserMediator focuser, [Import(AllowDefault = true)] NINA.WPF.Base.Interfaces.IAutoFocusVMFactory? autoFocusFactory = null)
         : this(new NinaMediators(profile, telescope, imaging, camera, filterWheel, rotator, guider, dome, domeFollower,
-            plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor, focuser), nighttimeCalculator)
+            plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor, focuser, autoFocusFactory), nighttimeCalculator)
     {
     }
 

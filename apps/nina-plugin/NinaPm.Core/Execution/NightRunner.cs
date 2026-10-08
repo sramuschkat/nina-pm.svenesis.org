@@ -303,7 +303,8 @@ public sealed class NightRunner(
         var server = simulation?.Night == night ? ExecutedJournal.From(simulation.Executed) : [];
         return new NightViewInputs(night, ExecutedJournal.Merge(Journal.Read(night), server), stored?.Plan, DoneBlocks(stored), RunningBlock, Executor?.CurrentEntry,
             Executor?.CurrentEntryStartedUtc, Targets, bootstrap, simulation, site, clock.UtcNow, FlatsRunning,
-            runningBlock is null ? null : Executor?.Activity, runningBlock is null ? null : Executor?.LastEntry);
+            runningBlock is null ? null : Executor?.Activity, runningBlock is null ? null : Executor?.LastEntry,
+            runningBlock is null ? null : Executor?.EntryOutcomes);
     }
 
     public List<Guid> TakeCommandAcks()
@@ -1042,6 +1043,7 @@ public sealed class NightRunner(
         var unit = UnitId(block);
         var startedAt = clock.UtcNow;
         var tonight = TonightLog.Load(store);
+        var lastBlockEnd = tonight.LastBlockEndUtc;
         tonight.BlockStarted(unit);
         tonight.Save(store);
         try
@@ -1109,7 +1111,9 @@ public sealed class NightRunner(
                         data: new Dictionary<string, object> { ["seq"] = e.Seq, ["filter"] = e.Filter ?? "", ["exposureS"] = e.ExposureS ?? 0 });
                 },
                 // Flip des Ziels in dieser Nacht schon erledigt (flipDoneByPanel): ein späterer Block flippt nicht noch einmal.
-                b => TonightLog.Load(store).IsFlipDone(UnitId(b))))
+                b => TonightLog.Load(store).IsFlipDone(UnitId(b)),
+                // Autofokus des Plugins im Plan-Slot und vor dem Block (AP-68) mit dem Takt des Rigs.
+                scheduler is { } sch ? new AutofocusSettings(sch.Overhead.AfEveryMin, sch.Overhead.AfDurationS, lastBlockEnd) : null))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             resetRequested = false;

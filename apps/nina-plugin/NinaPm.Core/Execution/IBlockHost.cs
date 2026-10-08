@@ -11,6 +11,13 @@ public enum ExposureResult
 
     /// <summary>Nicht begonnen, z. B. Filter oder Auslesemodus nicht gefunden (AP-16d).</summary>
     Skipped,
+
+    /// <summary>
+    /// Nicht begonnen: NINAs Trigger vor der Belichtung haben geflippt (Pier-Seite gewechselt, AP-68). Der Kern zentriert
+    /// erst und wählt die Belichtung neu – vorher lief sie unzentriert (Rig-Nacht 07./08.10.2026: Flip 22:29–22:35 CDT im
+    /// Trigger-Aufruf, Belichtung bis 22:45, erst danach zentriert).
+    /// </summary>
+    Flipped,
 }
 
 /// <summary>Kühlung der Kamera jetzt (NT-E2): Kühler an und Sensortemperatur (<c>null</c> = unbekannt).</summary>
@@ -94,6 +101,15 @@ public interface IBlockHost
     CameraCooling ReadCooling();
 
     Task DitherAsync(CancellationToken token);
+
+    /// <summary>Letzter Autofokus aus NINAs Historie (UTC, NT-24); <c>null</c> = keiner bekannt.</summary>
+    DateTimeOffset? LastAutofocusUtc { get; }
+
+    /// <summary>
+    /// Autofokus über NINAs <em>Run Autofocus</em> (AP-68): landet in NINAs Autofokus-Historie und setzt damit den Timer
+    /// <em>Autofokus nach Zeit</em> zurück. <c>false</c> = gescheitert bzw. nicht möglich (kein Fokussierer).
+    /// </summary>
+    Task<bool> AutofocusAsync(CancellationToken token);
 
     /// <summary>Wartet bis <paramref name="untilUtc"/> (10-s-Takt im Adapter); in Tests springt die Uhr.</summary>
     Task DelayAsync(DateTimeOffset untilUtc, CancellationToken token);
