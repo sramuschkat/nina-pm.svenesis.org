@@ -47,6 +47,7 @@ import type {
   TelescopeTable,
 } from '../types';
 import { TenantRepo } from './base';
+import { deleteRigTelemetryBatch, TELEMETRY_DELETE_BATCH } from './rig-telemetry';
 
 type Tx = Transaction<Database>;
 
@@ -1548,10 +1549,18 @@ export class EquipmentRepository extends TenantRepo {
       const n = await this.tx((trx) => this.deleteRigPlans(trx, id, RIG_PLAN_BATCH));
       if (n < RIG_PLAN_BATCH) break;
     }
+    // Rig-Telemetrie (AP-67) geht mit dem Rig – abgeleitete Messdaten, in Stapeln.
+    for (;;) {
+      const n = await this.tx((trx) =>
+        deleteRigTelemetryBatch(trx, this.tenantId, id, TELEMETRY_DELETE_BATCH / 4),
+      );
+      if (n === 0) break;
+    }
     return this.tx(
       async (trx) => {
         const rig = await this.assertRigUnused(trx, id);
         await this.deleteRigPlans(trx, id, RIG_PLAN_BATCH);
+        await deleteRigTelemetryBatch(trx, this.tenantId, id, TELEMETRY_DELETE_BATCH / 4);
         const t = this.tenantId;
         await sql`DELETE FROM rig_lease WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(trx);
         await trx.deleteFrom('rig').where('tenantId', '=', t).where('id', '=', id).execute();

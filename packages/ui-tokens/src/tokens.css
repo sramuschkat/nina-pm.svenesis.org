@@ -157,6 +157,9 @@
   --npm-prio-alert: #b3261e;
   --npm-prio-high: #b54708;
   --npm-prio-medium: #7d6200;
+  --npm-plot-1: #2a78d6;
+  --npm-plot-2: #e0602c;
+  --npm-plot-3: #14946a;
   --npm-today: #e67e22;
   --npm-star: #b9770e;
   --npm-row-h: 32px;
@@ -216,6 +219,9 @@
   --npm-prio-alert: #f28b82;
   --npm-prio-high: #f6a45c;
   --npm-prio-medium: #e3c65a;
+  --npm-plot-1: #3987e5;
+  --npm-plot-2: #d95926;
+  --npm-plot-3: #199e70;
   --npm-today: #f39c12;
   --npm-star: #f5b041;
   --npm-shadow: none;

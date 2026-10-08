@@ -432,6 +432,7 @@ function SideNav({
       key: 'operate',
       areas: [
         { key: 'nina', visible: !system, to: '/nina/simulator' },
+        { key: 'rigStatus', visible: !system, to: '/rig-zustand' },
         { key: 'weather', visible: !system, to: WEATHER_PATH },
         { key: 'evaluation', visible: !system, to: '/auswertung/naechte' },
       ],

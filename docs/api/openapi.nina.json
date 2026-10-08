@@ -851,6 +851,107 @@
           }
         }
       }
+    },
+    "/api/nina/v1/telemetry": {
+      "post": {
+        "summary": "Rig-Telemetrie (≤ 1.000 Messpunkte, idempotent je Rig, Quelle und Zeitpunkt)",
+        "description": "Messpunkte der Skripte am Rig (Mini-PC über Core Temp, Powerbox über Pegasus Unity). Mandant und Rig aus dem Token; Messpunkte älter als 7 Tage oder mehr als 5 min in der Zukunft zählen als `skipped`.\n\nAktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-RIG-15, FA-RIG-16",
+        "tags": [
+          "nina"
+        ],
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-RIG-15",
+          "FA-RIG-16"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaTelemetryBatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Angenommen",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaTelemetryResults"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "telemetry.batch_too_large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation.failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5596,6 +5697,74 @@
           "mosaicPanelsIndependent"
         ]
       },
+      "NinaTelemetryBatch": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "pc",
+              "power_box"
+            ]
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaTelemetrySample"
+            },
+            "minItems": 1,
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "source",
+          "samples"
+        ],
+        "additionalProperties": false
+      },
+      "NinaTelemetryResults": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duplicate": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "accepted",
+          "duplicate",
+          "skipped"
+        ]
+      },
+      "NinaTelemetrySample": {
+        "type": "object",
+        "properties": {
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "atUtc",
+          "values"
+        ],
+        "additionalProperties": false
+      },
       "NinaTwilightCrossing": {
         "type": "object",
         "properties": {
@@ -5681,6 +5850,7 @@
               "session.closed",
               "capture.batch_too_large",
               "event.batch_too_large",
+              "telemetry.batch_too_large",
               "plan.targets_etag_mismatch",
               "canonical.non_finite",
               "system.maintenance",

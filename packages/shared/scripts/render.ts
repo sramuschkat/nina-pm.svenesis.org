@@ -152,5 +152,10 @@ export function renderNinaSchemas(): Record<string, string> {
       nina.NinaHeartbeatResponse,
       t('POST /heartbeat (Antwort)'),
     ),
+    'telemetry.request.schema.json': render(nina.NinaTelemetryBatch, t('POST /telemetry (AP-67)')),
+    'telemetry.response.schema.json': render(
+      nina.NinaTelemetryResults,
+      t('POST /telemetry (Antwort)'),
+    ),
   };
 }

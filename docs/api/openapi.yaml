@@ -104,6 +104,7 @@ components:
             - session.closed
             - capture.batch_too_large
             - event.batch_too_large
+            - telemetry.batch_too_large
             - plan.targets_etag_mismatch
             - canonical.non_finite
             - system.maintenance
@@ -11869,6 +11870,102 @@ components:
       required:
         - usable
       additionalProperties: false
+    TelemetryView:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        from:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        to:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/TelemetrySeries"
+      required:
+        - rigId
+        - from
+        - to
+        - sources
+    TelemetrySeries:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - pc
+            - power_box
+        resolution:
+          type: string
+          enum:
+            - raw
+            - hourly
+        stepS:
+          type: integer
+          minimum: 0
+        t:
+          type: array
+          items:
+            type: string
+            format: date-time
+            example: 2026-09-18T13:00:00Z
+        series:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              avg:
+                type: array
+                items:
+                  type:
+                    - number
+                    - "null"
+              min:
+                type: array
+                items:
+                  type:
+                    - number
+                    - "null"
+              max:
+                type: array
+                items:
+                  type:
+                    - number
+                    - "null"
+            required:
+              - avg
+              - min
+              - max
+        latest:
+          type:
+            - object
+            - "null"
+          properties:
+            atUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            values:
+              type: object
+              additionalProperties:
+                type: number
+          required:
+            - atUtc
+            - values
+      required:
+        - source
+        - resolution
+        - stepS
+        - t
+        - series
+        - latest
     DsoList:
       type: object
       properties:
@@ -18032,6 +18129,55 @@ components:
         - state
         - pluginVersion
         - engineVersion
+    NinaTelemetryResults:
+      type: object
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+        duplicate:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+      required:
+        - accepted
+        - duplicate
+        - skipped
+    NinaTelemetryBatch:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - pc
+            - power_box
+        samples:
+          type: array
+          items:
+            $ref: "#/components/schemas/NinaTelemetrySample"
+          minItems: 1
+          maxItems: 1000
+      required:
+        - source
+        - samples
+      additionalProperties: false
+    NinaTelemetrySample:
+      type: object
+      properties:
+        atUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        values:
+          type: object
+          additionalProperties:
+            type: number
+      required:
+        - atUtc
+        - values
+      additionalProperties: false
     TenantAdminView:
       type: object
       properties:
@@ -26926,6 +27072,70 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/telemetry:
+    get:
+      summary: "Rig-Telemetrie: Zeitreihen je Quelle (Mini-PC, Powerbox) für einen Zeitraum"
+      tags:
+        - nina
+      description: "Aktion: `session.read` · FA-RIG-17, S-43"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-RIG-17
+        - S-43
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: date-time
+            example: 2026-09-18T13:00:00Z
+          required: true
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date-time
+            example: 2026-09-18T13:00:00Z
+          required: true
+          name: to
+          in: query
+      responses:
+        "200":
+          description: Zeitreihen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetryView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/dso:
     get:
       summary: Objektkatalog durchsuchen und filtern
@@ -28387,6 +28597,70 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: engine.incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/nina/v1/telemetry:
+    post:
+      summary: Rig-Telemetrie (≤ 1.000 Messpunkte, idempotent je Rig, Quelle und Zeitpunkt)
+      description: |-
+        Messpunkte der Skripte am Rig (Mini-PC über Core Temp, Powerbox über Pegasus Unity). Mandant und Rig aus dem Token; Messpunkte älter als 7 Tage oder mehr als 5 min in der Zukunft zählen als `skipped`.
+
+        Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-RIG-15, FA-RIG-16
+      tags:
+        - nina
+      security:
+        - ninaToken: []
+      x-npm-action: nina.sync
+      x-npm-requirements:
+        - FA-RIG-15
+        - FA-RIG-16
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinaTelemetryBatch"
+      responses:
+        "200":
+          description: Angenommen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaTelemetryResults"
+        "401":
+          description: nina.token_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: tenant.locked
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: engine.incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "413":
+          description: telemetry.batch_too_large
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
           content:
             application/problem+json:
               schema:

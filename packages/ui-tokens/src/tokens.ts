@@ -56,6 +56,14 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'prio-alert': '#b3261e',
     'prio-high': '#b54708',
     'prio-medium': '#7d6200',
+    /**
+     * Linien in Diagrammen auf Karten (Rig-Zustand S-43, AP-67): eine Reihe je Stelle, feste Reihenfolge; geprüft mit
+     * dem Paletten-Validator (Helligkeit, Chroma, CVD ≥ 8, Kontrast ≥ 3:1 gegen `white`). Nicht `chart-series-n` –
+     * die sind für den dunklen Himmelsgrund des Nachtdiagramms.
+     */
+    'plot-1': '#2a78d6',
+    'plot-2': '#e0602c',
+    'plot-3': '#14946a',
     /** Mondkalender: heutige Nacht (Rahmen) und die besten Nächte (Stern). */
     today: '#e67e22',
     star: '#b9770e',
@@ -97,6 +105,9 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'prio-alert': '#f28b82',
     'prio-high': '#f6a45c',
     'prio-medium': '#e3c65a',
+    'plot-1': '#3987e5',
+    'plot-2': '#d95926',
+    'plot-3': '#199e70',
     today: '#f39c12',
     star: '#f5b041',
   },

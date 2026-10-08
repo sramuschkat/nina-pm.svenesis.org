@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/NinaTelemetryResults",
+  "$defs": {
+    "NinaTelemetryResults": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "duplicate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "accepted",
+        "duplicate",
+        "skipped"
+      ]
+    }
+  },
+  "title": "Svenesis NINA-PM – NINA-API POST /telemetry (Antwort) (TK 7.6)"
+}

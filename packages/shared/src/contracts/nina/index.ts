@@ -10,3 +10,4 @@ export * from './plan';
 export * from './sessions';
 export * from './targets';
 export * from './simulation';
+export * from './telemetry';

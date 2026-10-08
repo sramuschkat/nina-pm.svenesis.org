@@ -1,0 +1,261 @@
+/* Rig-Zustand S-43 (AP-67): Kennzahlen je Quelle, Diagramme je Messgröße (eine Einheit je Diagramm). */
+.toolbar {
+  composes: panel from '../admin/admin.module.css';
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-4);
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
+.rig {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+.ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+}
+.rangeChip {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.rangeChip[aria-pressed='true'] {
+  background: var(--npm-accent);
+  border-color: var(--npm-accent);
+  color: var(--npm-white);
+}
+.rangeChip:focus-visible,
+.plot:focus-visible {
+  outline: none;
+  box-shadow: var(--npm-focus-ring);
+}
+.muted {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.stale {
+  color: var(--npm-warning);
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+}
+.emptyCard {
+  composes: panel from '../admin/admin.module.css';
+}
+.emptyCard h2,
+.emptyCard p {
+  margin: 0;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--npm-space-4);
+}
+.tileCard {
+  composes: panel from '../admin/admin.module.css';
+}
+.tileHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+}
+.tileHead h2 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+}
+.values {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: var(--npm-space-3);
+  margin: 0;
+}
+.values > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
+}
+.values dt {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.values dd {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.valueWarn {
+  background: var(--npm-warning-bg) !important;
+}
+.valueWarn dd {
+  color: var(--npm-warning);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
+.sectionTitle {
+  margin: var(--npm-space-2) 0 0;
+  font-size: var(--npm-font-h2);
+}
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--npm-space-4);
+}
+.resolution {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+
+/* ---- Diagramm ---- */
+.chart {
+  composes: panel from '../admin/admin.module.css';
+  margin: 0;
+  gap: var(--npm-space-2);
+}
+.chartTitle {
+  font-size: var(--npm-font-h3);
+  font-weight: 600;
+}
+.unit {
+  color: var(--npm-text-light);
+  font-weight: 400;
+}
+.empty {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  color: var(--npm-text);
+  font-size: var(--npm-font-label);
+}
+.legend > span,
+.tooltip > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.legendLine {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+.plotRow {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: var(--npm-space-2);
+}
+.yAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: right;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+}
+.plot {
+  position: relative;
+  height: calc(var(--npm-chart-h) * 0.8);
+  border-left: 1px solid var(--npm-border-strong);
+  border-bottom: 1px solid var(--npm-border-strong);
+  border-radius: 0 0 0 2px;
+  touch-action: pan-y;
+}
+.plot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.grid {
+  stroke: var(--npm-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.band {
+  fill-opacity: 0.16;
+  stroke: none;
+}
+.reference {
+  stroke: var(--npm-warning);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+}
+.referenceLabel {
+  position: absolute;
+  right: var(--npm-space-1);
+  transform: translateY(-115%);
+  color: var(--npm-warning);
+  font-size: var(--npm-font-label);
+  pointer-events: none;
+}
+.crosshair {
+  stroke: var(--npm-text-light);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.tooltip {
+  position: absolute;
+  top: var(--npm-space-1);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
+  color: var(--npm-text);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.xAxis {
+  position: relative;
+  height: 1.2rem;
+  margin-left: calc(3rem + var(--npm-space-2));
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+}
+.xAxis > span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.xAxis > .zone {
+  right: 0;
+  transform: none;
+  color: var(--npm-text-light);
+}

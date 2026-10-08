@@ -1208,6 +1208,27 @@ CREATE TABLE site_night_forecast (                 -- Vorhersage je Standort und
     PRIMARY KEY (site_id, night)
 );
 
+CREATE TABLE rig_telemetry_sample (                -- Rohwerte der Rig-Telemetrie (Migration 0015, AP-67, FA-RIG-15/16), 90 Tage
+    tenant_id       uuid NOT NULL REFERENCES tenant(id),
+    rig_id          uuid NOT NULL REFERENCES rig(id),
+    source          text NOT NULL,                 -- telemetrySources (pc, power_box); kein CHECK (in DSQL nicht änderbar)
+    at_utc          timestamptz NOT NULL,
+    metrics         jsonb NOT NULL,                -- Messgröße → Wert (nina.TELEMETRY_METRICS), nur gemessene
+    received_at     timestamptz NOT NULL,
+    PRIMARY KEY (rig_id, source, at_utc)
+);
+
+CREATE TABLE rig_telemetry_hourly (                -- Stundenwerte der Rig-Telemetrie (Migration 0015, AP-67), dauerhaft
+    tenant_id       uuid NOT NULL REFERENCES tenant(id),
+    rig_id          uuid NOT NULL REFERENCES rig(id),
+    source          text NOT NULL,
+    hour_utc        timestamptz NOT NULL,          -- Stundenbeginn in UTC
+    samples         integer NOT NULL CHECK (samples >= 0), -- Anzahl Rohwerte (Neuverdichtung bei Abweichung)
+    stats           jsonb NOT NULL,                -- je Messgröße {min, avg, max, n}
+    updated_at      timestamptz NOT NULL,
+    PRIMARY KEY (rig_id, source, hour_utc)
+);
+
 CREATE TABLE command (                             -- reserviert für refresh_targets/reset_plan (keine Fernsteuerung, Fachkonzept 2.3)
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       uuid NOT NULL REFERENCES tenant(id),

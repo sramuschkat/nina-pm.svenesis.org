@@ -116,6 +116,9 @@ export const TABLE_GRANTS: Readonly<Record<string, TableGrant>> = {
   site_night_stat: g(EXEC, ALL, ALL),
   // Vorhersage je Standort und Nacht (Migration 0014, AP-64b): worker schreibt, api liest und löscht mit Standort/Mandant.
   site_night_forecast: g(EXEC, ALL, ALL),
+  // Rig-Telemetrie (Migration 0015, AP-67): api schreibt Rohwerte und liest; worker verdichtet und löscht nach 90 Tagen.
+  rig_telemetry_sample: g(EXEC, ALL, ALL),
+  rig_telemetry_hourly: g(EXEC, ALL, ALL),
   command: g(EXEC, ALL, ALL),
 };
 

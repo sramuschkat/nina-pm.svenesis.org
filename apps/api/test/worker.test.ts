@@ -136,6 +136,7 @@ describe('Worker-Dispatcher', () => {
         effortSiteNights: n,
         forecastSiteNights: n,
         reconcileSiteNights: n,
+        rigTelemetry: n,
         sessions: n,
       },
     );
@@ -145,6 +146,7 @@ describe('Worker-Dispatcher', () => {
       'effort_site_nights',
       'forecast_site_nights',
       'reconcile_site_nights',
+      'rig_telemetry',
       'thumbnails',
     ]);
   });

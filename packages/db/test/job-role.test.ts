@@ -21,7 +21,9 @@ import {
   markStaleSessions,
   ProjectRepository,
   projectsWithoutThumbnail,
+  purgeRigTelemetry,
   reconcileSite,
+  rollupRigTelemetry,
   recordSiteNightForecast,
   recordTenantStorage,
   replaceForecast,
@@ -310,6 +312,19 @@ describe('worker unter der Rolle app_job (TK 6.2)', () => {
         ).then((r) => expect(r).toBe('written')),
     ]),
     ['projectsWithoutThumbnail', () => projectsWithoutThumbnail(pg.db, 10)],
+    // tick-hourly: Rig-Telemetrie verdichten und Rohwerte nach 90 Tagen löschen (AP-67).
+    [
+      'rollupRigTelemetry',
+      async () => {
+        const sample = `INSERT INTO rig_telemetry_sample (tenant_id, rig_id, source, at_utc, metrics, received_at)
+          VALUES ($1, $2, 'pc', $3, '{"cpuMaxC": 55}', $3)`;
+        await asAdmin(sample, [T, RIG, '2026-09-28T10:30:00Z']);
+        await asAdmin(sample, [T, RIG, '2026-06-01T10:30:00Z']);
+        expect(await rollupRigTelemetry(pg.db, now)).toBe(1);
+        expect(await rollupRigTelemetry(pg.db, now)).toBe(0);
+      },
+    ],
+    ['purgeRigTelemetry', () => purgeRigTelemetry(pg.db, now).then((n) => expect(n).toBe(1))],
     ['setProjectThumbnail', () => setProjectThumbnail(pg.db, T, P2, 'catalog/thumbs/x.jpg')],
     ['thumbnailKeyInUse', () => thumbnailKeyInUse(pg.db, 'x')],
     // Job-Handler lesen Projekte, Ausrüstung und Anträge.

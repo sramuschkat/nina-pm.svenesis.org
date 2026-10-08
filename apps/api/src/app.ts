@@ -42,10 +42,12 @@ import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-i
 import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
 import { SESSION_ROUTES, webSessionRoutes } from './routes/web-sessions';
 import { SESSION_LOG_ROUTES, webSessionLogRoutes } from './routes/web-session-log';
+import { TELEMETRY_ROUTES, webTelemetryRoutes } from './routes/web-telemetry';
 import { CATALOG_ROUTES, catalogRoutes } from './routes/catalog';
 import { EXO_ROUTES, exoRoutes } from './routes/exo';
 import { NINA_SYNC_ROUTES, ninaSyncRoutes } from './routes/nina/sync';
 import { NINA_SESSION_ROUTES, ninaSessionRoutes } from './routes/nina/sessions';
+import { NINA_TELEMETRY_ROUTES, ninaTelemetryRoutes } from './routes/nina/telemetry';
 
 export interface AppDeps {
   /** Erwarteter Wert des Headers X-Origin-Verify (SSM-Cache). */
@@ -84,13 +86,18 @@ export const ROUTES = [
   ...NINA_OPS_ROUTES,
   ...SESSION_ROUTES,
   ...SESSION_LOG_ROUTES,
+  ...TELEMETRY_ROUTES,
   ...CATALOG_ROUTES,
   ...EXO_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
 /** NINA-API (`/api/nina/v1`, Bearer-Token statt Sitzung): eigener Rechte-Test (nina-rights.test.ts). */
-export const NINA_ROUTES = [...NINA_SYNC_ROUTES, ...NINA_SESSION_ROUTES] as const;
+export const NINA_ROUTES = [
+  ...NINA_SYNC_ROUTES,
+  ...NINA_SESSION_ROUTES,
+  ...NINA_TELEMETRY_ROUTES,
+] as const;
 
 const noServices = () => Promise.reject(new Error('Dienste nicht konfiguriert'));
 
@@ -164,10 +171,12 @@ export function createApp(deps: AppDeps) {
   app.route('/', webNinaOpsRoutes(services));
   app.route('/', webSessionRoutes(services));
   app.route('/', webSessionLogRoutes(services));
+  app.route('/', webTelemetryRoutes(services));
   app.route('/', catalogRoutes(services));
   app.route('/', exoRoutes(services));
   app.route('/', ninaSyncRoutes(services));
   app.route('/', ninaSessionRoutes(services));
+  app.route('/', ninaTelemetryRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

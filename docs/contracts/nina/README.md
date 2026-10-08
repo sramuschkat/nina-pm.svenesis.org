@@ -14,6 +14,7 @@ Aus Technischem Konzept 7.6 extrahiert. **Nur Veranschaulichung** – Uhrzeiten/
 | `captures.request.example.json` | `POST /api/nina/v1/sessions/{id}/captures` (Light, Flat, Dark-Flat) |
 | `events.request.example.json` | `POST /api/nina/v1/sessions/{id}/events` |
 | `heartbeat.request.example.json` / `heartbeat.response.example.json` | `POST /api/nina/v1/heartbeat` |
+| `telemetry.request.example.json` | `POST /api/nina/v1/telemetry` (Rig-Telemetrie der Skripte am Rig, AP-67; Messgrößen je Quelle in `packages/shared/src/contracts/nina/telemetry.ts`) |
 
 Aufzählungen (`cmd`, `frameType`, Statuswerte, Ereignisarten): `../enums.json`. Fehlercodes: `../errors.json`.
 Gekürzte IDs (`a91f…`) in den Beispielen werden in den Schema-Tests durch gültige UUIDs ersetzt.
