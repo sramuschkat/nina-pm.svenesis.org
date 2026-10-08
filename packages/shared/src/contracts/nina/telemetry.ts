@@ -1,6 +1,6 @@
 /**
  * `POST /nina/v1/telemetry` (AP-67, FA-RIG-15): Messpunkte der Rig-Skripte (Mini-PC über Core Temp, Powerbox über
- * Pegasus Unity) mit dem Token einer NINA-Instanz – Mandant und Rig kommen aus dem Token. ≤ 1.000 Messpunkte je
+ * Pegasus Unity, freier Speicherplatz) mit dem Token einer NINA-Instanz – Mandant und Rig kommen aus dem Token. ≤ 1.000 Messpunkte je
  * Anfrage (mehr → `413 telemetry.batch_too_large`); idempotent über (Rig, Quelle, Zeitpunkt). Messpunkte älter als
  * 7 Tage oder mehr als 5 min in der Zukunft zählen als `skipped` und blockieren den Rest nicht.
  */
@@ -30,6 +30,12 @@ export const TELEMETRY_METRICS = {
     currentA: { unit: 'A', min: 0, max: 50 },
     dewHeater1Pct: { unit: '%', min: 0, max: 100 },
     dewHeater2Pct: { unit: '%', min: 0, max: 100 },
+  },
+  /** Freier Speicherplatz eines Laufwerks (Upload-Skript, Lauf `-Source pc`, Laufwerk `-Disk`, Standard C:). */
+  storage: {
+    freeGb: { unit: 'GB', min: 0, max: 1_000_000 },
+    totalGb: { unit: 'GB', min: 0, max: 1_000_000 },
+    freePct: { unit: '%', min: 0, max: 100 },
   },
 } as const satisfies Record<
   (typeof telemetrySources)[number],

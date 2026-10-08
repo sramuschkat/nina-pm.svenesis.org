@@ -109,6 +109,26 @@ describe('POST /nina/v1/telemetry', () => {
     expect(rows.every((r) => r.rigId === t.rig.id && r.tenantId === t.tenantId)).toBe(true);
   });
 
+  it('freier Speicherplatz als eigene Quelle storage, im Web als dritte Reihe', async () => {
+    const t = await setup();
+    const now = s.clock.now().getTime();
+    const r = await t.send({
+      source: 'storage',
+      samples: [
+        { atUtc: iso(now - MIN), values: { freeGb: 312.5, totalGb: 476.9, freePct: 65.5 } },
+      ],
+    });
+    expect(r.body).toEqual({ accepted: 1, duplicate: 0, skipped: 0 });
+    // Messgröße einer anderen Quelle bei storage → 422
+    expect(
+      (await t.send({ source: 'storage', samples: [{ atUtc: iso(now), values: { cpuMaxC: 50 } }] }))
+        .status,
+    ).toBe(422);
+    const storage = sourceOf((await t.view(now - HOUR, now + MIN)).body, 'storage');
+    expect(storage.series.freeGb?.avg).toEqual([312.5]);
+    expect(storage.latest?.values).toEqual({ freeGb: 312.5, totalGb: 476.9, freePct: 65.5 });
+  });
+
   it('zu alte und künftige Messpunkte zählen als skipped, der Rest kommt an', async () => {
     const t = await setup();
     const now = s.clock.now().getTime();

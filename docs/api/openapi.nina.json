@@ -5704,7 +5704,8 @@
             "type": "string",
             "enum": [
               "pc",
-              "power_box"
+              "power_box",
+              "storage"
             ]
           },
           "samples": {

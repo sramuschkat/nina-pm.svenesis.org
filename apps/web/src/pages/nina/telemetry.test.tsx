@@ -17,8 +17,11 @@ import {
   gapLimitMs,
   latestValue,
   linePath,
+  maxPoint,
   nearestIndex,
   rangeWindow,
+  smooth,
+  smoothWindowMs,
   yDomain,
 } from './telemetry-model';
 
@@ -173,6 +176,22 @@ describe('telemetry-model', () => {
     const [lo, hi] = yDomain([20, 30], {});
     expect(lo).toBe(19);
     expect(hi).toBe(31);
+  });
+
+  it('feste Achsgrenzen erweitern sich nur, wenn Werte darüber liegen', () => {
+    expect(yDomain([50, 70], { yMin: 20, yMax: 100 })).toEqual([20, 100]);
+    expect(yDomain([50, 104], { yMin: 20, yMax: 100 })).toEqual([20, 104]);
+  });
+
+  it('gleitendes Mittel über das Fenster, nicht über Lücken; Höchstwert', () => {
+    const t = [0, 30_000, 60_000, 90_000, 120_000, 1_000_000];
+    const v = [50, 60, 50, 60, null, 80];
+    // Fenster 60 s → je Nachbar links und rechts
+    expect(smooth(t, v, 60_000, 120_000)).toEqual([55, 53.33, 56.67, 55, null, 80]);
+    expect(smoothWindowMs(12 * 3_600_000)).toBe(300_000);
+    expect(smoothWindowMs(24 * 3_600_000)).toBe(432_000);
+    expect(maxPoint(v)).toEqual({ i: 5, v: 80 });
+    expect(maxPoint([null, null])).toBeNull();
   });
 
   it('Linie bricht bei null und bei Lücken über dem Grenzwert', () => {

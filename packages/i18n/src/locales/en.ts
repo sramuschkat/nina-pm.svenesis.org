@@ -2041,7 +2041,7 @@ export const en: Messages = {
   },
   telemetry: {
     title: 'Rig status',
-    info: 'Readings from the scripts at the rig: mini PC (Core Temp) and power box (Pegasus Unity). Raw values are kept for 90 days, then hourly values (minimum, mean, maximum). Times in site time.',
+    info: 'Readings from the scripts at the rig: mini PC (Core Temp), power box (Pegasus Unity) and free disk space. Raw values are kept for 90 days, then hourly values (minimum, mean, maximum). Times in site time.',
     rig: 'Rig',
     range: 'Period',
     ranges: {
@@ -2057,7 +2057,7 @@ export const en: Messages = {
     emptyTitle: 'No telemetry yet',
     emptyText:
       'No readings have arrived for this rig yet. The scripts at the rig upload them with the token of a NINA instance – setup: docs/ops/rig-telemetry.md.',
-    source: { pc: 'Mini PC', power_box: 'Power box' },
+    source: { pc: 'Mini PC', power_box: 'Power box', storage: 'Disk space' },
     metric: {
       cpuMaxC: 'CPU max',
       cpuAvgC: 'CPU mean',
@@ -2071,6 +2071,9 @@ export const en: Messages = {
       currentA: 'Current',
       dewHeater1Pct: 'Dew heater 1',
       dewHeater2Pct: 'Dew heater 2',
+      freeGb: 'Free',
+      freePct: 'Free (share)',
+      totalGb: 'Total',
     },
     chart: {
       temps: 'Temperatures',
@@ -2081,6 +2084,7 @@ export const en: Messages = {
       voltage: 'Voltage',
       current: 'Current',
       heaters: 'Dew heaters',
+      diskFree: 'Free disk space',
     },
     never: 'never received',
     received: 'last {{time}} ({{minutes}} min ago)',
@@ -2089,6 +2093,7 @@ export const en: Messages = {
     history: '{{source}} history',
     chartSummary: '{{title}}: {{series}}, range {{min}} to {{max}} {{unit}}',
     reference: 'Warning threshold {{value}} {{unit}}',
+    peak: 'max {{value}} {{unit}} {{time}}',
     resolutionRaw: 'Raw values · {{points}} points',
     resolutionHourly: 'Hourly values · {{points}} points',
   },
