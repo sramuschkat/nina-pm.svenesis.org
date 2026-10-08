@@ -12,6 +12,9 @@ import { formatDate } from '../../lib/time';
 import {
   bandPath,
   column,
+  maxPoint,
+  smooth,
+  smoothWindowMs,
   gapLimitMs,
   linePath,
   nearestIndex,
@@ -92,8 +95,12 @@ export function TelemetryChart({
   const x = (ms: number) => ((ms - fromMs) / (toMs - fromMs)) * 1000;
   const y = (v: number) => 100 - ((v - lo) / (hi - lo)) * 100;
   const maxGap = gapLimitMs(times, data.stepS);
-  // Verdichtete Werte: blasses Band Minimum–Maximum hinter der Mittelwertlinie (kurze Spitzen bleiben sichtbar).
-  const banded = data.resolution === 'hourly' || data.stepS > 0;
+  // Stundenwerte: blasses Band Minimum–Maximum hinter der Mittelwertlinie (kurze Spitzen bleiben sichtbar).
+  const banded = data.resolution === 'hourly';
+  // Rohwerte rauschen (30-s-Takt): blass darunter, darüber das gleitende Mittel (Rückmeldung Sven 08.10.2026).
+  const smoothed = data.resolution === 'raw' && times.length > 30;
+  const smoothMs = smoothWindowMs(toMs - fromMs);
+  const peak = spec.annotateMax ? maxPoint(column(data, spec.annotateMax)) : null;
   const color = (i: number) => `var(--npm-plot-${String(i + 1)})`;
   const summary = t('telemetry.chartSummary', {
     title,
@@ -186,10 +193,26 @@ export function TelemetryChart({
                   ) : null,
                 )
               : null}
+            {shown.map((c) =>
+              smoothed ? (
+                <path
+                  key={`raw-${c.metric}`}
+                  d={linePath(times, c.values, x, y, maxGap)}
+                  className={styles.lineRaw}
+                  style={{ stroke: color(spec.metrics.indexOf(c.metric)) }}
+                />
+              ) : null,
+            )}
             {shown.map((c) => (
               <path
                 key={c.metric}
-                d={linePath(times, c.values, x, y, maxGap)}
+                d={linePath(
+                  times,
+                  smoothed ? smooth(times, c.values, smoothMs, maxGap) : c.values,
+                  x,
+                  y,
+                  maxGap,
+                )}
                 className={styles.line}
                 style={{ stroke: color(spec.metrics.indexOf(c.metric)) }}
               />
@@ -198,6 +221,33 @@ export function TelemetryChart({
               <line x1={x(hovered)} x2={x(hovered)} y1="0" y2="100" className={styles.crosshair} />
             ) : null}
           </svg>
+          {peak && times[peak.i] !== undefined ? (
+            <>
+              <span
+                className={styles.peakDot}
+                style={{
+                  left: `${String(x(times[peak.i] as number) / 10)}%`,
+                  top: `${String(y(peak.v))}%`,
+                }}
+                aria-hidden="true"
+              />
+              <span
+                className={styles.peakLabel}
+                style={{
+                  ...(x(times[peak.i] as number) > 700
+                    ? { right: `${String(100 - x(times[peak.i] as number) / 10 + 1)}%` }
+                    : { left: `${String(x(times[peak.i] as number) / 10 + 1)}%` }),
+                  top: `${String(y(peak.v))}%`,
+                }}
+              >
+                {t('telemetry.peak', {
+                  value: n(peak.v),
+                  unit: spec.unit,
+                  time: `${longRange ? `${formatDate(iso(times[peak.i] as number), timeZone, i18n.language).slice(0, 6)} ` : ''}${formatZonedTime(iso(times[peak.i] as number), timeZone)}`,
+                })}
+              </span>
+            </>
+          ) : null}
           {spec.reference !== undefined && spec.reference > lo && spec.reference < hi ? (
             <span
               className={styles.referenceLabel}

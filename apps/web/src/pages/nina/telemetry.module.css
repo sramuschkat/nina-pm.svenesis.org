@@ -200,6 +200,35 @@
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
+.lineRaw {
+  fill: none;
+  stroke-width: 1;
+  stroke-opacity: 0.3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.peakDot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--npm-plot-1);
+  box-shadow: 0 0 0 2px var(--npm-white);
+  pointer-events: none;
+}
+.peakLabel {
+  position: absolute;
+  transform: translateY(-50%);
+  padding: 0 var(--npm-space-1);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .band {
   fill-opacity: 0.16;
   stroke: none;

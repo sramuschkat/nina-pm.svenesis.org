@@ -11902,6 +11902,7 @@ components:
           enum:
             - pc
             - power_box
+            - storage
         resolution:
           type: string
           enum:
@@ -18153,6 +18154,7 @@ components:
           enum:
             - pc
             - power_box
+            - storage
         samples:
           type: array
           items:

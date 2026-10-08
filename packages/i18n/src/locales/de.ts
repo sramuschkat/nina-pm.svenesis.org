@@ -2050,7 +2050,7 @@ export const de = {
   },
   telemetry: {
     title: 'Rig-Zustand',
-    info: 'Messwerte der Skripte am Rig: Mini-PC (Core Temp) und Powerbox (Pegasus Unity). Rohwerte bleiben 90 Tage, danach Stundenwerte (Minimum, Mittel, Maximum). Zeiten in Standortzeit.',
+    info: 'Messwerte der Skripte am Rig: Mini-PC (Core Temp), Powerbox (Pegasus Unity) und freier Speicherplatz. Rohwerte bleiben 90 Tage, danach Stundenwerte (Minimum, Mittel, Maximum). Zeiten in Standortzeit.',
     rig: 'Rig',
     range: 'Zeitraum',
     ranges: {
@@ -2066,7 +2066,7 @@ export const de = {
     emptyTitle: 'Noch keine Telemetrie',
     emptyText:
       'Für dieses Rig sind noch keine Messwerte eingegangen. Die Skripte am Rig laden sie mit dem Token einer NINA-Instanz hoch – Einrichtung: docs/ops/rig-telemetry.md.',
-    source: { pc: 'Mini-PC', power_box: 'Powerbox' },
+    source: { pc: 'Mini-PC', power_box: 'Powerbox', storage: 'Speicherplatz' },
     metric: {
       cpuMaxC: 'CPU max',
       cpuAvgC: 'CPU Mittel',
@@ -2080,6 +2080,9 @@ export const de = {
       currentA: 'Strom',
       dewHeater1Pct: 'Taukappe 1',
       dewHeater2Pct: 'Taukappe 2',
+      freeGb: 'Frei',
+      freePct: 'Frei (Anteil)',
+      totalGb: 'Gesamt',
     },
     chart: {
       temps: 'Temperaturen',
@@ -2090,6 +2093,7 @@ export const de = {
       voltage: 'Spannung',
       current: 'Strom',
       heaters: 'Taukappen',
+      diskFree: 'Freier Speicherplatz',
     },
     never: 'noch nie empfangen',
     received: 'zuletzt {{time}} (vor {{minutes}} min)',
@@ -2098,6 +2102,7 @@ export const de = {
     history: 'Verlauf {{source}}',
     chartSummary: '{{title}}: {{series}}, Bereich {{min}} bis {{max}} {{unit}}',
     reference: 'Warnschwelle {{value}} {{unit}}',
+    peak: 'max {{value}} {{unit}} {{time}}',
     resolutionRaw: 'Rohwerte · {{points}} Punkte',
     resolutionHourly: 'Stundenwerte · {{points}} Punkte',
   },

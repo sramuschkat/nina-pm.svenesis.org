@@ -277,7 +277,8 @@
  ],
  "telemetrySources": [
   "pc",
-  "power_box"
+  "power_box",
+  "storage"
  ],
  "heartbeatStates": [
   "running",

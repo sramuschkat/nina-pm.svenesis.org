@@ -24,11 +24,18 @@
 .PARAMETER BaseUrl
   Standard: https://nina-pm.svenesis.org
 
+.PARAMETER Disk
+  Nur bei -Source pc: Laufwerk, dessen freier Speicherplatz bei jedem Lauf mitgesendet wird (Quelle storage).
+  Standard C:. Leer ('') schaltet es ab. Fuer ein anderes Laufwerk, z. B. das NINA-Bildverzeichnis: -Disk D:
+
 .PARAMETER DryRun
   Nur anzeigen, was gesendet wuerde (erste Anfrage als JSON), nichts senden, Zustand nicht aendern.
 
 .EXAMPLE
   .\Send-NinaPmTelemetry.ps1 -Source pc -CsvPath C:\tools\coretemp_history.csv -DryRun
+
+.EXAMPLE
+  .\Send-NinaPmTelemetry.ps1 -Source pc -CsvPath C:\tools\coretemp_history.csv -Disk D:
 #>
 [CmdletBinding()]
 param(
@@ -39,6 +46,7 @@ param(
     [string]$StateFile = '',
     [int]$BatchSize = 500,
     [string]$LogFile = '',
+    [string]$Disk = 'C:',
     [switch]$DryRun
 )
 
@@ -60,10 +68,50 @@ function Write-Log([string]$Message) {
     if ($LogFile) { Add-Content -LiteralPath $LogFile -Value $line -Encoding UTF8 }
 }
 
+# Log klein halten: ueber 1 MB nur die letzten 2000 Zeilen behalten (drei Zeilen je 5 min wuerden sonst wachsen).
+if ($LogFile -and (Test-Path -LiteralPath $LogFile)) {
+    try {
+        if ((Get-Item -LiteralPath $LogFile).Length -gt 1MB) {
+            $keep = Get-Content -LiteralPath $LogFile -Tail 2000
+            Set-Content -LiteralPath $LogFile -Value $keep -Encoding UTF8
+        }
+    } catch { }
+}
+
 if (-not $Token -and -not $DryRun) {
     Write-Log 'Kein Token: Parameter -Token oder Umgebungsvariable NINA_PM_TELEMETRY_TOKEN setzen.'
     exit 2
 }
+$uri = $BaseUrl.TrimEnd('/') + '/api/nina/v1/telemetry'
+$headers = @{ Authorization = "Bearer $Token" }
+
+# Freier Speicherplatz (Quelle storage): ein Messpunkt je Lauf, unabhaengig von der CSV. Ein Fehler hier
+# blockiert den CSV-Upload nicht.
+if ($Source -eq 'pc' -and $Disk) {
+    try {
+        $drive = New-Object System.IO.DriveInfo($Disk.TrimEnd('\').TrimEnd(':'))
+        $totalGb = [math]::Round($drive.TotalSize / 1GB, 2)
+        $freeGb = [math]::Round($drive.AvailableFreeSpace / 1GB, 2)
+        $freePct = if ($drive.TotalSize -gt 0) { [math]::Round(100.0 * $drive.AvailableFreeSpace / $drive.TotalSize, 1) } else { 0 }
+        $storageBody = @{
+            source  = 'storage'
+            samples = @(@{
+                    atUtc  = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ', $Inv)
+                    values = [ordered]@{ freeGb = $freeGb; totalGb = $totalGb; freePct = $freePct }
+                })
+        } | ConvertTo-Json -Depth 5 -Compress
+        if ($DryRun) {
+            Write-Host $storageBody
+        } else {
+            Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -ContentType 'application/json; charset=utf-8' `
+                -Body ([System.Text.Encoding]::UTF8.GetBytes($storageBody)) -TimeoutSec 30 | Out-Null
+            Write-Log ("storage {0}: {1} GB frei von {2} GB ({3} %)" -f $Disk, $freeGb, $totalGb, $freePct)
+        }
+    } catch {
+        Write-Log "Speicherplatz $Disk nicht gesendet: $($_.Exception.Message)"
+    }
+}
+
 if (-not (Test-Path -LiteralPath $CsvPath)) {
     Write-Log "CSV fehlt: $CsvPath"
     exit 2
@@ -126,8 +174,6 @@ if ($samples.Count -eq 0) {
     exit 0
 }
 $sorted = @($samples | Sort-Object { $_.at })
-$uri = $BaseUrl.TrimEnd('/') + '/api/nina/v1/telemetry'
-$headers = @{ Authorization = "Bearer $Token" }
 $sent = 0
 
 for ($i = 0; $i -lt $sorted.Count; $i += $BatchSize) {

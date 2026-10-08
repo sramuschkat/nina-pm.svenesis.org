@@ -74,11 +74,22 @@ Prüfen: `Get-Content C:\tools\ninapm-telemetry.log -Tail 10` und im Web **Betri
 | Token widerrufen | `401`, Exitcode 1; neues Token anlegen und mit `setx /M` setzen |
 | Leere Zelle in der CSV | Der Wert fehlt (nie 0) |
 
+## Freier Speicherplatz
+
+Beim Lauf für den Mini-PC (`-Source pc`) misst das Skript zusätzlich den freien Platz auf Laufwerk C: und sendet
+ihn als Quelle `storage`. Dafür ist keine eigene Aufgabe nötig. Liegen die NINA-Bilder auf einem anderen Laufwerk,
+ergänzt du in der Aufgabe `-Disk D:`; mit `-Disk ''` ist die Messung aus. Im Log steht dann je Lauf eine Zeile
+`storage C:: 312.5 GB frei von 476.9 GB (65.5 %)`.
+
+Nach einer neuen Version des Skripts genügt es, die Datei in `C:\tools` zu ersetzen (Abschnitt 3); die Aufgaben
+bleiben unverändert.
+
 ## Messgrößen
 
 | Quelle | CSV-Spalte → Messgröße |
 |---|---|
 | `pc` | `tmax` → `cpuMaxC`, `tavg` → `cpuAvgC`, `load` → `loadPct`, `disk` → `diskC` |
+| `storage` | vom Skript gemessen (kein CSV): `freeGb`, `totalGb`, `freePct` |
 | `power_box` | `temp` → `airC`, `dew` → `dewPointC`, `hum` → `humidityPct`, `volt` → `voltageV`, `amp` → `currentA`, `heat1` → `dewHeater1Pct`, `heat2` → `dewHeater2Pct` |
 
 Wertebereiche und Einheiten: `packages/shared/src/contracts/nina/telemetry.ts`. Der Taupunktabstand wird im Web

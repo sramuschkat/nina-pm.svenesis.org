@@ -20023,7 +20023,7 @@ export interface components {
         };
         TelemetrySeries: {
             /** @enum {string} */
-            source: "pc" | "power_box";
+            source: "pc" | "power_box" | "storage";
             /** @enum {string} */
             resolution: "raw" | "hourly";
             stepS: number;
@@ -22657,7 +22657,7 @@ export interface components {
         };
         NinaTelemetryBatch: {
             /** @enum {string} */
-            source: "pc" | "power_box";
+            source: "pc" | "power_box" | "storage";
             samples: components["schemas"]["NinaTelemetrySample"][];
         };
         NinaTelemetrySample: {

@@ -30,11 +30,13 @@ export function rangeWindow(range: TelemetryRange, nowMs: number): { from: strin
 
 /** Ab diesem Abstand zum Taupunkt beschlägt die Optik praktisch schon (Glas strahlt 3–6 K unter die Luft ab). */
 export const DEW_GAP_WARN_K = 3;
+/** Unter so viel Prozent freiem Speicherplatz wird die Kennzahl hervorgehoben. */
+export const DISK_FREE_WARN_PCT = 10;
 /** Ohne Messpunkt seit so vielen Minuten gilt eine Quelle als still. */
 export const STALE_MIN = 15;
 
 export type ChartKey =
-  'temps' | 'load' | 'air' | 'dewGap' | 'humidity' | 'voltage' | 'current' | 'heaters';
+  'temps' | 'load' | 'air' | 'dewGap' | 'humidity' | 'voltage' | 'current' | 'heaters' | 'diskFree';
 
 export interface ChartSpec {
   readonly key: ChartKey;
@@ -47,10 +49,21 @@ export interface ChartSpec {
   readonly yMax?: number;
   /** Bezugslinie (z. B. 3 K beim Taupunktabstand). */
   readonly reference?: number;
+  /** Höchstwert dieser Messgröße im Zeitraum markieren („max 70,5 °C 16:01“). */
+  readonly annotateMax?: string;
 }
 
 export const CHARTS: readonly ChartSpec[] = [
-  { key: 'temps', source: 'pc', unit: '°C', metrics: ['cpuMaxC', 'cpuAvgC', 'diskC'] },
+  // CPU max und Mittel liegen beim Mini-PC fast gleichauf – nur max zeichnen (Rückmeldung Sven 08.10.2026).
+  {
+    key: 'temps',
+    source: 'pc',
+    unit: '°C',
+    metrics: ['cpuMaxC', 'diskC'],
+    yMin: 20,
+    yMax: 100,
+    annotateMax: 'cpuMaxC',
+  },
   { key: 'load', source: 'pc', unit: '%', metrics: ['loadPct'], yMin: 0, yMax: 100 },
   { key: 'air', source: 'power_box', unit: '°C', metrics: ['airC', 'dewPointC'] },
   {
@@ -71,6 +84,15 @@ export const CHARTS: readonly ChartSpec[] = [
     metrics: ['dewHeater1Pct', 'dewHeater2Pct'],
     yMin: 0,
     yMax: 100,
+  },
+  {
+    key: 'diskFree',
+    source: 'storage',
+    unit: '%',
+    metrics: ['freePct'],
+    yMin: 0,
+    yMax: 100,
+    reference: DISK_FREE_WARN_PCT,
   },
 ];
 
@@ -99,19 +121,83 @@ export function latestValue(s: TelemetrySeries, metric: string): number | null {
   return v[metric] ?? null;
 }
 
-/** Wertebereich der y-Achse mit etwas Luft; feste Grenzen der Spezifikation gewinnen. */
+/**
+ * Wertebereich der y-Achse mit etwas Luft. `yMin`/`yMax` sind feste Grenzen, die nur Werte jenseits davon erweitern
+ * (z. B. 20–100 °C, darüber hinaus wächst die Achse mit).
+ */
 export function yDomain(
   values: readonly (number | null)[],
   spec: Pick<ChartSpec, 'yMin' | 'yMax' | 'reference'>,
 ): [number, number] {
   const finite = values.filter((v): v is number => v !== null && Number.isFinite(v));
   if (spec.reference !== undefined) finite.push(spec.reference);
-  let lo = finite.length > 0 ? Math.min(...finite) : 0;
-  let hi = finite.length > 0 ? Math.max(...finite) : 1;
-  const pad = Math.max((hi - lo) * 0.1, 0.5);
-  lo = spec.yMin ?? lo - pad;
-  hi = spec.yMax ?? hi + pad;
+  const dataLo = finite.length > 0 ? Math.min(...finite) : 0;
+  const dataHi = finite.length > 0 ? Math.max(...finite) : 1;
+  const pad = Math.max((dataHi - dataLo) * 0.1, 0.5);
+  const lo = spec.yMin !== undefined ? Math.min(spec.yMin, dataLo) : dataLo - pad;
+  const hi = spec.yMax !== undefined ? Math.max(spec.yMax, dataHi) : dataHi + pad;
   return hi > lo ? [lo, hi] : [lo, lo + 1];
+}
+
+/** Fenster der Glättung: mindestens 5 min, bei langen Zeiträumen etwa 1/200 des Zeitraums. */
+export function smoothWindowMs(rangeMs: number): number {
+  return Math.max(5 * 60_000, rangeMs / 200);
+}
+
+/**
+ * Gleitendes Mittel (zentriert, Fensterbreite `windowMs`) über Rohwerte; `null` bleibt `null`, über Lücken größer
+ * `maxGapMs` wird nicht gemittelt. Damit wird der Verlauf lesbar, die blassen Rohwerte darunter zeigen die Spitzen.
+ */
+export function smooth(
+  t: readonly number[],
+  values: readonly (number | null)[],
+  windowMs: number,
+  maxGapMs: number,
+): (number | null)[] {
+  const out: (number | null)[] = values.map(() => null);
+  const half = windowMs / 2;
+  // Abschnitte ohne Lücke
+  let start = 0;
+  for (let i = 1; i <= t.length; i++) {
+    const end = i === t.length || (t[i] as number) - (t[i - 1] as number) > maxGapMs;
+    if (!end) continue;
+    let lo = start;
+    let hi = start;
+    let sum = 0;
+    let n = 0;
+    for (let k = start; k < i; k++) {
+      const tk = t[k] as number;
+      while (hi < i && (t[hi] as number) <= tk + half) {
+        const v = values[hi];
+        if (v != null) {
+          sum += v;
+          n += 1;
+        }
+        hi += 1;
+      }
+      while ((t[lo] as number) < tk - half) {
+        const v = values[lo];
+        if (v != null) {
+          sum -= v;
+          n -= 1;
+        }
+        lo += 1;
+      }
+      if (values[k] != null && n > 0) out[k] = Math.round((sum / n) * 100) / 100;
+    }
+    start = i;
+  }
+  return out;
+}
+
+/** Index und Wert des Höchstwerts; `null` ohne Werte. */
+export function maxPoint(values: readonly (number | null)[]): { i: number; v: number } | null {
+  let best: { i: number; v: number } | null = null;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v != null && Number.isFinite(v) && (best === null || v > best.v)) best = { i, v };
+  }
+  return best;
 }
 
 /**

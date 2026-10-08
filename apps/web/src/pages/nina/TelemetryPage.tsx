@@ -20,6 +20,7 @@ import { TelemetryChart } from './TelemetryChart';
 import {
   CHARTS,
   DEW_GAP_WARN_K,
+  DISK_FREE_WARN_PCT,
   isRange,
   latestValue,
   rangeWindow,
@@ -44,6 +45,11 @@ const TILES: Record<TelemetrySeries['source'], readonly { metric: string; unit: 
     { metric: 'humidityPct', unit: '%' },
     { metric: 'voltageV', unit: 'V' },
     { metric: 'currentA', unit: 'A' },
+  ],
+  storage: [
+    { metric: 'freeGb', unit: 'GB' },
+    { metric: 'freePct', unit: '%' },
+    { metric: 'totalGb', unit: 'GB' },
   ],
 };
 
@@ -191,7 +197,10 @@ export function TelemetryPage() {
                 <dl className={styles.values}>
                   {TILES[s.source].map(({ metric, unit }) => {
                     const v = latestValue(s, metric);
-                    const warn = metric === 'dewGapK' && v !== null && v < DEW_GAP_WARN_K;
+                    const warn =
+                      v !== null &&
+                      ((metric === 'dewGapK' && v < DEW_GAP_WARN_K) ||
+                        (metric === 'freePct' && v < DISK_FREE_WARN_PCT));
                     return (
                       <div key={metric} className={warn ? styles.valueWarn : undefined}>
                         <dt>{t(`telemetry.metric.${metric}`)}</dt>
