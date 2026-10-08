@@ -26,7 +26,7 @@ import {
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { EffortChip } from '../../components/EffortChip';
 import { FilterBar, FilterCheck, FilterField } from '../../components/FilterBar';
 import { FilterChip } from '../../components/FilterChip';
@@ -338,7 +338,7 @@ function QueueTable({
       cell: (q) => (
         <>
           <Link to={`/projekte/${q.projectId}`}>{q.name}</Link>{' '}
-          <CommentCount count={q.commentCount} />
+          <ProjectCommentCount projectId={q.projectId} count={q.commentCount} />
           {q.kind === 'change-request' ? (
             <span className={styles.flag}>{t('changeRequests.badge')}</span>
           ) : null}

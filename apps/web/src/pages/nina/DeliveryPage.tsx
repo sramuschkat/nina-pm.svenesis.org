@@ -16,7 +16,7 @@ import {
   type NinaRigDelivery,
 } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
-import { CommentCount } from '../../components/CommentCount';
+import { ProjectCommentCount } from '../../lib/project-comments';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FilterChip } from '../../components/FilterChip';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
@@ -273,7 +273,7 @@ function DeliveryCard({ card }: { card: Card }) {
     >
       <div className={styles.cardHead}>
         <h3 id={headingId}>{item.name}</h3>
-        <CommentCount count={item.commentCount} />
+        <ProjectCommentCount projectId={item.id} count={item.commentCount} />
         <StatusBadge kind="project" value={item.status} />
         {item.doneTonight ? (
           // Heute Nacht abgearbeitet: NINA erhält das Projekt nicht mehr (07.10.2026).
