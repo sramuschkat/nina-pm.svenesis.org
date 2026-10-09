@@ -19173,6 +19173,7 @@ export interface components {
                 toUtc: string;
             } | null;
             darkHours: number;
+            twilight: components["schemas"]["TonightTwilight"];
             moon: {
                 illumPct: number;
                 events: {
@@ -19210,6 +19211,24 @@ export interface components {
             waxing: boolean;
             ratingIndex: number | null;
             nightMean: number | null;
+        };
+        TonightTwilight: {
+            sun: components["schemas"]["TonightCrossing"];
+            civil: components["schemas"]["TonightCrossing"];
+            nautical: components["schemas"]["TonightCrossing"];
+            astronomical: components["schemas"]["TonightCrossing"];
+        };
+        TonightCrossing: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            duskUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            dawnUtc: string | null;
         };
         TonightWeather: {
             nightMean: number | null;

@@ -130,6 +130,12 @@ const view = (): TonightView => ({
       nightWindow: { startUtc: '2026-09-19T00:00:00Z', endUtc: '2026-09-19T13:00:00Z' },
       dark: { fromUtc: '2026-09-19T01:10:00Z', toUtc: '2026-09-19T10:40:00Z' },
       darkHours: 9.5,
+      twilight: {
+        sun: { duskUtc: '2026-09-18T23:55:00Z', dawnUtc: '2026-09-19T11:55:00Z' },
+        civil: { duskUtc: '2026-09-19T00:20:00Z', dawnUtc: '2026-09-19T11:30:00Z' },
+        nautical: { duskUtc: '2026-09-19T00:45:00Z', dawnUtc: '2026-09-19T11:05:00Z' },
+        astronomical: { duskUtc: '2026-09-19T01:10:00Z', dawnUtc: '2026-09-19T10:40:00Z' },
+      },
       moon: {
         illumPct: 48,
         events: [{ type: 'set', atUtc: '2026-09-19T05:00:00Z' }],
@@ -213,7 +219,8 @@ describe('S-02 Heute Nacht', () => {
       .getAllByRole('listitem')
       .map((li) => li.textContent);
     expect(items[0]).toContain('9,5 h');
-    expect(items[0]).toContain('20:10–05:40 CDT');
+    expect(items[0]).toContain('astronomisch20:10');
+    expect(items[0]).toContain('05:40');
     expect(items[1]).toContain('48 %');
     expect(items[1]).toContain('unter 00:00');
     expect(items[2]).toContain('Gut 72 %');

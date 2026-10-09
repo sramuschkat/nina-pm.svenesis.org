@@ -5,6 +5,9 @@
 import type { TelemetrySeries } from '../../api/client';
 
 export const TELEMETRY_RANGES = ['12h', '24h', '3d', '7d', '30d', '90d', '365d'] as const;
+
+/** Zeitraum ohne Angabe in der Adresse (Rig-Zustand öffnet mit den letzten 12 h). */
+export const DEFAULT_RANGE: (typeof TELEMETRY_RANGES)[number] = '12h';
 export type TelemetryRange = (typeof TELEMETRY_RANGES)[number];
 
 const HOUR_MS = 3_600_000;

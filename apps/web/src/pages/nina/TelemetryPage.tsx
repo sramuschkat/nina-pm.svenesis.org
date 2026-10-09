@@ -19,6 +19,7 @@ import { useEquipmentList } from '../equipment/shared';
 import { TelemetryChart } from './TelemetryChart';
 import {
   CHARTS,
+  DEFAULT_RANGE,
   DEW_GAP_WARN_K,
   DISK_FREE_WARN_PCT,
   isRange,
@@ -91,7 +92,8 @@ export function TelemetryPage() {
   const site = (sites.data ?? []).find((s) => s.id === rig?.siteId) ?? null;
   const timeZone = site?.timeZone ?? 'UTC';
   const rangeParam = params.get('zeitraum');
-  const range: TelemetryRange = isRange(rangeParam) ? rangeParam : '24h';
+  // Standard 12 h (Sven 09.10.2026): eine Nacht auf einen Blick; der Standard steht nicht in der Adresse.
+  const range: TelemetryRange = isRange(rangeParam) ? rangeParam : DEFAULT_RANGE;
   // Kurze Zeiträume jede Minute neu, längere alle 10 min (Stundenwerte ändern sich stündlich).
   const short = range === '12h' || range === '24h';
   const { from, to } = rangeWindow(range, (short ? nowMin : Math.floor(nowMin / 10) * 10) * 60_000);
@@ -175,7 +177,7 @@ export function TelemetryPage() {
               type="button"
               className={styles.rangeChip}
               aria-pressed={r === range}
-              onClick={() => setUrl({ zeitraum: r === '24h' ? null : r })}
+              onClick={() => setUrl({ zeitraum: r === DEFAULT_RANGE ? null : r })}
             >
               {t(`telemetry.ranges.${r}`)}
             </button>

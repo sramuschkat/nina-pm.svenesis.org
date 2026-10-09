@@ -8,7 +8,7 @@
  */
 import { ProblemError, type MeasuredOverheads } from '@nina-pm/shared';
 import type { Kysely, Selectable } from 'kysely';
-import { withTx, retryOcc } from '../tx';
+import { withTx, retryOcc, isOccConflict } from '../tx';
 import type { Database, NinaInstanceTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 import { latestMeasuredOverheads } from './measured-overhead';
@@ -138,19 +138,31 @@ export async function ninaTokenLookup(
   };
 }
 
-/** Letzte Nutzung vermerken, wenn die vorige länger als 5 min zurückliegt. */
+/**
+ * Letzte Nutzung vermerken, wenn die vorige länger als 5 min zurückliegt – wie `AuthRepository.touch`: nur eine wirklich
+ * alte Zeile wird geschrieben, und ein OCC-Konflikt mit einer gleichzeitigen Anfrage derselben Instanz (z. B. zwei
+ * Telemetrie-Uploads oder Heartbeat und Aufnahmen in derselben Sekunde) heißt nur, dass die andere den Zeitstempel eben
+ * gesetzt hat (Lambda-Log 09.10.2026: `nina_touch_failed … OC000`).
+ */
 export async function ninaTouch(
   db: Kysely<Database>,
   p: Pick<NinaPrincipal, 'instanceId' | 'tenantId' | 'lastSeenAt'>,
   now: Date,
 ): Promise<void> {
   if (p.lastSeenAt && now.getTime() - p.lastSeenAt.getTime() < NINA_SEEN_INTERVAL_MS) return;
-  await db
-    .updateTable('ninaInstance')
-    .set({ lastSeenAt: now })
-    .where('id', '=', p.instanceId)
-    .where('tenantId', '=', p.tenantId)
-    .execute();
+  const stale = new Date(now.getTime() - NINA_SEEN_INTERVAL_MS);
+  try {
+    await db
+      .updateTable('ninaInstance')
+      .set({ lastSeenAt: now })
+      .where('id', '=', p.instanceId)
+      .where('tenantId', '=', p.tenantId)
+      .where((eb) => eb.or([eb('lastSeenAt', 'is', null), eb('lastSeenAt', '<', stale)]))
+      .execute();
+  } catch (error) {
+    if (isOccConflict(error)) return;
+    throw error;
+  }
 }
 
 export class NinaInstanceRepository extends TenantRepo {
