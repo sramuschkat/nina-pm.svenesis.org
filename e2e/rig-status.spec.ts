@@ -120,10 +120,10 @@ test('S-43: „Rig jetzt“ mit Gerätestatus und Wetter über der Telemetrie, v
   const toolbar = await page.getByRole('group', { name: 'Zeitraum' }).locator('..').boundingBox();
   const box = await card.boundingBox();
   const empty = await page.getByRole('heading', { name: 'Noch keine Telemetrie' }).boundingBox();
-  expect(toolbar && box && empty).toBeTruthy();
-  expect(box!.y).toBeGreaterThan(toolbar!.y);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(empty!.y);
-  expect(Math.abs(box!.width - toolbar!.width)).toBeLessThanOrEqual(1);
+  if (!toolbar || !box || !empty) throw new Error('Leiste, Karte oder Leerzustand nicht sichtbar');
+  expect(box.y).toBeGreaterThan(toolbar.y);
+  expect(box.y + box.height).toBeLessThanOrEqual(empty.y);
+  expect(Math.abs(box.width - toolbar.width)).toBeLessThanOrEqual(1);
 });
 
 for (const theme of ['light', 'dark'] as const) {
