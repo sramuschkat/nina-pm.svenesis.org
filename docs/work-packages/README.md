@@ -152,3 +152,4 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-66](AP-66.md) | Engine: frei gewordene Zeit neu vergeben, kein Anfahren bei Fortsetzung | M | AP-13d | H-13 | ☑ 08.10.2026 |
 | [AP-67](AP-67.md) | Rig-Telemetrie: PC und Powerbox dauerhaft speichern, Dashboards „Rig-Zustand“ (Migration 0015) | L | AP-14c | H-22, H-15 | ☑ 08.10.2026 |
 | [AP-68](AP-68.md) | Plugin 0.4.20: Zentrieren nach dem Flip, Autofokus im Plan, Vorziehen, Dock, keine Fahrt zu leeren Blöcken | M | AP-65 | H-15 | ◐ |
+| [AP-69](AP-69.md) | Himmelskarte und Zeitachse auf der Projektliste (Ansicht „Himmel“) | L | AP-21, AP-64 | H-16 | ☐ |
