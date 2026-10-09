@@ -1,0 +1,198 @@
+/* Startseite „Heute“ (AP-73): Bausteine über den Karten der Startseite; Farben nur über Tokens. */
+.page {
+  composes: page from './home.module.css';
+}
+.muted {
+  composes: muted from './home.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from './home.module.css';
+}
+.card {
+  composes: card from './home.module.css';
+}
+.cardHead {
+  composes: cardHead from './home.module.css';
+  flex-wrap: wrap;
+}
+.cardTitle {
+  composes: cardTitle from './home.module.css';
+  flex: 0 1 auto;
+}
+.cardBody {
+  composes: cardBody from './home.module.css';
+}
+.more {
+  composes: more from './home.module.css';
+  margin-inline-start: auto;
+}
+.progressCell {
+  composes: progressCell from './home.module.css';
+}
+.badgeOk {
+  composes: badgeOk from './home.module.css';
+}
+.badgeWarn {
+  composes: badgeWarn from './home.module.css';
+}
+.nightEff {
+  composes: nightEff from './home.module.css';
+}
+.nightTrack {
+  composes: nightTrack from './home.module.css';
+}
+.nightFill {
+  composes: nightFill from './home.module.css';
+}
+.nightEffText {
+  composes: nightEffText from './home.module.css';
+}
+
+/* Rechte Spalte neben dem Plan: „Rig jetzt“ über „Zu tun“. */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+  min-width: 0;
+}
+
+/* Aufklapper unter der Zeitleiste: Schalter nebeneinander, Inhalte darunter in voller Breite. */
+.folds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  margin-top: var(--npm-space-3);
+  padding-top: var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
+}
+.foldBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-5);
+}
+.foldButton {
+  padding: var(--npm-space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--npm-link);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.foldButton:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.foldPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.foldTitle {
+  margin: 0;
+  font-size: var(--npm-font-base);
+  font-weight: 600;
+}
+
+/* Letzte Aufnahme in „Rig jetzt“. */
+.lastCapture {
+  margin: 0;
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.lastLabel {
+  color: var(--npm-text-light);
+}
+.flagged {
+  color: var(--npm-link);
+  text-decoration: underline;
+}
+
+/* Zu tun: letzte Nacht, darunter Einträge mit Zahl und Aktion. */
+.lastNight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-neutral-bg);
+}
+.lastNightHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-2);
+  font-weight: 600;
+}
+.todos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.todos > li {
+  border-top: 1px solid var(--npm-border);
+}
+.todo {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) 0;
+  color: var(--npm-text);
+  text-decoration: none;
+}
+.todo:hover .todoAction {
+  text-decoration: underline;
+}
+.todoCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--npm-neutral-bg);
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+}
+.todoCount[data-tone='warn'] {
+  background: var(--npm-warning-bg);
+}
+.todoCount[data-tone='danger'] {
+  background: var(--npm-danger-bg);
+}
+.todoAction {
+  color: var(--npm-link);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+}
+.todoDetail {
+  margin: 0 0 var(--npm-space-2) 2.25rem;
+  padding: 0;
+  list-style: none;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+
+/* Aktive Projekte: Kopf als Aufklapper, Restzeit zweizeilig. */
+.collapse {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.collapse:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.eta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.eta[data-tone='warn'] > :first-child {
+  color: var(--npm-warning);
+}

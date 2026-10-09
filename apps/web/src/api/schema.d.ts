@@ -19541,6 +19541,8 @@ export interface components {
             projects: components["schemas"]["TonightProject"][];
             idleProjects: number;
             instances: components["schemas"]["TonightInstance"][];
+            live: components["schemas"]["RigLive"];
+            lastCapture: components["schemas"]["TonightLastCapture"];
         };
         TonightCalendarNight: {
             /**
@@ -19621,6 +19623,136 @@ export interface components {
              */
             lastSeenAt: string | null;
             state: string | null;
+            mismatchCodes: ("flip_trigger_missing" | "flip_timing_mismatch" | "recenter_after_flip_on" | "rotator_unavailable" | "rotator_range_quarter" | "plate_solve_tolerance" | "mount_epoch_unsupported" | "mount_site_mismatch" | "nina_dither_trigger_present" | "af_time_trigger_missing" | "af_time_mismatch" | "filter_wheel_changed" | "optics_mismatch")[];
+            profileSiteMismatch: boolean;
+        };
+        RigLive: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            instanceId: string;
+            instanceName: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            receivedAtUtc: string;
+            /** @enum {string|null} */
+            state: "running" | "idle" | "paused" | "flats" | "offline" | "blocked" | null;
+            pluginVersion: string | null;
+            camera: {
+                temperatureC: number | null;
+                setPointC: number | null;
+                coolerOn: boolean;
+                coolerPowerPct: number | null;
+            } | null;
+            filterWheel: {
+                position: number;
+                name: string;
+                focusOffset: number;
+            }[] | null;
+            devices: components["schemas"]["NinaDevices"];
+            optics: components["schemas"]["NinaOptics"];
+            pixelScaleArcsecPx: number | null;
+        } | null;
+        NinaDevices: {
+            connected: {
+                camera: boolean;
+                mount: boolean;
+                focuser: boolean;
+                filterWheel: boolean;
+                rotator: boolean;
+                guider: boolean;
+                safetyMonitor: boolean;
+                weather: boolean;
+                flatDevice: boolean;
+                switch: boolean;
+                dome: boolean;
+            };
+            focuser: {
+                position: number;
+                temperatureC: number | null;
+                moving: boolean;
+            } | null;
+            mountState: {
+                /** @enum {string|null} */
+                pierSide: "east" | "west" | null;
+                tracking: boolean;
+                atPark: boolean;
+                slewing: boolean;
+                altitudeDeg: number | null;
+                azimuthDeg: number | null;
+            } | null;
+            guider: {
+                rmsTotalArcsec: number | null;
+                rmsRaArcsec: number | null;
+                rmsDecArcsec: number | null;
+            } | null;
+            filter: string | null;
+            safe: boolean | null;
+            weather: components["schemas"]["NinaWeatherNow"];
+        } | null;
+        NinaWeatherNow: {
+            cloudCoverPct?: number;
+            skyQualityMag?: number;
+            skyBrightnessLux?: number;
+            skyTemperatureC?: number;
+            starFwhmArcsec?: number;
+            temperatureC?: number;
+            humidityPct?: number;
+            dewPointC?: number;
+            pressureHpa?: number;
+            windSpeedMs?: number;
+            windGustMs?: number;
+            windDirectionDeg?: number;
+            rainRateMmH?: number;
+        } | null;
+        NinaOptics: {
+            focalLengthMm: number | null;
+            focalRatio: number | null;
+            pixelSizeUm: number | null;
+            sensorWidthPx: number | null;
+            sensorHeightPx: number | null;
+            cameraName: string | null;
+            telescopeName: string | null;
+            ninaVersion: string | null;
+        } | null;
+        TonightLastCapture: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            captureId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            projectName: string;
+            filter: string;
+            exposureS: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            capturedAtUtc: string;
+            hfr: number | null;
+            stars: number | null;
+            /** @enum {string} */
+            grade: "ok" | "flagged" | "kept" | "rejected" | "none";
+            flags: components["schemas"]["ImageFlag"][];
+        } | null;
+        ImageFlag: {
+            /** @enum {string} */
+            metric: "hfr" | "stars" | "rms" | "cloud";
+            value: number;
+            limit: number;
         };
         LineTonightInput: {
             disabled: boolean;
@@ -20150,12 +20282,6 @@ export interface components {
             focusPosition?: number;
             focuserTemperatureC?: number;
         } | null;
-        ImageFlag: {
-            /** @enum {string} */
-            metric: "hfr" | "stars" | "rms" | "cloud";
-            value: number;
-            limit: number;
-        };
         NightSessionEvent: {
             /**
              * Format: uuid
@@ -20561,98 +20687,6 @@ export interface components {
                 };
             } | null;
         };
-        RigLive: {
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            instanceId: string;
-            instanceName: string;
-            /**
-             * Format: date-time
-             * @example 2026-09-18T13:00:00Z
-             */
-            receivedAtUtc: string;
-            /** @enum {string|null} */
-            state: "running" | "idle" | "paused" | "flats" | "offline" | "blocked" | null;
-            pluginVersion: string | null;
-            camera: {
-                temperatureC: number | null;
-                setPointC: number | null;
-                coolerOn: boolean;
-                coolerPowerPct: number | null;
-            } | null;
-            filterWheel: {
-                position: number;
-                name: string;
-                focusOffset: number;
-            }[] | null;
-            devices: components["schemas"]["NinaDevices"];
-            optics: components["schemas"]["NinaOptics"];
-            pixelScaleArcsecPx: number | null;
-        } | null;
-        NinaDevices: {
-            connected: {
-                camera: boolean;
-                mount: boolean;
-                focuser: boolean;
-                filterWheel: boolean;
-                rotator: boolean;
-                guider: boolean;
-                safetyMonitor: boolean;
-                weather: boolean;
-                flatDevice: boolean;
-                switch: boolean;
-                dome: boolean;
-            };
-            focuser: {
-                position: number;
-                temperatureC: number | null;
-                moving: boolean;
-            } | null;
-            mountState: {
-                /** @enum {string|null} */
-                pierSide: "east" | "west" | null;
-                tracking: boolean;
-                atPark: boolean;
-                slewing: boolean;
-                altitudeDeg: number | null;
-                azimuthDeg: number | null;
-            } | null;
-            guider: {
-                rmsTotalArcsec: number | null;
-                rmsRaArcsec: number | null;
-                rmsDecArcsec: number | null;
-            } | null;
-            filter: string | null;
-            safe: boolean | null;
-            weather: components["schemas"]["NinaWeatherNow"];
-        } | null;
-        NinaWeatherNow: {
-            cloudCoverPct?: number;
-            skyQualityMag?: number;
-            skyBrightnessLux?: number;
-            skyTemperatureC?: number;
-            starFwhmArcsec?: number;
-            temperatureC?: number;
-            humidityPct?: number;
-            dewPointC?: number;
-            pressureHpa?: number;
-            windSpeedMs?: number;
-            windGustMs?: number;
-            windDirectionDeg?: number;
-            rainRateMmH?: number;
-        } | null;
-        NinaOptics: {
-            focalLengthMm: number | null;
-            focalRatio: number | null;
-            pixelSizeUm: number | null;
-            sensorWidthPx: number | null;
-            sensorHeightPx: number | null;
-            cameraName: string | null;
-            telescopeName: string | null;
-            ninaVersion: string | null;
-        } | null;
         DsoList: {
             items: components["schemas"]["DsoView"][];
             total: number;

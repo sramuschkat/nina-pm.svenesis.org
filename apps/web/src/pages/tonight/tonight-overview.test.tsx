@@ -115,16 +115,16 @@ describe('Heute Nacht – Kennzahlen und Zeitleiste', () => {
     expect(screen.getByText(/24 Frames, wenn ausgeliefert/)).toBeInTheDocument();
   });
 
-  it('Kachel „Dunkel“: Sonne und Dämmerungen je Abend und Morgen in Standortzeit', () => {
+  it('Kachel „Dunkel“: nautische und astronomische Dämmerung je Abend und Morgen in Standortzeit (AP-73)', () => {
     render(<KpiTiles rig={rig} sky={sky} plan={plan()} deviceTimeZone="America/Chicago" />);
-    const table = screen.getByRole('table', { name: 'Sonne und Dämmerungen der Nacht' });
+    const table = screen.getByRole('table', {
+      name: 'Nautische und astronomische Dämmerung der Nacht',
+    });
     const rows = within(table)
       .getAllByRole('row')
       .map((r) => r.textContent);
     expect(rows).toEqual([
       'StufeAbendMorgen',
-      'Sonne18:5506:55',
-      'bürgerlich19:2006:30',
       'nautisch19:4506:05',
       'astronomisch20:1005:40',
       'CDT',
@@ -132,13 +132,18 @@ describe('Heute Nacht – Kennzahlen und Zeitleiste', () => {
     expect(screen.getByText('astronomisch', { selector: 'span' })).toBeTruthy();
   });
 
-  it('Kachel „Dunkel“: abweichende Gerätezone – darunter die eigene Zeit, anderer Tag mit +1', () => {
+  it('Kachel „Dunkel“: abweichende Gerätezone – eigene Zeit dahinter, anderer Tag mit +1', () => {
     render(<KpiTiles rig={rig} sky={sky} plan={plan()} deviceTimeZone="Europe/Berlin" />);
-    const table = screen.getByRole('table', { name: 'Sonne und Dämmerungen der Nacht' });
-    const sun = within(table).getByRole('row', { name: /Sonne/ });
-    // 23:55Z = 18:55 CDT am 18.09. = 01:55 MESZ am 19.09.; 11:55Z = 06:55 CDT = 13:55 MESZ, beide am 19.09.
-    expect(sun.textContent).toBe('Sonne18:5501:55+106:5513:55');
-    expect(within(table).getByText('CDT · darunter deine Zeit (MESZ)')).toBeTruthy();
+    const table = screen.getByRole('table', {
+      name: 'Nautische und astronomische Dämmerung der Nacht',
+    });
+    const astro = within(table).getByRole('row', { name: /astronomisch/ });
+    // 01:10Z = 20:10 CDT am 18.09. = 03:10 MESZ am 19.09.; 10:40Z = 05:40 CDT = 12:40 MESZ, beide am 19.09.
+    expect(astro.textContent).toBe('astronomisch20:10 03:10+105:40 12:40');
+    // Eigene Zeit in derselben Zelle direkt hinter der Standortzeit.
+    const cell = within(astro).getAllByRole('cell')[0] as HTMLElement;
+    expect(cell.textContent).toBe('20:10 03:10+1');
+    expect(within(table).getByText('CDT · dahinter deine Zeit (MESZ)')).toBeTruthy();
   });
 
   it('Kachel „Dunkel“: ohne Durchgang (Polarnähe) steht „–“', () => {

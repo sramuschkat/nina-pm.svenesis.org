@@ -3,9 +3,14 @@
  * je Rig die **aktuelle Nacht** des Standorts (`currentNight`, NT-01) mit Dunkelheit, Mond, Wetter der Nacht
  * (Farbband aus Astro-Wetter), geplanten Projekten mit erwarteten Frames aus der gespeicherten Prognose
  * (Job `forecast`, AP-33) und den NINA-Instanzen. Die Nacht rechnet der Server, nie der Browser.
+ * Seit AP-73 Grundlage der Startseite „Heute“ (S-02): zusätzlich Live-Zustand, letzte Aufnahme und Abweichungen der
+ * NINA-Einstellungen je Instanz.
  */
 import { z } from 'zod';
+import { imageGrades, ninaSettingsMismatchCodes } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
+import { ImageFlag } from './sessions';
+import { RigLive } from './telemetry';
 import { WeatherBestWindow } from './weather';
 
 /** Nächte der Auswahl ab der laufenden Nacht (Wunsch Sven 30.09.2026: so weit reicht das Astro-Wetter, FA-WET-01). */
@@ -104,8 +109,34 @@ export const TonightInstance = z
     name: z.string(),
     lastSeenAt: UtcInstant.nullable(),
     state: z.string().nullable(),
+    /** Abweichungen der NINA-Einstellungen aus dem letzten Zustand (AP-73, „Zu tun“). */
+    mismatchCodes: z.array(z.enum(ninaSettingsMismatchCodes)),
+    /** Standort im NINA-Profil weicht vom Rig-Standort ab. */
+    profileSiteMismatch: z.boolean(),
   })
   .meta({ id: 'TonightInstance' });
+
+/** Höchstes Alter der letzten Aufnahme in „Rig jetzt“ (AP-73): älter → `null`. */
+export const TONIGHT_LAST_CAPTURE_HOURS = 36;
+
+/**
+ * Letztes gespeichertes, zugeordnetes Light des Rigs (AP-73, FA-FOL-09) mit Bewertung wie im Reiter „Bilder“ (AP-72b).
+ */
+export const TonightLastCapture = z
+  .object({
+    captureId: Uuid,
+    sessionId: Uuid,
+    projectId: Uuid,
+    projectName: z.string(),
+    filter: z.string(),
+    exposureS: z.number().min(0),
+    capturedAtUtc: UtcInstant,
+    hfr: z.number().nullable(),
+    stars: z.number().nullable(),
+    grade: z.enum(imageGrades),
+    flags: z.array(ImageFlag),
+  })
+  .meta({ id: 'TonightLastCapture' });
 
 export const TonightRig = z
   .object({
@@ -141,6 +172,10 @@ export const TonightRig = z
     /** Aktive Projekte ohne Frames in dieser Nacht. */
     idleProjects: z.number().int().min(0),
     instances: z.array(TonightInstance),
+    /** Live-Zustand wie in der Telemetrie (AP-70); `null` ohne Heartbeat. */
+    live: RigLive.nullable(),
+    /** Letzte Aufnahme der letzten `TONIGHT_LAST_CAPTURE_HOURS` Stunden; sonst `null`. */
+    lastCapture: TonightLastCapture.nullable(),
   })
   .meta({ id: 'TonightRig' });
 

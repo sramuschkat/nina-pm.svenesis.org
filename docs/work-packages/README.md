@@ -156,4 +156,4 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-70](AP-70.md) | Plugin 0.4.21: Autofokus mit dem Filter der Belichtung, Fokusdaten je Autofokus, Gerätestatus und SkyAlert-Wetter live, Messwerte je Aufnahme (RMS RA/Dec, Höhe, Luftmasse, Fokus, Wetter) | M | AP-68, AP-67 | H-15 | ☑ 09.10.2026 |
 | [AP-71](AP-71.md) | Engine und Plugin 0.4.22: keine Kurzbesuche, gleiche Blockrechnung, Neuplanung nach Überspringen, Diagnose, Ausrüstung im Heartbeat, Bildstatistik, ASCII-Namen | L | AP-66, AP-70 | H-13, H-15 | ◐ |
 | [AP-72](AP-72.md) | Bildqualität: Qualitätskurve, „klar laut Bildern“, Filter-Offsets (72a, #330), Bildbewertung und Reiter „Bilder“ im Projekt (72b) | L | AP-70, AP-71 | H-16, H-22 | ◐ |
-| [AP-73](AP-73.md) | Startseite „Heute“: Übersicht und Heute Nacht zusammenlegen, Zu tun, Rig jetzt mit letzter Aufnahme, Restzeit je Projekt | L | AP-26d, AP-70, AP-72 | H-16 | ☐ |
+| [AP-73](AP-73.md) | Startseite „Heute“: Übersicht und Heute Nacht zusammenlegen, Zu tun, Rig jetzt mit letzter Aufnahme, Restzeit je Projekt | L | AP-26d, AP-70, AP-72 | H-16 | ◐ |

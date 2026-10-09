@@ -14,7 +14,6 @@ import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
 import { CATALOG_PATH } from '../pages/catalog/model';
 import { HomePage } from '../pages/home/HomePage';
-import { TONIGHT_PATH, TonightPage } from '../pages/tonight/TonightPage';
 import { NotFoundPage, PrivacyPage, SourcesPage } from '../pages/other';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { ChangeLogPage } from '../pages/admin/ChangeLogPage';
@@ -163,7 +162,8 @@ export function createRouter() {
           element: <Root />,
           children: [
             { index: true, element: <HomePage /> },
-            { path: 'heute-nacht', element: <TonightPage /> },
+            // AP-73: „Heute Nacht“ ist Teil der Startseite „Heute“; Rig, Nacht und Anker bleiben erhalten.
+            { path: 'heute-nacht', element: <LegacyRedirect to="/" /> },
             // „Meine Objekte“ und „Entwürfe“ sind seit 30.09.2026 Ansichten der Projektliste.
             { path: 'meine-objekte', element: <Navigate to="/projekte?meine=1" replace /> },
             { path: 'projekte', element: <ProjectListPage /> },
@@ -237,7 +237,7 @@ export function createRouter() {
                 { path: 'klarnacht', element: <LegacyRedirect to={EVALUATION_PATHS.site} /> },
                 {
                   path: 'folgeplanung',
-                  element: <LegacyRedirect to={`${TONIGHT_PATH}#naechste-naechte`} />,
+                  element: <LegacyRedirect to="/#naechste-naechte" />,
                 },
               ],
             },

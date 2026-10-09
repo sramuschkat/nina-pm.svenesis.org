@@ -65,15 +65,15 @@ test('Owner ändert die Rolle von user1 → Glocke zählt → alle als gelesen',
   expect(ownerList.items.filter((n) => n.kind === 'role.changed')).toEqual([]);
 });
 
-test('Startseite (AP-26c): Übersicht → Warteschlange (User) bzw. Projektliste S-30 (Admin), im Rahmen', async ({
+test('Startseite (AP-73): „Heute“ → Projektliste S-30 (User und Admin), im Rahmen', async ({
   browser,
 }) => {
   const user = await pageAs(browser, 'user1');
   await user.goto('/');
-  await expect(user.getByRole('heading', { level: 1, name: 'Übersicht' })).toBeVisible();
-  await user.getByRole('link', { name: 'Zur Warteschlange' }).click();
-  await expect(user).toHaveURL('/projekte/warteschlange');
-  await expect(user.getByRole('heading', { level: 1, name: 'Warteschlange' })).toBeVisible();
+  await expect(user.getByRole('heading', { level: 1, name: 'Heute' })).toBeVisible();
+  await user.getByRole('link', { name: 'Zur Projektliste' }).click();
+  await expect(user).toHaveURL('/projekte');
+  await expect(user.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
   await expect(user.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
   const owner = await pageAs(browser, 'owner');
   await owner.goto('/');

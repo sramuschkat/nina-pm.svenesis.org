@@ -77,7 +77,7 @@ test('alte Pfade leiten um', async ({ page }) => {
   await page.goto('/auswertung/klarnacht');
   await expect(page).toHaveURL('/auswertung/standort');
   await page.goto('/auswertung/folgeplanung');
-  await expect(page).toHaveURL('/heute-nacht#naechste-naechte');
+  await expect(page).toHaveURL('/#naechste-naechte');
 });
 
 test('Nacht öffnen, Prüfliste abarbeiten, als geprüft markieren; Aufnahmen nach Typ; Kalender öffnet die Nacht', async ({
@@ -189,7 +189,7 @@ for (const theme of ['light', 'dark'] as const) {
     // Eigene Klasse „klar, aber nicht genutzt“ (Entscheidung Sven 07.10.2026) in der Legende.
     await expect(page.getByRole('list', { name: 'Legende' })).toContainText('klar, nicht genutzt');
     await expectNoSerious(page, `Standort-Statistik ${theme}`);
-    await page.goto('/heute-nacht');
+    await page.goto('/');
     await expect(page.getByRole('heading', { level: 2, name: 'Nächste Nächte' })).toBeVisible();
     await expectNoSerious(page, `Nächste Nächte ${theme}`);
   });

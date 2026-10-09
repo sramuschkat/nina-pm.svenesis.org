@@ -125,6 +125,73 @@ export class ImageQualityRepository extends TenantRepo {
   }
 
   /**
+   * Letztes gespeichertes, zugeordnetes Light des Rigs seit `sinceUtc` (AP-73, „Rig jetzt“ auf der Startseite) mit dem
+   * Namen seines Projekts; ohne Light `null`.
+   */
+  async lastLight(
+    rigId: string,
+    sinceUtc: Date,
+  ): Promise<(ProjectImageRow & { projectId: string; projectName: string }) | null> {
+    const r = await this.db
+      .selectFrom('capture as c')
+      .innerJoin('session as s', (j) =>
+        j.onRef('s.id', '=', 'c.sessionId').onRef('s.tenantId', '=', 'c.tenantId'),
+      )
+      .innerJoin('project as p', (j) =>
+        j.onRef('p.id', '=', 'c.projectId').onRef('p.tenantId', '=', 'c.tenantId'),
+      )
+      .select([
+        'c.id',
+        'c.sessionId',
+        'c.projectId',
+        'p.name as projectName',
+        'c.night',
+        'c.capturedAt',
+        'c.filterShortName',
+        'c.exposureS',
+        'c.gain',
+        'c.offsetAdu',
+        'c.binning',
+        'c.isBonus',
+        'c.rejected',
+        'c.rejectReason',
+        'c.fileName',
+        'c.metrics',
+      ])
+      .where('c.tenantId', '=', this.ctx.tenantId)
+      .where('s.rigId', '=', rigId)
+      // Nacht-Schlüssel ist das lokale Datum des Abends: einen Tag Spielraum, dann greift ix_capture_session.
+      .where('s.night', '>=', new Date(sinceUtc.getTime() - dayMs).toISOString().slice(0, 10))
+      .where('c.frameType', '=', 'light')
+      .where('c.result', '=', 'saved')
+      .where('c.assignment', '=', 'assigned')
+      .where('c.capturedAt', '>=', sinceUtc)
+      .orderBy('c.capturedAt', 'desc')
+      .orderBy('c.id')
+      .limit(1)
+      .executeTakeFirst();
+    if (!r?.projectId) return null;
+    return {
+      id: r.id,
+      sessionId: r.sessionId,
+      projectId: r.projectId,
+      projectName: r.projectName,
+      night: nightKey(r.night),
+      capturedAt: new Date(ms(r.capturedAt)).toISOString(),
+      filter: r.filterShortName,
+      exposureS: Number(r.exposureS),
+      gain: r.gain,
+      offset: r.offsetAdu,
+      binning: r.binning,
+      isBonus: Boolean(r.isBonus),
+      rejected: Boolean(r.rejected),
+      rejectReason: r.rejectReason,
+      fileName: r.fileName,
+      metrics: object(r.metrics),
+    };
+  }
+
+  /**
    * „Behalten“ (AP-72b): Light bestätigt, die Bewertung markiert es nicht wieder – ohne Migration in
    * `capture.metrics.qualityKept`. Nur gespeicherte, zugeordnete Lights; sonst `false`.
    */

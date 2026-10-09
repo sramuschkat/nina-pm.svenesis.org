@@ -1,7 +1,7 @@
 /**
- * Kachel „Dunkel“ auf „Heute Nacht“ (Sven 09.10.2026): Sonne und die drei Dämmerungen je Abend und Morgen in
- * Standortzeit. Weicht die Zeitzone des Geräts ab, steht darunter gedämpft die eigene Zeit – wie in den Nacht- und
- * Wetterdiagrammen („oben Standortzeit, darunter deine Zeit“); liegt sie an einem anderen Kalendertag, mit ±1.
+ * Kachel „Dunkel“ auf der Startseite „Heute“ (AP-73, FA-FOL-11; Sven 09.10.2026): nautische und astronomische
+ * Dämmerung je Abend und Morgen in Standortzeit. Weicht die Zeitzone des Geräts ab, steht die eigene Zeit gedämpft
+ * direkt dahinter in derselben Zelle; liegt sie an einem anderen Kalendertag, mit ±1.
  */
 import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,7 @@ import type { TonightRig } from '../../api/client';
 import styles from './tonight.module.css';
 
 type Twilight = TonightRig['twilight'];
-const ROWS = ['sun', 'civil', 'nautical', 'astronomical'] as const;
+const ROWS = ['nautical', 'astronomical'] as const;
 
 function browserZone(): string | undefined {
   try {
@@ -59,7 +59,11 @@ export function TwilightTable({
   deviceTimeZone?: string | undefined;
 }) {
   const { t } = useTranslation();
-  const ref = twilight.astronomical.duskUtc ?? twilight.sun.duskUtc ?? twilight.sun.dawnUtc;
+  const ref =
+    twilight.astronomical.duskUtc ??
+    twilight.nautical.duskUtc ??
+    twilight.sun.duskUtc ??
+    twilight.sun.dawnUtc;
   if (!ref) return null;
   const device = zonesDiffer(ref, timeZone, deviceTimeZone) ? deviceTimeZone : null;
   const cell = (at: string | null) => {
@@ -70,6 +74,7 @@ export function TwilightTable({
         {formatZonedTime(at, timeZone)}
         {device ? (
           <span className={styles.twilightDevice}>
+            {' '}
             {formatZonedTime(at, device)}
             {shift !== 0 ? (shift > 0 ? `+${String(shift)}` : String(shift)) : ''}
           </span>

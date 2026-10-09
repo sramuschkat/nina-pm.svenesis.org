@@ -2,9 +2,13 @@
  * „Rig jetzt“ (AP-70, FA-RIG-19, S-43): jüngster Heartbeat der NINA-Instanzen des Rigs – Kamera, Montierung, Fokussierer,
  * Filter (Hinweis ohne Filter-Offsets), Guider, Safety, Wetter des NINA-Wettergeräts (z. B. SkyAlert) und verbundene Geräte.
  * Nur Anzeige; Werte, die das Plugin nicht meldet, fehlen. Älter als 5 min → hervorgehoben (Heartbeat jede Minute).
+ * `compact` (Startseite „Heute“, AP-73): nur Optik, Kamera, Montierung, Safety und das Wetter in einer Zeile, ohne
+ * Geräteliste; `children` folgen darunter (letzte Aufnahme), `moreTo` verlinkt S-43.
  */
 import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import type { TelemetryView } from '../../api/client';
 import { DEW_GAP_WARN_K } from './telemetry-model';
 import styles from './telemetry.module.css';
@@ -32,21 +36,35 @@ export function RigLiveCard({
   live,
   nowMs,
   timeZone,
+  compact = false,
+  moreTo,
+  children,
 }: {
   live: Live | null;
   nowMs: number;
   timeZone: string;
+  compact?: boolean;
+  /** Link „Rig-Zustand“ im Kopf (Startseite). */
+  moreTo?: string;
+  children?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const n = (v: number, digits = 1) =>
     v.toLocaleString(i18n.language, { maximumFractionDigits: digits });
+  const more = moreTo ? (
+    <Link className={styles.liveMore} to={moreTo}>
+      {t('telemetry.live.more')}
+    </Link>
+  ) : null;
   if (!live)
     return (
       <section className={styles.liveCard} aria-label={t('telemetry.live.title')}>
         <div className={styles.tileHead}>
           <h2>{t('telemetry.live.title')}</h2>
+          {more}
         </div>
         <p className={styles.muted}>{t('telemetry.live.none')}</p>
+        {children}
       </section>
     );
   const at = live.receivedAtUtc;
@@ -118,7 +136,7 @@ export function RigLiveCard({
         .filter(Boolean)
         .join(' · '),
     });
-  if (focuser)
+  if (focuser && !compact)
     rows.push({
       key: 'focuser',
       label: t('telemetry.live.focuser'),
@@ -130,7 +148,7 @@ export function RigLiveCard({
         .filter(Boolean)
         .join(' · '),
     });
-  if (d)
+  if (d && !compact)
     rows.push({
       key: 'filter',
       label: t('telemetry.live.filter'),
@@ -139,7 +157,7 @@ export function RigLiveCard({
         .join(' · '),
       warn: noOffsets,
     });
-  if (guider && guider.rmsTotalArcsec !== null)
+  if (guider && guider.rmsTotalArcsec !== null && !compact)
     rows.push({
       key: 'guider',
       label: t('telemetry.live.guider'),
@@ -179,6 +197,17 @@ export function RigLiveCard({
     add('starFwhmArcsec', w.starFwhmArcsec, (x) => `${n(x, 2)}″`);
     add('skyBrightnessLux', w.skyBrightnessLux, (x) => `${n(x, 2)} lx`);
   }
+  // Kompakt: Wolken, Himmelshelligkeit und Taupunkt als eine Zeile unter den Gerätewerten.
+  const compactWeather = weather.filter((r) =>
+    ['cloudCoverPct', 'skyQualityMag', 'dewPointC'].includes(r.key),
+  );
+  if (compact && compactWeather.length > 0)
+    rows.push({
+      key: 'weather',
+      label: t('telemetry.live.weatherTitle'),
+      value: compactWeather.map((r) => `${r.label} ${r.value}`).join(' · '),
+      warn: compactWeather.some((r) => r.warn),
+    });
 
   return (
     <section className={styles.liveCard} aria-label={t('telemetry.live.title')}>
@@ -192,6 +221,7 @@ export function RigLiveCard({
             state: live.state ? t(`telemetry.live.state.${live.state}`) : '–',
           })}
         </span>
+        {more}
       </div>
       {d === null ? <p className={styles.muted}>{t('telemetry.live.oldPlugin')}</p> : null}
       {rows.length > 0 ? (
@@ -204,7 +234,7 @@ export function RigLiveCard({
           ))}
         </dl>
       ) : null}
-      {weather.length > 0 ? (
+      {weather.length > 0 && !compact ? (
         <>
           <h3 className={styles.liveSub}>{t('telemetry.live.weatherTitle')}</h3>
           <dl className={styles.values}>
@@ -217,7 +247,8 @@ export function RigLiveCard({
           </dl>
         </>
       ) : null}
-      {d ? (
+      {children}
+      {d && !compact ? (
         <ul className={styles.devices} aria-label={t('telemetry.live.devices')}>
           {DEVICE_ORDER.map((k) => (
             <li key={k} data-connected={d.connected[k]}>

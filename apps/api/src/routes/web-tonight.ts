@@ -9,6 +9,8 @@
  * - `PUT /web/v1/projects/{id}/lines/{lineId}/tonight {disabled}` (`project.status`, Admin): Zeile **nur für die
  *   kommende Nacht** ab- bzw. wieder einschalten (FA-FOL-05). Die Nacht ist die aktuelle Nacht des Rig-Standorts
  *   des Projekts; ab dem nächsten lokalen Mittag plant die Zeile von selbst wieder mit.
+ * Startseite „Heute“ (AP-73, FA-FOL-08/09): je Rig zusätzlich Live-Zustand (`rigLive` wie in der Telemetrie), die
+ * letzte Aufnahme mit Bewertung (AP-72b) und je Instanz die Abweichungen der NINA-Einstellungen.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { forecastNights, latestWeather } from '@nina-pm/db';
@@ -16,10 +18,13 @@ import { moonAt, moonEvents, q as quantize } from '@nina-pm/engine';
 import {
   can,
   currentNightRow,
+  IMAGE_QUALITY_DEFAULTS,
+  imageGrade,
   LineTonightInput,
   nightOfEndedWindow,
   ProblemError,
   ProjectView,
+  TONIGHT_LAST_CAPTURE_HOURS,
   TONIGHT_NIGHTS,
   TonightQuery,
   TonightView,
@@ -29,6 +34,8 @@ import {
 import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { buildNightTable, siteNights } from '../lib/night-table';
+import { gradeCapture, gradeInputOf, refsByProject } from '../sessions/project-images';
+import { rigLive } from '../telemetry/view';
 import { weatherNightTable } from '../weather/nights';
 import { weatherView } from '../weather/view';
 import { defineRoute, problemContent } from './define';
@@ -38,6 +45,41 @@ import { ninaInstanceView } from './web-nina-instances';
 import { projectView } from './web-projects';
 
 type View = z.output<typeof TonightView>;
+type Repos = ReturnType<ApiServices['repositories']>;
+
+/** Letztes Light des Rigs mit Bewertung wie im Reiter „Bilder“ (AP-72b); älter als 36 h → `null`. */
+async function lastCapture(
+  repos: Repos,
+  rigId: string,
+  settings: Parameters<typeof gradeCapture>[4],
+  now: Date,
+): Promise<View['rigs'][number]['lastCapture']> {
+  const iq = repos.imageQuality();
+  const last = await iq.lastLight(
+    rigId,
+    new Date(now.getTime() - TONIGHT_LAST_CAPTURE_HOURS * 3_600_000),
+  );
+  if (!last) return null;
+  const refs = refsByProject(await iq.gradeBasis([last.projectId]));
+  const flags = gradeCapture(refs, last.projectId, last.filter, last.metrics, settings);
+  const input = gradeInputOf(last.metrics);
+  return {
+    captureId: last.id,
+    sessionId: last.sessionId,
+    projectId: last.projectId,
+    projectName: last.projectName,
+    filter: last.filter,
+    exposureS: last.exposureS,
+    capturedAtUtc: isoUtc(last.capturedAt),
+    hfr: input.hfr,
+    stars: input.stars,
+    grade: imageGrade(input, flags, {
+      rejected: last.rejected,
+      kept: last.metrics.qualityKept === true,
+    }),
+    flags,
+  };
+}
 
 const json = <T extends z.ZodType>(schema: T) => ({ content: { 'application/json': { schema } } });
 const errors = {
@@ -185,6 +227,7 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
         }
       }
       const storedNight = stored.nights.find((n) => n.night === night);
+      const rigInstances = instances.filter((i) => i.rigId === rig.id && i.status === 'active');
       const planned = tonightProjects(projects, rig.id, night, storedNight);
       out.push({
         rigId: rig.id,
@@ -237,17 +280,24 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
         },
         projects: planned.projects,
         idleProjects: planned.idle,
-        instances: instances
-          .filter((i) => i.rigId === rig.id && i.status === 'active')
-          .map((i) => {
-            const v = ninaInstanceView(i);
-            return {
-              id: v.id,
-              name: v.name,
-              lastSeenAt: v.lastSeenAt,
-              state: v.lastState?.state ?? null,
-            };
-          }),
+        instances: rigInstances.map((i) => {
+          const v = ninaInstanceView(i);
+          return {
+            id: v.id,
+            name: v.name,
+            lastSeenAt: v.lastSeenAt,
+            state: v.lastState?.state ?? null,
+            mismatchCodes: v.lastState?.mismatchCodes ?? [],
+            profileSiteMismatch: v.profileSiteMismatch,
+          };
+        }),
+        live: rigLive(rigInstances),
+        lastCapture: await lastCapture(
+          repos,
+          rig.id,
+          rig.imageQuality ?? IMAGE_QUALITY_DEFAULTS,
+          now,
+        ),
       });
     }
     c.header('cache-control', 'no-store');

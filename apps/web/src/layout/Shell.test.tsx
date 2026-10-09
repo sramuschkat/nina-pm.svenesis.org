@@ -101,7 +101,7 @@ describe('Rechteanzeige in der Shell', () => {
     expect(nav()).not.toHaveTextContent('Administration');
   });
 
-  it('Heute Nacht, Projekte, Planung und Wetter sind Links (S-02, S-31, S-20, S-50)', async () => {
+  it('Heute, Projekte, Planung und Wetter sind Links (S-02, S-31, S-20, S-50)', async () => {
     await renderShell(member('user', 'user', false));
     expect(within(nav()).getByRole('link', { name: 'Projekte' })).toHaveAttribute(
       'href',
@@ -112,29 +112,23 @@ describe('Rechteanzeige in der Shell', () => {
       '/planung/objekte',
     );
     expect(within(nav()).getByRole('link', { name: 'Wetter' })).toHaveAttribute('href', '/wetter');
-    expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).toHaveAttribute(
-      'href',
-      '/heute-nacht',
-    );
+    // AP-73: „Heute Nacht“ ist Teil der Startseite „Heute“, kein eigener Menüpunkt mehr.
+    expect(within(nav()).queryByRole('link', { name: 'Heute Nacht' })).toBeNull();
+    expect(within(nav()).queryByRole('link', { name: 'Übersicht' })).toBeNull();
   });
 
-  it('Übersicht als eigener Menüpunkt ganz oben, aktiv nur auf der Startseite (27.09.2026)', async () => {
+  it('„Heute“ als eigener Menüpunkt ganz oben, aktiv nur auf der Startseite (AP-73)', async () => {
     await renderShell(member('user', 'user', false));
     const links = within(nav()).getAllByRole('link');
-    expect(links[0]).toHaveAccessibleName('Übersicht');
+    expect(links[0]).toHaveAccessibleName('Heute');
     expect(links[0]).toHaveAttribute('href', '/');
     expect(links[0]).toHaveAttribute('aria-current', 'page');
-    expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).not.toHaveAttribute(
-      'aria-current',
-    );
   });
 
-  it('Übersicht ist auf anderen Seiten nicht aktiv', async () => {
-    await renderShell(member('user', 'user', false), '/heute-nacht');
-    expect(within(nav()).getByRole('link', { name: 'Übersicht' })).not.toHaveAttribute(
-      'aria-current',
-    );
-    expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).toHaveAttribute(
+  it('„Heute“ ist auf anderen Seiten nicht aktiv', async () => {
+    await renderShell(member('user', 'user', false), '/projekte');
+    expect(within(nav()).getByRole('link', { name: 'Heute' })).not.toHaveAttribute('aria-current');
+    expect(within(nav()).getByRole('link', { name: 'Projekte' })).toHaveAttribute(
       'aria-current',
       'page',
     );

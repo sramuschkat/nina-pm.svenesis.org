@@ -58,6 +58,9 @@ test('Abmelden in einem Tab wirkt im zweiten mit der nächsten Anfrage (TK 17)',
   await a.goto('/');
   await b.goto('/');
   await expect(b.getByText(/^Demo-Sternfreunde · /)).toBeVisible();
+  // Startseite „Heute“ (AP-73) lädt nach: erst wenn Tab B ruht, abmelden – sonst leitet eine noch laufende Abfrage
+  // von B nach dem Abmelden selbst zur Anmeldung weiter und bricht das Neuladen ab (gewolltes 401-Verhalten).
+  await b.waitForLoadState('networkidle');
   await a.getByRole('button', { name: 'Benutzermenü' }).click();
   await a.getByRole('menuitem', { name: 'Abmelden', exact: true }).click();
   await expect(a.getByRole('link', { name: 'Mit Discord anmelden' })).toBeVisible();

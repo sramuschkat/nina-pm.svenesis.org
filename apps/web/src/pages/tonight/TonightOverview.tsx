@@ -1,6 +1,6 @@
 /**
- * Kopf von „Heute Nacht“ (Umbau 28.09.2026, Entwurf Sven): Einschätzung mit Countdown, vier Kennzahlen
- * (Dunkel, Mond, Wetter, Plan/NINA) und die Zeitleiste der Nacht mit gemeinsamer Achse – Himmel, Wetter,
+ * Nacht-Karte der Startseite „Heute“ (Umbau 28.09.2026, AP-73): Einschätzung mit Countdown, fünf Kennzahlen
+ * (Dunkel, Mond, Wetter, Plan, Rig jetzt) und die Zeitleiste der Nacht mit gemeinsamer Achse – Himmel, Wetter,
  * Mond, Plan (Projektblöcke, Meridianflips, Flats aus der Simulation im Browser), Filter und Ereignisse.
  * Die Zahlen stehen nur hier, die ausführlichen Diagramme liegen eingeklappt darunter.
  */
@@ -71,7 +71,7 @@ export function Verdict({ rig, nowUtc }: { rig: TonightRig; nowUtc: number }) {
   );
 }
 
-/** Vier Kennzahlen: Dunkel, Mond, Wetter, Plan/NINA. */
+/** Fünf Kennzahlen: Dunkel (breiter, Dämmerungstabelle), Mond, Wetter (Safety-Link), Plan, Rig jetzt (AP-73). */
 export function KpiTiles({
   rig,
   sky,
@@ -123,7 +123,7 @@ export function KpiTiles({
           : t('tonight.kpi.ninaNever');
   return (
     <ul className={styles.kpis} aria-label={t('tonight.kpi.label')}>
-      <li className={styles.kpi}>
+      <li className={styles.kpi} data-wide="">
         <span className={styles.kpiLabel}>{t('tonight.kpi.dark')}</span>
         <span className={styles.kpiValue}>
           {rig.dark ? t('tonight.kpi.hours', { h: n(rig.darkHours, 1) }) : '–'}
@@ -174,6 +174,17 @@ export function KpiTiles({
               ? t('tonight.kpi.noWindow')
               : t('tonight.kpi.noForecast')}
         </span>
+        {rig.weatherSafetyUrl ? (
+          // FA-STO-06: Safety- und Wetterseite der Sternwarte (vorher im Kopf des Plans).
+          <a
+            className={styles.kpiLink}
+            href={rig.weatherSafetyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('tonight.safety')}
+          </a>
+        ) : null}
       </li>
       <li className={styles.kpi}>
         <span className={styles.kpiLabel}>{t('tonight.kpi.plan')}</span>
@@ -194,11 +205,23 @@ export function KpiTiles({
                 })
               : '',
             fromRig && fromRig.saved > 0 ? t('tonight.kpi.saved', { n: fromRig.saved }) : '',
-            nina,
           ]
             .filter(Boolean)
             .join(' · ')}
         </span>
+      </li>
+      <li className={styles.kpi}>
+        <span className={styles.kpiLabel}>{t('telemetry.live.title')}</span>
+        <span className={styles.kpiValue}>
+          {!current
+            ? '–'
+            : rig.live?.state
+              ? t(`telemetry.live.state.${rig.live.state}`)
+              : rig.instances.length === 0
+                ? '–'
+                : t('tonight.kpi.rigUnknown')}
+        </span>
+        <span className={styles.kpiSub}>{nina}</span>
       </li>
     </ul>
   );

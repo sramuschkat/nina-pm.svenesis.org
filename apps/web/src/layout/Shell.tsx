@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { CATALOG_PATH } from '../pages/catalog/model';
-import { TONIGHT_PATH } from '../pages/tonight/TonightPage';
 import { WEATHER_PATH } from '../pages/weather/model';
 import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
@@ -416,14 +415,13 @@ function SideNav({
   const location = useLocation();
   const canAdmin = useCan('member.manage');
   const system = me?.context === 'system';
-  // Gruppen der Navigation (Stilsystem AP-26d): Übersicht allein oben (27.09.2026) · Planen · Betrieb ·
-  // Einrichten; System allein.
+  // Gruppen der Navigation (Stilsystem AP-26d): „Heute“ allein oben (AP-73, vorher Übersicht und Heute Nacht) ·
+  // Planen · Betrieb · Einrichten; System allein.
   const groups: { key: string; areas: NavArea[] }[] = [
-    { key: 'overview', areas: [{ key: 'overview', visible: !system, to: '/' }] },
+    { key: 'today', areas: [{ key: 'today', visible: !system, to: '/' }] },
     {
       key: 'plan',
       areas: [
-        { key: 'tonight', visible: !system, to: TONIGHT_PATH },
         { key: 'planning', visible: !system, to: CATALOG_PATH },
         { key: 'projects', visible: !system, to: '/projekte' },
       ],
@@ -448,11 +446,11 @@ function SideNav({
   ];
   const Toggle = collapsed ? uiIcons.expand : uiIcons.collapse;
   const section = (to: string) => `/${to.split('/')[1] ?? ''}`;
-  // Die Übersicht liegt auf `/` – aktiv nur genau dort, nicht auf jeder Seite.
+  // „Heute“ liegt auf `/` – aktiv nur genau dort, nicht auf jeder Seite.
   const current = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(section(to));
-  // Gruppen ohne Überschrift: Übersicht und System stehen allein.
-  const labelled = (key: string) => key !== 'system' && key !== 'overview';
+  // Gruppen ohne Überschrift: „Heute“ und System stehen allein.
+  const labelled = (key: string) => key !== 'system' && key !== 'today';
   return (
     <nav
       className={[

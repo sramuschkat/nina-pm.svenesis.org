@@ -132,14 +132,30 @@
   background: var(--npm-danger-bg);
 }
 
-/* Vier Kennzahlen – die Zahlen der Nacht stehen nur hier. */
+/* Fünf Kennzahlen (AP-73): „Dunkel“ breiter wegen der Dämmerungstabelle; schmal (Tablet) zwei Spalten, „Dunkel“ über
+   die volle Breite. */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--npm-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.kpis > [data-wide] {
+  grid-column: 1 / -1;
+}
+@media (min-width: 1280px) {
+  .kpis {
+    grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+    align-items: start;
+  }
+  .kpis > [data-wide] {
+    grid-column: auto;
+  }
+}
+.kpiLink {
+  font-size: var(--npm-font-small);
 }
 .kpi {
   display: flex;
@@ -175,10 +191,11 @@
   font-weight: 400;
 }
 
-/* Kachel „Dunkel“: Sonne und Dämmerungen je Abend und Morgen (Sven 09.10.2026). */
+/* Kachel „Dunkel“: nautische und astronomische Dämmerung je Abend und Morgen, eigene Zeit dahinter (AP-73). */
 .twilight {
   width: 100%;
-  max-width: 100%;
+  /* Tablet: „Dunkel“ über die volle Breite – die Tabelle bleibt kompakt. */
+  max-width: min(100%, 24rem);
   border-collapse: collapse;
   margin-top: var(--npm-space-1);
   color: var(--npm-text-light);
@@ -209,9 +226,8 @@
   white-space: nowrap;
 }
 .twilightDevice {
-  display: block;
+  margin-inline-start: var(--npm-space-1);
   color: var(--npm-text-light);
-  font-size: var(--npm-font-label);
   font-weight: 400;
 }
 .twilight tfoot td {

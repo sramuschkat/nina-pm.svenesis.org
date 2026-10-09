@@ -12,7 +12,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { ForecastView, Me, ProjectReport } from '../../api/client';
 import { AuthProvider } from '../../auth';
-import { etaOf, ProjectsPage } from './ProjectsPage';
+import { etaOf } from './eta';
+import { ProjectsPage } from './ProjectsPage';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
