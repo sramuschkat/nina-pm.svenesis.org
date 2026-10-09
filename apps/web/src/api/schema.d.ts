@@ -19341,7 +19341,7 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             receivedAtUtc: string | null;
-            mismatchCodes: ("flip_trigger_missing" | "flip_timing_mismatch" | "recenter_after_flip_on" | "rotator_unavailable" | "rotator_range_quarter" | "plate_solve_tolerance" | "mount_epoch_unsupported" | "mount_site_mismatch" | "nina_dither_trigger_present" | "af_time_trigger_missing" | "af_time_mismatch" | "filter_wheel_changed")[];
+            mismatchCodes: ("flip_trigger_missing" | "flip_timing_mismatch" | "recenter_after_flip_on" | "rotator_unavailable" | "rotator_range_quarter" | "plate_solve_tolerance" | "mount_epoch_unsupported" | "mount_site_mismatch" | "nina_dither_trigger_present" | "af_time_trigger_missing" | "af_time_mismatch" | "filter_wheel_changed" | "optics_mismatch")[];
         } | null;
         RigLeaseView: {
             /**
@@ -20093,6 +20093,8 @@ export interface components {
                 focusOffset: number;
             }[] | null;
             devices: components["schemas"]["NinaDevices"];
+            optics: components["schemas"]["NinaOptics"];
+            pixelScaleArcsecPx: number | null;
         } | null;
         NinaDevices: {
             connected: {
@@ -20145,6 +20147,16 @@ export interface components {
             windGustMs?: number;
             windDirectionDeg?: number;
             rainRateMmH?: number;
+        } | null;
+        NinaOptics: {
+            focalLengthMm: number | null;
+            focalRatio: number | null;
+            pixelSizeUm: number | null;
+            sensorWidthPx: number | null;
+            sensorHeightPx: number | null;
+            cameraName: string | null;
+            telescopeName: string | null;
+            ninaVersion: string | null;
         } | null;
         DsoList: {
             items: components["schemas"]["DsoView"][];
@@ -22464,6 +22476,12 @@ export interface components {
                     windSpeedMs?: number;
                     windGustMs?: number;
                     windDirectionDeg?: number;
+                    medianAdu?: number;
+                    stdDevAdu?: number;
+                    madAdu?: number;
+                    minAdu?: number;
+                    maxAdu?: number;
+                    saturatedPct?: number;
                 };
                 /** @enum {string} */
                 frameType: "light";
@@ -22571,6 +22589,12 @@ export interface components {
                     windSpeedMs?: number;
                     windGustMs?: number;
                     windDirectionDeg?: number;
+                    medianAdu?: number;
+                    stdDevAdu?: number;
+                    madAdu?: number;
+                    minAdu?: number;
+                    maxAdu?: number;
+                    saturatedPct?: number;
                 };
                 projectIds: string[];
                 flatsPlanned?: number;
@@ -22641,6 +22665,12 @@ export interface components {
                     windSpeedMs?: number;
                     windGustMs?: number;
                     windDirectionDeg?: number;
+                    medianAdu?: number;
+                    stdDevAdu?: number;
+                    madAdu?: number;
+                    minAdu?: number;
+                    maxAdu?: number;
+                    saturatedPct?: number;
                 };
                 projectIds: string[];
                 flatsPlanned?: number;
@@ -22781,6 +22811,7 @@ export interface components {
             } | null;
             lastMeasuredRotationDeg?: number | null;
             devices?: components["schemas"]["NinaDevices"];
+            optics?: components["schemas"]["NinaOptics"];
             filterWheel?: {
                 position: number;
                 name: string;

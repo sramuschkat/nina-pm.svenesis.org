@@ -103,7 +103,39 @@ internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequ
         {
             NINA.Core.Utility.Logger.Debug($"NINA-PM: device status: {ex.Message}");
         }
+        // Optik (AP-71): Pixelmaßstab in „Rig jetzt“ und Abgleich mit der Rig-Konfiguration (optics_mismatch).
+        try
+        {
+            body.Optics = Optics(profile, camera);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            NINA.Core.Utility.Logger.Debug($"NINA-PM: optics: {ex.Message}");
+        }
         return body;
+    }
+
+    /// <summary>
+    /// Optik aus dem aktiven Profil (<c>TelescopeSettings.FocalLength</c> = wirksame Brennweite, <c>FocalRatio</c>, Name) und
+    /// der Kamera (verbunden: Pixelgröße und Sensorgröße ungebinnt aus dem Treiber; sonst Pixelgröße aus dem Profil, Sensor
+    /// unbekannt). Nicht gesetzte Werte (0, NaN) fehlen.
+    /// </summary>
+    internal static NinaOptics Optics(NINA.Profile.Interfaces.IProfile profile, NINA.Equipment.Equipment.MyCamera.CameraInfo camera)
+    {
+        static double? Positive(double v) => double.IsFinite(v) && v > 0 ? v : null;
+        static string? Name(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim() is var t && t.Length > 256 ? t[..256] : v.Trim();
+        var scope = profile.TelescopeSettings;
+        return new NinaOptics
+        {
+            FocalLengthMm = Positive(scope.FocalLength),
+            FocalRatio = Positive(scope.FocalRatio),
+            PixelSizeUm = camera.Connected ? Positive(camera.PixelSize) ?? Positive(profile.CameraSettings.PixelSize) : Positive(profile.CameraSettings.PixelSize),
+            SensorWidthPx = camera.Connected && camera.XSize > 0 ? camera.XSize : null,
+            SensorHeightPx = camera.Connected && camera.YSize > 0 ? camera.YSize : null,
+            CameraName = camera.Connected ? Name(camera.Name) : null,
+            TelescopeName = Name(scope.Name),
+            NinaVersion = Name(NINA.Core.Utility.CoreUtil.Version),
+        };
     }
 
     /// <summary>

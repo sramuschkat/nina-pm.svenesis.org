@@ -640,7 +640,8 @@
   "nina_dither_trigger_present",
   "af_time_trigger_missing",
   "af_time_mismatch",
-  "filter_wheel_changed"
+  "filter_wheel_changed",
+  "optics_mismatch"
  ],
  "flatCombinationStatuses": [
   "pending",

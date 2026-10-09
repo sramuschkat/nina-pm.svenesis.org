@@ -121,10 +121,15 @@ export function validatePlan(input: ValidateInput): {
     }
     const exposures = exposesOf.get(unitId) ?? [];
     const neverUsable = row.usable.every((u) => !u);
+    // AP-71: Kein Slot mit Dunkelheit und Mindesthöhe (z. B. Neuplanung nach dem Untergang, Mindestzeit 0) heißt
+    // `not_visible`; „Mond blockiert“ nur, wenn das Ziel sichtbar wäre und der Mond der einzige Grund ist.
+    const neverVisible = row.profile.canImage.every((c) => c !== true);
     const unitReason: DiagnosticReason | null = row.preFiltered
       ? 'prefiltered'
       : neverUsable
-        ? 'moon_blocked'
+        ? neverVisible
+          ? 'not_visible'
+          : 'moon_blocked'
         : exposures.length === 0
           ? 'outranked'
           : null;
@@ -136,9 +141,11 @@ export function validatePlan(input: ValidateInput): {
         if (row.profile.canImage[s] === true && l.safe[s] === true) safeSomewhere = true;
       const reason: DiagnosticReason = row.preFiltered
         ? 'prefiltered'
-        : !safeSomewhere
-          ? 'moon_blocked'
-          : 'outranked';
+        : neverVisible
+          ? 'not_visible'
+          : !safeSomewhere
+            ? 'moon_blocked'
+            : 'outranked';
       diagnostics.push({ unitId, lineId: l.id, reason });
     }
   }

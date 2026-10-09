@@ -1820,7 +1820,43 @@ public sealed class NightRunnerTests : IDisposable
         await runner.RunOnceAsync(default); // nächster Block erst 08:35
         Assert.Equal(plans + 1, api.Plans.Count);
         Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.Contains(sink.Lines, l => l.Contains("Re-planning") && l.Contains("SkippedBlock"));
+    }
+
+    [Fact]
+    public async Task Uebersprungener_Block_nach_Lueckenplanung_noch_einmal_neu_planen()
+    {
+        // Rig-Nacht 08./09.10.2026 (AP-71): Der Plan stammte schon aus einer Lücken-Neuplanung; nach dem zweiten
+        // BLOCK_SKIPPED elapsed wartete das Rig 12 min ohne Neuplanung. Jetzt einmal je übersprungenem Block.
+        api.OnPlan = WithGap;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        nina.ExposureScale = 0.02;
+        await runner.RunOnceAsync(default); // Block 07:35–08:00
+
+        // Der Plan aus der Lücken-Neuplanung beginnt sofort mit einem Block, danach wieder eine Lücke.
+        api.OnPlan = p =>
+        {
+            WithGap(p);
+            var by = clock.UtcNow + TimeSpan.FromMinutes(1) - p.Blocks.Min(b => b.StartUtc);
+            foreach (var b in p.Blocks)
+            {
+                b.StartUtc += by;
+                b.EndUtc += by;
+                foreach (var e in b.Entries) e.AtUtc += by;
+            }
+        };
+        await runner.RunOnceAsync(default); // Lücke → IdleAhead
         Assert.Contains(sink.Lines, l => l.Contains("IdleAhead"));
+        var plans = api.Plans.Count;
+
+        nina.Viable = false; // der erste Block des Lückenplans entfällt, der nächste beginnt erst in 35 min
+        for (var i = 0; i < 4 && !sink.Lines.Any(l => l.Contains("SkippedBlock")); i++) await runner.RunOnceAsync(default);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_SKIPPED"));
+        Assert.Contains(sink.Lines, l => l.Contains("Re-planning") && l.Contains("SkippedBlock"));
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
     }
 
     [Fact]

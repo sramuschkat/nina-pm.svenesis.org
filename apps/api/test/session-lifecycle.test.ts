@@ -63,4 +63,55 @@ describe('Einstellungsabweichungen (execution.md §6)', () => {
     expect(af(60.4)).toEqual([]);
     expect(af(61)).toEqual(['af_time_mismatch']);
   });
+
+  it('optics_mismatch: Brennweite über 2 %, Pixel- oder Sensorgröße anders; unbekannt prüft nichts (AP-71)', () => {
+    const optics = { effFocalMm: 1000, pixelSizeUm: 3.76, widthPx: 6248, heightPx: 4176 };
+    const o = (over: Record<string, unknown>) =>
+      settingsMismatch(
+        hb({
+          optics: {
+            focalLengthMm: 1000,
+            focalRatio: 5,
+            pixelSizeUm: 3.76,
+            sensorWidthPx: 6248,
+            sensorHeightPx: 4176,
+            cameraName: 'ZWO ASI6200MM Pro',
+            telescopeName: 'Planewave CDK',
+            ninaVersion: '3.2.0.9001',
+            ...over,
+          },
+        }),
+        { ...rig, optics },
+      ).codes;
+    expect(o({})).toEqual([]);
+    expect(o({ focalLengthMm: 1019 })).toEqual([]);
+    expect(o({ focalLengthMm: 1021 })).toEqual(['optics_mismatch']);
+    expect(o({ focalLengthMm: 700 })).toEqual(['optics_mismatch']);
+    expect(o({ pixelSizeUm: 4.63 })).toEqual(['optics_mismatch']);
+    expect(o({ sensorWidthPx: 4176, sensorHeightPx: 6248 })).toEqual([]);
+    expect(o({ sensorWidthPx: 3000, sensorHeightPx: 2000 })).toEqual(['optics_mismatch']);
+    expect(
+      o({ focalLengthMm: null, pixelSizeUm: null, sensorWidthPx: null, sensorHeightPx: null }),
+    ).toEqual([]);
+    // Ohne Rig-Optik (Teleskop/Kamera nicht gefunden) keine Prüfung.
+    expect(
+      settingsMismatch(
+        hb({
+          optics: {
+            ...{
+              focalLengthMm: 700,
+              focalRatio: null,
+              pixelSizeUm: null,
+              sensorWidthPx: null,
+              sensorHeightPx: null,
+              cameraName: null,
+              telescopeName: null,
+              ninaVersion: null,
+            },
+          },
+        }),
+        rig,
+      ).codes,
+    ).toEqual([]);
+  });
 });

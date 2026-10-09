@@ -10192,6 +10192,7 @@ components:
               - af_time_trigger_missing
               - af_time_mismatch
               - filter_wheel_changed
+              - optics_mismatch
       required:
         - state
         - blockedReason
@@ -12086,6 +12087,13 @@ components:
           maxItems: 64
         devices:
           $ref: "#/components/schemas/NinaDevices"
+        optics:
+          $ref: "#/components/schemas/NinaOptics"
+        pixelScaleArcsecPx:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
       required:
         - instanceId
         - instanceName
@@ -12095,6 +12103,8 @@ components:
         - camera
         - filterWheel
         - devices
+        - optics
+        - pixelScaleArcsecPx
     NinaDevices:
       type:
         - object
@@ -12278,6 +12288,60 @@ components:
         rainRateMmH:
           type: number
           minimum: 0
+    NinaOptics:
+      type:
+        - object
+        - "null"
+      properties:
+        focalLengthMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        focalRatio:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        pixelSizeUm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        sensorWidthPx:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        sensorHeightPx:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        cameraName:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        telescopeName:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        ninaVersion:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+      required:
+        - focalLengthMm
+        - focalRatio
+        - pixelSizeUm
+        - sensorWidthPx
+        - sensorHeightPx
+        - cameraName
+        - telescopeName
+        - ninaVersion
     DsoList:
       type: object
       properties:
@@ -17691,6 +17755,25 @@ components:
                         type: number
                         minimum: 0
                         maximum: 360
+                      medianAdu:
+                        type: number
+                        minimum: 0
+                      stdDevAdu:
+                        type: number
+                        minimum: 0
+                      madAdu:
+                        type: number
+                        minimum: 0
+                      minAdu:
+                        type: number
+                        minimum: 0
+                      maxAdu:
+                        type: number
+                        minimum: 0
+                      saturatedPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
                   frameType:
                     type: string
                     enum:
@@ -17919,6 +18002,25 @@ components:
                         type: number
                         minimum: 0
                         maximum: 360
+                      medianAdu:
+                        type: number
+                        minimum: 0
+                      stdDevAdu:
+                        type: number
+                        minimum: 0
+                      madAdu:
+                        type: number
+                        minimum: 0
+                      minAdu:
+                        type: number
+                        minimum: 0
+                      maxAdu:
+                        type: number
+                        minimum: 0
+                      saturatedPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
                   projectIds:
                     type: array
                     items:
@@ -18096,6 +18198,25 @@ components:
                         type: number
                         minimum: 0
                         maximum: 360
+                      medianAdu:
+                        type: number
+                        minimum: 0
+                      stdDevAdu:
+                        type: number
+                        minimum: 0
+                      madAdu:
+                        type: number
+                        minimum: 0
+                      minAdu:
+                        type: number
+                        minimum: 0
+                      maxAdu:
+                        type: number
+                        minimum: 0
+                      saturatedPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
                   projectIds:
                     type: array
                     items:
@@ -18526,6 +18647,8 @@ components:
           maximum: 360
         devices:
           $ref: "#/components/schemas/NinaDevices"
+        optics:
+          $ref: "#/components/schemas/NinaOptics"
         filterWheel:
           type:
             - array

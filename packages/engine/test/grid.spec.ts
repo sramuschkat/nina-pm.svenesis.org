@@ -261,7 +261,7 @@ describe('Kompatibilitätsschalter (allocation.md §11.1)', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).not.toContain('A-8');
     expect(ids).not.toContain('A-30');
-    expect(ids).toHaveLength(33);
+    expect(ids).toHaveLength(34);
     expect(Object.keys(on).sort()).toEqual(Object.keys(DEVIATION_IDS).sort());
   });
 });

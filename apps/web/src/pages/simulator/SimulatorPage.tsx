@@ -587,18 +587,20 @@ export function SimulatorPage() {
                         <li key={u.projectId}>
                           <strong>{u.name}</strong>{' '}
                           <span className={styles.muted}>
-                            {u.reasons.length === 0
-                              ? t('simulator.noReason')
-                              : [
-                                  ...new Set(
-                                    u.reasons.map((r) =>
-                                      t(`effort.reason.${r.reason}`, {
-                                        defaultValue: r.reason,
-                                        n: r.message ?? '',
-                                      }),
+                            {result.nightOver
+                              ? t('simulator.nightOver')
+                              : u.reasons.length === 0
+                                ? t('simulator.noReason')
+                                : [
+                                    ...new Set(
+                                      u.reasons.map((r) =>
+                                        t(`effort.reason.${r.reason}`, {
+                                          defaultValue: r.reason,
+                                          n: r.message ?? '',
+                                        }),
+                                      ),
                                     ),
-                                  ),
-                                ].join(', ')}
+                                  ].join(', ')}
                           </span>
                         </li>
                       ))}

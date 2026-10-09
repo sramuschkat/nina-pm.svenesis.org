@@ -81,6 +81,15 @@ Gekürzte IDs (`a91f…`) in den Beispielen werden in den Schema-Tests durch gü
   `starFwhmArcsec`, `airTemperatureC`, `humidityPct`, `dewPointC`, `pressureHpa`, `windSpeedMs`, `windGustMs`,
   `windDirectionDeg`). Seit 0.4.21 befüllt das Plugin auch `guidingRmsArcsec`, `altitudeDeg`, `airmass` und `focusPosition`
   aus NINAs Bild-Metadaten. Fehlende Werte fehlen, nie 0 (NIN5-10).
+- **`heartbeat.request` – Optik (AP-71, Plugin 0.4.22):** optional `optics {focalLengthMm, focalRatio, pixelSizeUm,
+  sensorWidthPx, sensorHeightPx, cameraName, telescopeName, ninaVersion}`, unbekannt = `null`. Der Server vergleicht mit der
+  Rig-Konfiguration (Brennweite gegen Teleskop · Reducer und Pixelgröße je ±2 %, Sensorgröße ungebinnt, auch gedreht) und
+  meldet `optics_mismatch` (`ninaSettingsMismatchCodes`). `TelemetryView.live` trägt `optics` und `pixelScaleArcsecPx`.
+- **`captures.metrics` – Bildstatistik (AP-71):** `medianAdu`, `stdDevAdu`, `madAdu`, `minAdu`, `maxAdu` aus NINAs
+  `ImageStatistics` und `saturatedPct` (Anteil der Pixel am Maximalwert der Bittiefe in %; Bildmaximum darunter → 0).
+- **`plan.response.tight` (AP-71):** Ablauf der Engine ohne Spiel zwischen den Blöcken (`endUtc` = Ende der letzten
+  Belichtung, der nächste Block rückt dorthin); gemeinsamer Testfall „Block passt noch“ für Engine
+  (`packages/engine/test/block-fits.spec.ts`) und Plugin (`BlockFitsTests`).
 - **Ereignis `af` (AP-70):** `data.position` (Fokussierer-Schritte) und `data.temperatureC` (Fühler des Fokussierers) aus NINAs
   Autofokus-Bericht, nur bei Erfolg und nur mit endlichen Werten.
 - `captures`: `fileName` nur bei `result = "saved"` Pflicht; `pierSide` darf `null` sein (`west` vor, `east` nach dem Flip, NT-34). **`capturedAtUtc` = Belichtungsbeginn** (`ExposureStart`), Pflichtfeld **`exposureMidUtc`** = Belichtungsmitte (`ExposureMidPoint`, Sekundenbruchteile erlaubt; Grundlage für BJD_TDB, NT-10). `raDeg`/`decDeg` sind die **Soll**-Koordinaten des Panels (NT-36). `temperatureDeviation` (bool, NT-E2); `metrics.sensorTempC` und `metrics.setPointC` sind bei **allen** Aufnahmearten (Light, Flat, Dark-Flat) Pflicht, wenn die Kamera sie liefert (L7). `rotationDeg` ist der gemessene Positionswinkel; nach dem Flip dreht NINA nicht nach, der Himmels-PA ändert sich um 180° (270,4° ≡ 90,4° mod 180, Vergleich modulo 180, NT-E4). Flat-Zielliste `projectIds` nur mit Projekten, die in dieser Nacht Lights dieser Kombination haben (NT-47).

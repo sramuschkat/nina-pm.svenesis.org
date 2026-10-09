@@ -251,7 +251,7 @@ export type BlockEndReason = (typeof blockEndReasons)[number];
 export const pluginWarningCodes = ["camera_temperature","nina_dither_trigger_present","rotator_unavailable","trained_flat_position_changed","flat_exposure_off","filter_wheel_changed","mount_site_mismatch","profile_site_mismatch","pc_timezone_differs","optics_mirrored","image_not_saved","rotator_range_quarter","safety_monitor_not_connected","sequence_template_deviation","loop_guard","clock_drift"] as const;
 export type PluginWarningCode = (typeof pluginWarningCodes)[number];
 
-export const ninaSettingsMismatchCodes = ["flip_trigger_missing","flip_timing_mismatch","recenter_after_flip_on","rotator_unavailable","rotator_range_quarter","plate_solve_tolerance","mount_epoch_unsupported","mount_site_mismatch","nina_dither_trigger_present","af_time_trigger_missing","af_time_mismatch","filter_wheel_changed"] as const;
+export const ninaSettingsMismatchCodes = ["flip_trigger_missing","flip_timing_mismatch","recenter_after_flip_on","rotator_unavailable","rotator_range_quarter","plate_solve_tolerance","mount_epoch_unsupported","mount_site_mismatch","nina_dither_trigger_present","af_time_trigger_missing","af_time_mismatch","filter_wheel_changed","optics_mismatch"] as const;
 export type NinaSettingsMismatchCode = (typeof ninaSettingsMismatchCodes)[number];
 
 export const flatCombinationStatuses = ["pending","running","done","skipped"] as const;

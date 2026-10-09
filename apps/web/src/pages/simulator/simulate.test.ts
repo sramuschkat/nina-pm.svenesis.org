@@ -368,9 +368,21 @@ describe('simulate', () => {
       Date.parse(now),
     );
     expect(r.chart.markers?.some((m) => m.kind === 'now')).toBe(true);
+    expect(r.nightOver).toBe(false);
     // Nach dem Nachtfenster (Mittag): ganze Nacht wie ohne Uhrzeit.
     const noon = simulate(request({ nowUtc: '2026-09-18T18:00:00Z' }));
     expect(noon.fromNowUtc).toBeNull();
+    expect(noon.nightOver).toBe(false);
+  });
+
+  it('„ab jetzt“ nach dem Ende der Dunkelheit → Nacht vorbei statt Gründen der Rechnung (AP-71)', () => {
+    const whole = simulate(request());
+    const end = whole.plan.darknessEndUtc;
+    expect(end).not.toBeNull();
+    const after = new Date(Date.parse(end ?? '') + 10 * 60_000).toISOString();
+    const r = simulate(request({ nowUtc: after }));
+    expect(r.fromNowUtc).not.toBeNull();
+    expect(r.nightOver).toBe(true);
   });
 
   it('Server-Eingabe (AP-53c): gleicher Hash, Hinweis „gleiche Eingabe“; mit Entwürfen Was-wäre-wenn', () => {

@@ -264,6 +264,20 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         !Playback.Repeats(e) && run.Options.TransitDeadline?.Invoke() is { } deadline
         && startUtc.AddSeconds((e.ExposureS ?? 0) + run.DownloadS) > deadline;
 
+    /// <summary>
+    /// Weiches Blockende mit Verzugstoleranz (AP-71, <see cref="Playback.WithLateGrace"/>), aber nie über den Vorlauf eines
+    /// festgelegten Transits hinaus: sonst begänne eine Belichtung, die der Transit sofort beendet (<c>transit_interrupt</c>),
+    /// und die Neuplanung böte denselben Block wieder an (kopflose Läufe P-15b, vm-replan-transit).
+    /// </summary>
+    private static DateTimeOffset? SoftEndWithGrace(Run run, TimeSpan late)
+    {
+        var soft = run.Options.SoftEndUtc;
+        if (Playback.WithLateGrace(run.Block, null, late) is not { } grace) return soft;
+        if (run.Options.TransitDeadline?.Invoke() is { } deadline && deadline < grace) grace = deadline;
+        if (grace <= run.Block.EndUtc) return soft;
+        return soft is { } s && s > grace ? s : grace;
+    }
+
     /// <summary>Verzug fortschreiben: tatsächliche minus geplante Dauer, nie negativ (§4.2, NIN-14); Mehrzeit zehrt zuerst eine vorgezogene Planuhr auf.</summary>
     private void Overrun(Run run, DateTimeOffset started, double plannedS) =>
         Shift(run, clock.UtcNow - started - TimeSpan.FromSeconds(plannedS), pull: false);
@@ -470,7 +484,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         var timeAware = (run.Options.Mode ?? Mode) == PlaybackMode.TimeAware;
         var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
         var late = plannedEntries is { } p && ready > p ? ready - p : TimeSpan.Zero;
-        var blockEnd = run.Options.SoftEndUtc is { } soft && soft > block.EndUtc ? soft : block.EndUtc;
+        // Verzugstoleranz (AP-71): ein Startverzug bis 60 s schiebt das Blockende mit, statt den Block zu überspringen.
+        var softEnd = SoftEndWithGrace(run, late);
+        var blockEnd = softEnd is { } soft && soft > block.EndUtc ? soft : block.EndUtc;
         foreach (var e in block.Entries.Where(x => x.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series))
         {
             if (e.LastOfNight == true) return false;
@@ -604,7 +620,8 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             DetectLateFlip(run);
             if (run.RecenterPending) await RecenterAfterFlipAsync(run, plannedS: 0, seq: null, token).ConfigureAwait(false);
             var stepAt = clock.UtcNow;
-            var step = Playback.Next(block, cursor, stepAt, run.Offset, mode, darknessEndUtc, run.DownloadS, options.SoftEndUtc, run.PullForward);
+            var step = Playback.Next(block, cursor, stepAt, run.Offset, mode, darknessEndUtc, run.DownloadS,
+                SoftEndWithGrace(run, run.Offset - run.PullForward), run.PullForward);
             foreach (var i in step.Skipped)
             {
                 log.Event("SKIPPED_TIMEAWARE", ("id", block.Id), ("index", entries[i].Seq));

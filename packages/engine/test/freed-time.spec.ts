@@ -97,6 +97,8 @@ interface RunOptions {
   readonly paintFirst?: boolean;
   /** Aufrücken (A-35); Vorgabe an, mit `old` immer aus. */
   readonly moveUp?: boolean;
+  /** Kurzbesuche zulassen (A-36 aus, Verhalten bis Engine 0.18.0); mit `old` immer zugelassen. */
+  readonly shortVisits?: boolean;
 }
 
 /** `walk` mit den Einstellungen des Grids (ohne Flip/Meridian), wie `planGrid` sie setzt. */
@@ -108,6 +110,7 @@ function run(g: GridInput, opts: RunOptions = {}): WalkResult {
       ...base.switches,
       ...(opts.old ? { reofferFreedTime: false, continuationNoSlew: false } : {}),
       moveUpBlocks: !opts.old && opts.moveUp !== false,
+      minVisitSubs: !opts.old && opts.shortVisits !== true,
     },
   };
   const m = buildMatrix(setup);
@@ -397,5 +400,49 @@ describe('Aufrücken (A-35, Entscheidung Sven 07.10.2026)', () => {
               `${String(i)} ${b.unitId}`,
             ).toBe(true);
     }
+  });
+});
+
+describe('Keine Kurzbesuche (A-36, Entscheidung Sven 09.10.2026)', () => {
+  // A belegt die Nacht, B hat dazwischen einen Slot: nach 60 s Slew passt eine 200-s-Belichtung, eine zweite nicht.
+  const visit = (bPlanned: number, bSlots = 1) => {
+    const g = grid(
+      [
+        unit('A', [[0, 9]], [line('A-L', 200, 40)]),
+        unit('B', [[0, 9]], [line('B-L', 200, bPlanned)]),
+      ],
+      10,
+    );
+    const slots = [
+      ...new Array<string>(4).fill('A'),
+      ...new Array<string>(bSlots).fill('B'),
+      ...new Array<string>(6 - bSlots).fill('A'),
+    ];
+    return {
+      now: run(g, { slots, moveUp: false }),
+      before: run(g, { slots, moveUp: false, shortVisits: true }),
+    };
+  };
+
+  it('ein Besuch für nur eine Belichtung entfällt, die laufende Einheit behält die Zeit ohne zweiten Slew', () => {
+    // Rig-Nacht 08./09.10.2026: IC 1795 ein B-Bild, NGC 7380 ein SII-Bild – jeweils mit Slew und Zentrieren.
+    const { now, before } = visit(10);
+    expect(exposures(before, 'B')).toBe(1);
+    expect(slews(before, 'A')).toHaveLength(2);
+
+    expect(exposures(now, 'B')).toBe(0);
+    expect(blocksOf(now, 'B')).toHaveLength(0);
+    expect(slews(now, 'A')).toHaveLength(1);
+    expect(exposures(now, 'A')).toBeGreaterThan(exposures(before, 'A'));
+  });
+
+  it('Ausnahme: die eine Belichtung stellt die Einheit fertig', () => {
+    const { now } = visit(1);
+    expect(exposures(now, 'B')).toBe(1);
+  });
+
+  it('passen zwei Belichtungen, bleibt der Besuch', () => {
+    const { now } = visit(10, 2);
+    expect(exposures(now, 'B')).toBeGreaterThanOrEqual(2);
   });
 });

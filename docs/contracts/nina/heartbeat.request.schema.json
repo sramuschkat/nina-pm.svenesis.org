@@ -378,6 +378,16 @@
             }
           ]
         },
+        "optics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NinaOptics"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "filterWheel": {
           "anyOf": [
             {
@@ -749,6 +759,111 @@
           "minimum": 0
         }
       }
+    },
+    "NinaOptics": {
+      "type": "object",
+      "properties": {
+        "focalLengthMm": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "focalRatio": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pixelSizeUm": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sensorWidthPx": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sensorHeightPx": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cameraName": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "telescopeName": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ninaVersion": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "focalLengthMm",
+        "focalRatio",
+        "pixelSizeUm",
+        "sensorWidthPx",
+        "sensorHeightPx",
+        "cameraName",
+        "telescopeName",
+        "ninaVersion"
+      ]
     }
   },
   "title": "Svenesis NINA-PM – NINA-API POST /heartbeat (TK 7.6)"

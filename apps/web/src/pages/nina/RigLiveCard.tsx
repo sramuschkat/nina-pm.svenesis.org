@@ -66,6 +66,26 @@ export function RigLiveCard({
       : null;
 
   const rows: { key: string; label: string; value: string; warn?: boolean }[] = [];
+  const optics = live.optics;
+  if (optics)
+    rows.push({
+      key: 'optics',
+      label: t('telemetry.live.optics'),
+      value: [
+        optics.telescopeName,
+        optics.focalLengthMm !== null
+          ? t('telemetry.live.focal', { v: n(optics.focalLengthMm, 0) })
+          : null,
+        optics.focalRatio !== null
+          ? t('telemetry.live.focalRatio', { v: n(optics.focalRatio) })
+          : null,
+        live.pixelScaleArcsecPx !== null
+          ? t('telemetry.live.pixelScale', { v: n(live.pixelScaleArcsecPx, 2) })
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    });
   if (cam)
     rows.push({
       key: 'camera',

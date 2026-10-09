@@ -3,8 +3,9 @@ using System.Text;
 namespace NinaPm.Core.Flats;
 
 /// <summary>
-/// Kopie geteilter Flat-Kombinationen in die Ordner der übrigen Ziele (NIN-16b, execution.md §7): Namen werden
-/// sanitisiert wie von NINA beim Speichern (<c>\ / : * ? " &lt; &gt; |</c> → <c>_</c>, getrimmt); ersetzt wird nur ein
+/// Kopie geteilter Flat-Kombinationen in die Ordner der übrigen Ziele (NIN-16b, execution.md §7): Namen werden erst in
+/// lesbares ASCII umgeschrieben wie beim Speichern (<see cref="NinaPm.Core.Targets.AsciiName"/>, AP-71), dann sanitisiert wie
+/// von NINA (<c>\ / : * ? " &lt; &gt; |</c> → <c>_</c>, getrimmt); ersetzt wird nur ein
 /// **ganzes Pfadsegment**, das genau dem Primärziel entspricht – kein Teilstring-Ersatz („M 31“ trifft nicht „M 310“).
 /// </summary>
 /// <remarks>Muster nach dem Astro-PM-Plugin (MIT), <c>CopyFlatsToDuplicateTargets</c>, Commit 5dd621d – dort Teilstring-Ersatz.</remarks>
@@ -14,8 +15,9 @@ public static class FlatFiles
 
     public static string Sanitize(string name)
     {
-        var sb = new StringBuilder(name.Length);
-        foreach (var c in name) sb.Append(Forbidden.Contains(c) || char.IsControl(c) ? '_' : c);
+        var ascii = NinaPm.Core.Targets.AsciiName.Of(name);
+        var sb = new StringBuilder(ascii.Length);
+        foreach (var c in ascii) sb.Append(Forbidden.Contains(c) || char.IsControl(c) ? '_' : c);
         return sb.ToString().Trim();
     }
 

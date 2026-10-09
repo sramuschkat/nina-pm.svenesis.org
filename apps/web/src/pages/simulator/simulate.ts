@@ -145,6 +145,11 @@ export interface SimulationResult {
   };
   /** Läuft die Nacht schon: Planbeginn „jetzt“ (UTC), sonst `null` (ganze Nacht). */
   readonly fromNowUtc: string | null;
+  /**
+   * „Ab jetzt“ liegt nach dem Ende der Dunkelheit (AP-71): Die Rechnung findet nichts mehr, ihre Gründe („nicht sichtbar“)
+   * sagen nichts über die Projekte – das Web zeigt „Nacht vorbei“.
+   */
+  readonly nightOver: boolean;
   /** Ist + Plan (laufende bzw. vergangene Nacht mit Session), sonst `null`. */
   readonly actual: ActualView | null;
   readonly source: SimulationSource;
@@ -502,6 +507,8 @@ export function simulate(req: SimulationRequest): SimulationResult {
     lineNames: view.lineNames,
     header: live ? { ...view.header, targets: live.targets, frames: live.frames } : view.header,
     fromNowUtc,
+    nightOver:
+      fromNowUtc !== null && nowMs >= Date.parse(whole.darknessEndUtc ?? whole.nightWindow.endUtc),
     actual,
     source: {
       serverHash: req.server?.inputHash ?? null,

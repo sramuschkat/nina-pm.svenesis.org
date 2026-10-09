@@ -39,6 +39,14 @@ const Metrics = z.object({
   windSpeedMs: z.number().min(0).optional(),
   windGustMs: z.number().min(0).optional(),
   windDirectionDeg: z.number().min(0).max(360).optional(),
+  /** Bildstatistik (AP-71, NINAs `ImageStatistics`): Median, Streuung, MAD, Minimum, Maximum in ADU. */
+  medianAdu: z.number().min(0).optional(),
+  stdDevAdu: z.number().min(0).optional(),
+  madAdu: z.number().min(0).optional(),
+  minAdu: z.number().min(0).optional(),
+  maxAdu: z.number().min(0).optional(),
+  /** Anteil der Pixel am Maximalwert der Bittiefe in %. */
+  saturatedPct: z.number().min(0).max(100).optional(),
 });
 
 const common = {

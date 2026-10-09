@@ -170,6 +170,8 @@ const live = (
       windSpeedMs: 2.5,
     },
   },
+  optics: null,
+  pixelScaleArcsecPx: null,
   ...over,
 });
 

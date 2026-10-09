@@ -90,4 +90,27 @@ describe('rigLive', () => {
     expect(rigLive([{ id: ID(1), name: 'Telemetrie', lastState: null }])).toBeNull();
     expect(rigLive([])).toBeNull();
   });
+
+  it('Optik aus dem Heartbeat und Pixelmaßstab 206,265 · Pixel / Brennweite (AP-71)', () => {
+    const optics = {
+      focalLengthMm: 2938,
+      focalRatio: 6.8,
+      pixelSizeUm: 3.76,
+      sensorWidthPx: 9576,
+      sensorHeightPx: 6388,
+      cameraName: 'ZWO ASI6200MM Pro',
+      telescopeName: 'CDK17',
+      ninaVersion: '3.2.0.9001',
+    };
+    const at = (st: Record<string, unknown>) =>
+      rigLive([
+        { id: ID(3), name: 'SFRO', lastState: { receivedAtUtc: '2026-10-09T06:10:00Z', ...st } },
+      ]);
+    expect(at({ optics })).toMatchObject({
+      optics: { cameraName: 'ZWO ASI6200MM Pro' },
+      pixelScaleArcsecPx: 0.264,
+    });
+    expect(at({ optics: { ...optics, focalLengthMm: null } })?.pixelScaleArcsecPx).toBeNull();
+    expect(at({})).toMatchObject({ optics: null, pixelScaleArcsecPx: null });
+  });
 });

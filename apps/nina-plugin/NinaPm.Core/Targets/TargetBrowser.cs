@@ -12,6 +12,9 @@ public static class TargetTitle
         var panel = project.Panels.FirstOrDefault(p => p.Id == block.PanelId);
         return project.Panels.Count > 1 && panel is not null ? $"{project.Name} – {panel.Label}" : project.Name;
     }
+
+    /// <summary>Name für NINA, Ordner, Dateien und FITS-Kopf: <see cref="For"/> als lesbares ASCII (<see cref="AsciiName"/>, AP-71).</summary>
+    public static string FileName(Blocks block, NinaTargets? targets) => AsciiName.Of(For(block, targets));
 }
 
 /// <summary>Zeile des Zielbrowsers „An NINA ausgeliefert“ (FA-NIN-02).</summary>

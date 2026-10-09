@@ -315,6 +315,7 @@ export const de = {
     unallocatedComputed:
       'Weder im gespeicherten Plan der Rig noch heute belichtet – Gründe aus der Rechnung ab jetzt.',
     noReason: 'ohne Diagnosegrund',
+    nightOver: 'Nacht vorbei',
     card: {
       open: '„{{name}}“ öffnen',
       creator: 'Ersteller',
@@ -2098,6 +2099,10 @@ export const de = {
       moving: 'bewegt sich',
       filter: 'Filter',
       noOffsets: 'keine Filter-Offsets in NINA',
+      optics: 'Optik',
+      focal: '{{v}} mm',
+      focalRatio: 'f/{{v}}',
+      pixelScale: '{{v}}″/px',
       guider: 'Guider',
       rms: 'RMS {{total}}″ (RA {{ra}}″ · Dec {{dec}}″)',
       safety: 'Safety',
@@ -2242,6 +2247,7 @@ export const de = {
       af_time_trigger_missing: 'Trigger „Autofokus nach Zeit“ fehlt',
       af_time_mismatch: 'Autofokus-Intervall weicht ab',
       filter_wheel_changed: 'Filterrad geändert',
+      optics_mismatch: 'Optik weicht von der Rig-Konfiguration ab',
     },
     uptake: {
       title: 'Übernahmestatus in NINA',

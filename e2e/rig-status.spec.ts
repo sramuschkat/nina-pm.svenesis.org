@@ -89,6 +89,16 @@ async function rigWithHeartbeat(page: Page) {
         safe: true,
         weather: { cloudCoverPct: 0, skyQualityMag: 21.62, temperatureC: 11.2, dewPointC: 9.1 },
       },
+      optics: {
+        focalLengthMm: 2938,
+        focalRatio: 6.8,
+        pixelSizeUm: 3.76,
+        sensorWidthPx: 9576,
+        sensorHeightPx: 6388,
+        cameraName: 'ZWO ASI6200MM Pro',
+        telescopeName: 'CDK17',
+        ninaVersion: '3.2.0.9001',
+      },
     },
   });
   expect(hb.status()).toBe(200);
@@ -113,6 +123,7 @@ test('S-43: „Rig jetzt“ mit Gerätestatus und Wetter über der Telemetrie, v
   await expect(card).toContainText('SFRO');
   await expect(card).toContainText('LUMINOS · keine Filter-Offsets in NINA');
   await expect(card).toContainText('21,62 mag/″²');
+  await expect(card).toContainText('CDK17 · 2.938 mm · f/6,8 · 0,26″/px');
   await expect(
     card.getByRole('list', { name: 'Verbundene Geräte' }).getByRole('listitem'),
   ).toHaveCount(11);
