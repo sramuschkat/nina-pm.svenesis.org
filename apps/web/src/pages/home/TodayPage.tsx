@@ -1,18 +1,17 @@
 /**
- * S-02 „Heute Nacht“ (FK 14.3; FA-FOL-06, FA-FOL-05; AP-35; Umbau 27./28.09.2026 nach Entwurf Sven): zuerst das
- * **Rig** wählen – damit steht der Standort fest –, dann für die **aktuelle Nacht** des Standorts
+ * S-02 Startseite „Heute“ (AP-73; FA-FOL-06, FA-FOL-08…11, FA-FOL-05; vorher „Übersicht“ und „Heute Nacht“ getrennt):
+ * zuerst das **Rig** wählen – damit steht der Standort fest –, dann für die **aktuelle Nacht** des Standorts
  * (`GET /web/v1/tonight`, vom Server nach NT-01 – nie aus dem Browserdatum):
- * 0. Nachtwahl als Mondkalender: laufende Nacht und die folgenden sechs (`?nacht=`, 30.09.2026 – so weit reicht
- *    das Astro-Wetter); künftige Nächte zeigen den Plan aus dem heutigen Projektstand, NINA nur die laufende,
- * 1. Kopf mit Einschätzung und Countdown,
- * 2. vier Kennzahlen (Dunkel, Mond, Wetter, Plan/NINA) – die Zahlen stehen nur hier,
- * 3. Zeitleiste der Nacht auf einer Achse: Himmel, Wetter, Mond, Plan (Simulation im Browser wie der
- *    Simulator: Projektblöcke, Flips, Flats), Filter, Ereignisse; rote Linie „jetzt“,
- * 4. direkt darunter eingeklappt: „Nachtwetter im Detail“ (Stundentabelle Astro-Wetter) und die Sichtbarkeit
- *    von Mond & Planeten (28.09.2026),
- * 5. zwei Spalten: links der Plan (geplante Projekte aus der Prognose, „nur heute aus“, Safety-Link),
- *    rechts „Ereignisse der Nacht“,
- * 6. „Nächste Nächte“ (AP-64, aus der Folgeplanung S-62): Kandidatennächte, Saisonwarnungen, Wiederaufnahme.
+ * 0. Kopf „Heute“ mit Mandant und Datum, „Neues Projekt“; Kontextleiste mit Rig, Einschätzung und Mondkalender
+ *    (laufende Nacht und die folgenden sechs, `?nacht=`); künftige Nächte zeigen den Plan aus dem heutigen Projektstand,
+ * 1. Hinweise: Vorschau, „An NINA ausliefern“ aus,
+ * 2. fünf Kennzahlen (Dunkel mit Dämmerung, Mond, Wetter, Plan, Rig jetzt) – die Zahlen stehen nur hier,
+ * 3. Zeitleiste der Nacht (Himmel, Wetter, Mond, Plan, Filter, Ereignisse), darunter aufklappbar nebeneinander
+ *    „Nachtwetter im Detail“, „Mond und Planeten“, „Ereignisse der Nacht“ (Zustand je Gerät gemerkt),
+ * 4. zwei Spalten: links der Plan (geplante Projekte, „nur heute aus“), rechts „Rig jetzt“ mit letzter Aufnahme und
+ *    „Zu tun“ (letzte Nacht, ungeprüfte Nächte, Warteschlange, Exoplanet-Fristen, NINA-Abweichungen),
+ * 5. „Nächste Nächte“ (Kandidatennächte, Saisonwarnungen, Wiederaufnahme),
+ * 6. „Aktive Projekte“ eingeklappt mit Fortschritt und Restzeit.
  * Alle Zeiten in Standortzeit mit Kürzel (NT-03).
  */
 import {
@@ -23,11 +22,12 @@ import {
   tonightProjects,
 } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { forecastApi, tonightApi, type SiteView, type TonightRig } from '../../api/client';
-import { useCan } from '../../auth';
+import { useAuth, useCan } from '../../auth';
+import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { NightBodies } from '../../components/night-bodies';
 import { NightEvents } from '../../components/night-events';
@@ -37,22 +37,29 @@ import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { WeatherChart } from '../../components/WeatherChart';
 import { useJob } from '../../lib/use-job';
 import { problemCode } from '../admin/shared';
-import { useEquipmentList } from '../equipment/shared';
+import { EQUIPMENT_PATHS, useEquipmentList } from '../equipment/shared';
+import { RigLiveCard } from '../nina/RigLiveCard';
+import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { useNightPlan, type NightPlanState } from '../simulator/use-night-plan';
 import type { DoneCard } from '../simulator/simulate';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
-import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
+import { LIMITING_MAG, useNightSky, type NightSky } from '../tonight/night-sky';
 import { ProjectCommentCount } from '../../lib/project-comments';
 import { useCommentCounts } from '../../lib/use-comment-counts';
-import styles from './tonight.module.css';
-import { MoonCalendar } from './MoonCalendar';
-import { NextNights } from './NextNights';
-import { TonightLines } from './TonightLines';
-import { KpiTiles, TonightTimeline, Verdict } from './TonightOverview';
+import styles from '../tonight/tonight.module.css';
+import today from './today.module.css';
+import { MoonCalendar } from '../tonight/MoonCalendar';
+import { NextNights } from '../tonight/NextNights';
+import { TonightLines } from '../tonight/TonightLines';
+import { KpiTiles, TonightTimeline, Verdict } from '../tonight/TonightOverview';
 import { Person } from '../../lib/member';
+import { ActiveProjects, LastCapture, TodoCard } from './today-parts';
 
-export const TONIGHT_PATH = '/heute-nacht';
 export const TONIGHT_KEY = ['tonight'] as const;
+/** Aufklapper unter der Zeitleiste; offen sind anfangs nur die Ereignisse (je Gerät gemerkt). */
+const FOLDS = ['weather', 'bodies', 'events'] as const;
+type FoldKey = (typeof FOLDS)[number];
+const FOLDS_KEY = 'npm.today.folds';
 
 /** Zeile ohne Frames im Rest: läuft an der Rig, noch geplant (gespeicherter Plan) bzw. abgearbeitet (07.10.2026). */
 const DONE_TEXT = {
@@ -61,8 +68,10 @@ const DONE_TEXT = {
   done: 'tonight.doneTonight',
 } as const;
 
-export function TonightPage() {
-  const { t } = useTranslation();
+export function TodayPage() {
+  const { t, i18n } = useTranslation();
+  const { me } = useAuth();
+  const canCreate = useCan('project.create');
   const [params, setParams] = useSearchParams();
   const now = Math.floor(useNow().getTime() / 1000);
   const tonight = useQuery({
@@ -114,9 +123,28 @@ export function TonightPage() {
     setParams(next, { replace: true });
   };
   const contextId = useId();
+  // Nur Anzeige (Intl): heutiges Datum in der Mandantenzeit.
+  const date = new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
+    timeZone: me?.tenant?.timeZone ?? 'UTC',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(now * 1000);
   return (
     <div className={styles.page}>
-      <PageHeader title={t('tonight.title')} meta={t('tonight.intro')} />
+      <PageHeader
+        title={t('today.title')}
+        meta={t('home.subtitle', { tenant: me?.tenant?.name ?? '', date })}
+        actions={
+          canCreate ? (
+            <Link to={PROJECT_AREA.create} className={today.buttonPrimary}>
+              <actionIcons.add size={ICON_SIZE.button} aria-hidden />
+              {t('projectEditor.new')}
+            </Link>
+          ) : undefined
+        }
+      />
       {tonight.isError ? (
         <ProblemMessage code={problemCode(tonight.error)} onRetry={() => void tonight.refetch()} />
       ) : tonight.isPending ? (
@@ -124,7 +152,10 @@ export function TonightPage() {
           {t('common.loading')}
         </p>
       ) : rigs.length === 0 || !rig ? (
-        <p className={styles.muted}>{t('tonight.empty')}</p>
+        <>
+          <p className={styles.muted}>{t('tonight.empty')}</p>
+          <ActiveProjects />
+        </>
       ) : (
         <>
           <section className={styles.context} aria-labelledby={contextId}>
@@ -179,6 +210,8 @@ export function TonightPage() {
 function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: number }) {
   const { t } = useTranslation();
   const filters = useEquipmentList('filters');
+  const canEquipment = useCan('equipment.write');
+  const canSessions = useCan('session.read');
   const colorOf = (short: string) =>
     (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
   const sky = useNightSky(site, rig);
@@ -192,7 +225,10 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
       {plan.deliveryOff ? (
         // Rig-Schalter „An NINA ausliefern“ aus (07.10.2026): die Rechnung zeigt nur, was das Rig eingeschaltet täte.
         <p className={styles.futureNote} role="status">
-          {t('tonight.deliveryOff')}
+          {t('tonight.deliveryOff')}{' '}
+          {canEquipment ? (
+            <Link to={`${EQUIPMENT_PATHS.rigs}?rig=${rig.rigId}`}>{t('today.deliveryOn')}</Link>
+          ) : null}
         </p>
       ) : null}
       <KpiTiles rig={rig} sky={sky} plan={plan} />
@@ -204,33 +240,106 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
         </div>
         <div className={styles.cardBody}>
           <TonightTimeline rig={rig} sky={sky} plan={plan} nowUtc={now} />
+          {/* Details direkt unter der Zeitleiste, nebeneinander aufklappbar (AP-73, Sven 09.10.2026). */}
+          <Folds site={site} rig={rig} sky={sky} now={now} />
         </div>
       </section>
-      {/* Details direkt unter der Zeitleiste, eingeklappt (Wunsch Sven 28.09.2026). */}
-      <Fold title={t('tonight.detail')}>
-        <NightDetail site={site} night={rig.night} />
-      </Fold>
-      <Fold title={t('tonight.bodiesDetail')}>
-        <MoonAndPlanets site={site} sky={sky} now={now} />
-      </Fold>
       <div className={styles.split}>
         <RigCard rig={rig} colorOf={colorOf} plan={plan} timeZone={site.timeZone} />
-        <SkyEvents site={site} sky={sky} />
+        <div className={today.side}>
+          <RigLiveCard
+            live={rig.live}
+            nowMs={now * 1000}
+            timeZone={site.timeZone}
+            compact
+            {...(canSessions ? { moreTo: `/rig-zustand?rig=${rig.rigId}` } : {})}
+          >
+            <LastCapture capture={rig.lastCapture} timeZone={site.timeZone} />
+          </RigLiveCard>
+          <TodoCard rig={rig} />
+        </div>
       </div>
       {/* Nächste Nächte (AP-64, Entscheidung 5): Kandidatennächte, Saisonwarnungen, Wiederaufnahme. */}
       <NextNights rigId={rig.rigId} />
+      <ActiveProjects />
     </>
   );
 }
 
-/** Eingeklappter Abschnitt (details/summary) – Diagramme für wer tiefer schauen will. */
-function Fold({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+/** Offene Aufklapper aus dem Gerätespeicher; ohne Speicher (privates Fenster) die Vorgabe. */
+function readFolds(): Set<FoldKey> {
+  try {
+    const raw = window.localStorage.getItem(FOLDS_KEY);
+    if (raw !== null) {
+      const list = JSON.parse(raw) as unknown;
+      if (Array.isArray(list)) return new Set(FOLDS.filter((k) => list.includes(k)));
+    }
+  } catch {
+    // Speicher gesperrt: Vorgabe.
+  }
+  return new Set<FoldKey>(['events']);
+}
+
+/** „Nachtwetter im Detail“, „Mond und Planeten“, „Ereignisse der Nacht“: Schalter nebeneinander, Inhalte darunter. */
+function Folds({
+  site,
+  rig,
+  sky,
+  now,
+}: {
+  site: SiteView;
+  rig: TonightRig;
+  sky: NightSky;
+  now: number;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState<Set<FoldKey>>(readFolds);
+  const baseId = useId();
+  const toggle = (k: FoldKey) => {
+    const next = new Set(open);
+    if (next.has(k)) next.delete(k);
+    else next.add(k);
+    setOpen(next);
+    try {
+      window.localStorage.setItem(FOLDS_KEY, JSON.stringify([...next]));
+    } catch {
+      // Speicher gesperrt: nur für diese Sitzung.
+    }
+  };
+  const title: Record<FoldKey, string> = {
+    weather: t('tonight.detail'),
+    bodies: t('tonight.bodiesDetail'),
+    events: t('events.title'),
+  };
   return (
-    <details className={styles.fold} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary className={styles.foldSummary}>{title}</summary>
-      {open ? <div className={styles.foldBody}>{children}</div> : null}
-    </details>
+    <div className={today.folds}>
+      <div className={today.foldBar}>
+        {FOLDS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={today.foldButton}
+            aria-expanded={open.has(k)}
+            aria-controls={`${baseId}-${k}`}
+            onClick={() => toggle(k)}
+          >
+            <span aria-hidden="true">{open.has(k) ? '▾' : '▸'}</span> {title[k]}
+          </button>
+        ))}
+      </div>
+      {FOLDS.filter((k) => open.has(k)).map((k) => (
+        <section key={k} id={`${baseId}-${k}`} className={today.foldPanel} aria-label={title[k]}>
+          <h3 className={today.foldTitle}>{title[k]}</h3>
+          {k === 'weather' ? (
+            <NightDetail site={site} night={rig.night} />
+          ) : k === 'bodies' ? (
+            <MoonAndPlanets site={site} sky={sky} now={now} />
+          ) : (
+            <SkyEvents site={site} sky={sky} />
+          )}
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -262,47 +371,36 @@ function NightDetail({ site, night }: { site: SiteView; night: string }) {
   );
 }
 
-/** „Ereignisse der Nacht“ (rechte Spalte): Gruppen aufklappbar mit erster Zeile im Kopf. */
+/** „Ereignisse der Nacht“ (Aufklapper): Gruppen aufklappbar mit erster Zeile im Kopf, Stand der Bahndaten. */
 function SkyEvents({ site, sky }: { site: SiteView; sky: NightSky }) {
   const { t, i18n } = useTranslation();
-  const headingId = useId();
+  if (!sky.window) return <p className={styles.muted}>{t('tonight.noWindow')}</p>;
   return (
-    <section className={styles.card} aria-labelledby={headingId}>
-      <div className={styles.cardHead}>
-        <h2 id={headingId} className={styles.cardTitle}>
-          {t('events.title')}
-        </h2>
-        {sky.satellitesGenerated !== null ? (
-          <span className={styles.muted}>
-            {t('events.data', {
-              date: new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                timeZone: site.timeZone,
-              }).format(sky.satellitesGenerated),
-            })}
-          </span>
-        ) : null}
-      </div>
-      <div className={styles.cardBody}>
-        {!sky.window ? (
-          <p className={styles.muted}>{t('tonight.noWindow')}</p>
-        ) : (
-          <NightEvents
-            timeZone={site.timeZone}
-            nightUtc={sky.window.from}
-            passes={sky.passes}
-            showers={sky.showers}
-            moonIllumPct={sky.moonIllumPct}
-            limitingMag={LIMITING_MAG}
-            galactic={sky.galactic}
-            season={sky.season}
-            eclipses={sky.eclipses}
-          />
-        )}
-      </div>
-    </section>
+    <>
+      {sky.satellitesGenerated !== null ? (
+        <p className={styles.muted}>
+          {t('events.data', {
+            date: new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              timeZone: site.timeZone,
+            }).format(sky.satellitesGenerated),
+          })}
+        </p>
+      ) : null}
+      <NightEvents
+        timeZone={site.timeZone}
+        nightUtc={sky.window.from}
+        passes={sky.passes}
+        showers={sky.showers}
+        moonIllumPct={sky.moonIllumPct}
+        limitingMag={LIMITING_MAG}
+        galactic={sky.galactic}
+        season={sky.season}
+        eclipses={sky.eclipses}
+      />
+    </>
   );
 }
 
@@ -321,7 +419,7 @@ function MoonAndPlanets({ site, sky, now }: { site: SiteView; sky: NightSky; now
   );
 }
 
-/** Plan der Nacht: geplante Projekte aus der Prognose (AP-33) mit „nur heute aus“, Safety-Link, Prognose rechnen. */
+/** Plan der Nacht: geplante Projekte aus der Prognose (AP-33) mit „nur heute aus“, Prognose rechnen. */
 function RigCard({
   rig,
   colorOf,
@@ -481,16 +579,6 @@ function RigCard({
                 : 'simulator.source.staleTargets',
             )}
           </span>
-        ) : null}
-        {rig.weatherSafetyUrl ? (
-          <a
-            className={styles.more}
-            href={rig.weatherSafetyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t('tonight.safety')}
-          </a>
         ) : null}
       </div>
       <div className={styles.cardBody}>

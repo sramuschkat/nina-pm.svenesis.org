@@ -254,7 +254,7 @@ Notation: **FA-‹Bereich›-‹Nr›** · Priorität M/S/K/W
 | FA-STO-03 | Standort zeigt Karte mit Marker und die Astro-Wetter-Vorhersage (→ 6.6). | S |
 | FA-STO-04 | Löschen ist gesperrt, solange ein Rig den Standort nutzt (Löschsperren aller Stammdaten → FA-RIG-13). | M |
 | FA-STO-05 | Optional: Remote-Verbindungsprofile (Dienst, Name, Remote-ID/URL, Notiz, Standard-Markierung) als reine Linkliste – **ohne Speicherung von Passwörtern** (Astro PM speichert diese im Klartext, das wird nicht übernommen). | K |
-| FA-STO-06 | Link zur Wetter-/Safety-Seite der Sternwarte (z. B. Allsky-Kamera, Safety-Monitor-Status des Hosters), aufrufbar aus Standort, Wetter und „Heute Nacht“. | S |
+| FA-STO-06 | Link zur Wetter-/Safety-Seite der Sternwarte (z. B. Allsky-Kamera, Safety-Monitor-Status des Hosters), aufrufbar aus Standort, Wetter und der Startseite „Heute“ (Kachel *Wetter*). | S |
 
 #### Teleskop
 
@@ -688,8 +688,12 @@ Kern der Erweiterung gegenüber Astro PM. Grundlage sind ausschließlich Plan, A
 | FA-FOL-03 | **Kandidatennächte** der nächsten **7** Nächte je Projekt (so weit reicht die Vorhersage, WS-13; darüber hinaus nur die Klarnacht-Quote): Tabelle aus Wetterbewertung der dunklen Stunden, nutzbarer Zeit für das Ziel je Filter-Stufe (Mond!), erwarteten Frames laut Simulation; Ampel und Sortierung nach „Nutzen". **Bekannte Einschränkung (→ FA-WET-09):** Die Wetterbewertung kennt keinen Niederschlag – eine Regennacht wird allein über die Bewölkung bewertet. Die Zeile zeigt deshalb Regenwahrscheinlichkeit und Regenmenge neben der Bewertung, ebenso das Kennzeichen „ohne Aerosol – Bewertung optimistisch“ ab Tag 5. | M |
 | FA-FOL-04 | **Saisonwarnung**: Rest passt nicht mehr in die verbleibende Saison → Hinweis mit Optionen (Frames reduzieren, Priorität erhöhen, anderes Rig, Fortsetzung nächstes Jahr). | S |
 | FA-FOL-05 | **Handlungsvorschläge** mit Ein-Klick-Umsetzung: Priorität anheben, Filterzeile an-/abschalten – auch **nur für die kommende Nacht** (z. B. „heute nur Schmalband – Mond 90 %“; schaltet sich am nächsten lokalen Mittag des Standorts automatisch wieder ein), Anzahl anpassen, Projekt pausieren. Jede Umsetzung erzeugt einen neuen Simulationslauf zur Kontrolle. | S |
-| FA-FOL-06 | **Rig-Nachtübersicht** („Heute Nacht"): für jedes Rig Wetterbewertung, geplante Projekte, erwartete Frames – Grundlage für die Entscheidung, die Sternwarte laufen zu lassen. | M |
+| FA-FOL-06 | **Startseite „Heute“** (S-02, seit AP-73 statt getrennter Übersicht und „Heute Nacht“): je Rig Einschätzung der Nacht, Dunkelheit, Mond, Wetter, Plan mit erwarteten Frames und Zustand des Rigs – Grundlage für die Entscheidung, die Sternwarte laufen zu lassen. | M |
 | FA-FOL-07 | Projekt-Wiederaufnahme im Folgejahr: Projekte mit Status *Unfertig* bzw. *Pausiert* und Restbedarf werden zu Saisonbeginn vorgeschlagen. | S |
+| FA-FOL-08 | „Zu tun“ auf der Startseite bündelt letzte Nacht (Ergebnis, markierte Bilder), ungeprüfte Nächte, offene Warteschlange, Exoplanet-Transits zur Bestätigung und Abweichungen der NINA-Einstellungen mit je einer Aktion (AP-73). | S |
+| FA-FOL-09 | „Rig jetzt“ auf der Startseite: Live-Zustand kompakt und die letzte Aufnahme (höchstens 36 h alt) mit HFR, Sternen und Bewertung; eine markierte Aufnahme verlinkt auf das Bild im Projekt (AP-73). | S |
+| FA-FOL-10 | Aktive Projekte auf der Startseite mit Fortschritt, Integration Ist/Soll und Restzeit in Nächten (realistisch/optimistisch wie FA-FOL-02; AP-73). | S |
+| FA-FOL-11 | Dämmerung in der Kachel „Dunkel“: nautisch und astronomisch je Abend und Morgen in Standortzeit, bei abweichender Zeitzone die eigene Zeit direkt dahinter (AP-73). | S |
 
 ### 6.12 Administration, Export und Einstellungen
 
@@ -1303,7 +1307,7 @@ Grundlage sind die Bildschirme von Astro PM 1.6.0 (Screenshots), angepasst an un
 
 | Bereich | Einträge (Astro-PM-Vorbild → NINA-PM) | Admin | User |
 |---|---|---|---|
-| **Heute Nacht** | *(neu)* Übersicht je Rig | ✔ | L |
+| **Heute** | *(neu; seit AP-73 Übersicht und „Heute Nacht“ in einem)* Startseite je Rig | ✔ | L |
 | **Ausrüstung** | Rigs (*Imaging Systems*) · Komponenten: Standorte, Teleskope, Kameras, Filter & Vorlagen, Mondprofile | ✔ | L |
 | **Planung** | Sternkarte (*SkyView*) · Objektbrowser & Vorschläge *(neu)* · Exoplaneten | ✔ | ✔ |
 | **Projekte** | Neues Projekt · **Projekte** (Schalter *Alle / Meine*; Status-Chips mit Anzahl: Entwurf, Eingereicht, Zurückgegeben, Abgelehnt · Planung, Aktiv, Pausiert, Bereit zur Bearbeitung, Unfertig, Abgeschlossen, Archiv) · Gelöscht *(Admin)* · **Warteschlange** *(alle; Aktionen Admin; Reiter Meine Rangfolge)* – „Meine Objekte“ und „Entwürfe“ entfallen (30.09.2026) | ✔ | E/L |
@@ -1322,8 +1326,8 @@ Die Bildschirme sind feldgenau in Prosa beschrieben; für die **drei datenintens
 #### S-01 Anmeldung
 Einstiegsseite `https://nina-pm.svenesis.org/` im Svenesis-Layout mit Kurzbeschreibung und Knopf **„Mit Discord anmelden“** (Discord-Logo), Hinweis zum Datenschutz. Nach Rückkehr von Discord: **S-01b Mandantenauswahl** (Karten je Mitgliedschaft mit Mandantenname, Rolle, zuletzt genutzt; bei Super Usern zusätzlich „System“) bzw. direkte Weiterleitung; **S-01c Kein Zugang**; **S-01d Einladung annehmen** (Mandant, Rolle, einladende Person, „Mit Discord anmelden und beitreten“). (FA-LOG-01 ff., FA-BEN-01)
 
-#### S-02 Heute Nacht *(Startseite ab R3; bis dahin „Meine Objekte“ bzw. Projektliste)*
-Je Rig eine Karte für die **aktuelle Nacht** des Standorts (Kap. 8.1 – nach Ende des Nachtfensters schon die folgende, NT-01): Standortzeit mit Kürzel, dunkle Stunden (Kachel *Dunkel* mit Tabelle Sonne, bürgerliche, nautische und astronomische Dämmerung je Abend und Morgen; weicht die Zeitzone des Geräts ab, darunter die eigene Zeit, Sven 09.10.2026), Mond (Phase, Auf-/Untergang), Wetterbewertung der Nacht (Farbband aus Astro-Wetter), geplante Projekte mit erwarteten Frames (Kurzfassung der Simulation), NINA-Instanz zuletzt gesehen, Link zur Safety-/Wetterseite der Sternwarte. Darunter: ungeprüfte Sessions, offene Warteschlange (Admin), nahende Exoplaneten-Fristen. *Seit AP-64 (07.10.2026)* am Ende der Abschnitt **„Nächste Nächte“** aus der Folgeplanung: Kandidatennächte-Matrix, Saisonwarnungen mit Handlungsvorschlägen *(Admin)*, Wiederaufnahme und *Prognose neu berechnen*; „nur für die kommende Nacht“ steht im Plan der Nacht. (FA-FOL-03…07)
+#### S-02 Heute *(Startseite; ab R3 „Heute Nacht“, seit AP-73 mit der Übersicht zusammengelegt; `/heute-nacht` leitet auf `/` um)*
+Kopf *Heute* mit Mandant und Datum, *Neues Projekt*; Rig-Wahl, Einschätzung und Mondkalender der sieben Nächte (`?rig=`, `?nacht=`). Für die **aktuelle Nacht** des Standorts (Kap. 8.1 – nach Ende des Nachtfensters schon die folgende, NT-01), Zeiten in Standortzeit mit Kürzel: Hinweise (Vorschau einer späteren Nacht, „An NINA ausliefern“ aus); fünf Kennzahlen – *Dunkel* (Dauer, Tabelle nautische und astronomische Dämmerung je Abend und Morgen, bei abweichender Gerätezone die eigene Zeit dahinter, FA-FOL-11), *Mond*, *Wetter* (mit Link zur Safety-/Wetterseite der Sternwarte), *Plan*, *Rig jetzt*; Zeitleiste der Nacht, darunter nebeneinander aufklappbar *Nachtwetter im Detail*, *Mond und Planeten*, *Ereignisse der Nacht* (offen; Zustand je Gerät gemerkt). Zwei Spalten: links *Plan der Nacht* (geplante Projekte mit erwarteten Frames, „nur für die kommende Nacht“ aus, weitere Projekte ohne Frames), rechts *Rig jetzt* (Live-Zustand mit letzter Aufnahme, FA-FOL-09) und *Zu tun* (FA-FOL-08). Darunter **„Nächste Nächte“** aus der Folgeplanung (seit AP-64: Kandidatennächte-Matrix, Saisonwarnungen mit Handlungsvorschlägen *(Admin)*, Wiederaufnahme, *Prognose neu berechnen*) und *Aktive Projekte* eingeklappt mit Restzeit (FA-FOL-10). Im System-Kontext (Super User ohne Mandant) nur der Hinweis zur Verwaltung. (FA-FOL-03…11)
 
 #### S-10 Rigs *(Imaging Systems)*
 Kopf: Rig-Auswahl, Name, Notizen, Schalter „In Framing und Simulator anzeigen“ und „An NINA ausliefern“, **Rotator vorhanden** (mit Toleranz, „bei Abweichung überspringen“ und ohne Rotator *Gemessenen Winkel übernehmen*), **Nachtbericht nach Discord**, *Neu*, *Speichern*, *Löschen*. Darunter **drei Spalten**:

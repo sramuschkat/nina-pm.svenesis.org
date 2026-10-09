@@ -6,19 +6,12 @@
  * „Verlauf“ klappt gestapelte Balken je Nacht und Filter mit kumulierter Linie, die Nächte mit Link auf die Nacht,
  * Kanalbalance und Bedingungen auf. Filter Status und Objekttyp zusätzlich zu Rig und Zeitraum; CSV und Drucken bleiben.
  */
-import { daysFromKey } from '@nina-pm/engine';
 import { formatNightKey, projectStatuses } from '@nina-pm/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
-import {
-  forecastApi,
-  reportsApi,
-  type ForecastProject,
-  type ForecastView,
-  type ReportProject,
-} from '../../api/client';
+import { forecastApi, reportsApi, type ForecastView, type ReportProject } from '../../api/client';
 import { ProjectCommentCount } from '../../lib/project-comments';
 import { FilterChip } from '../../components/FilterChip';
 import { ProblemMessage } from '../../components/ProblemMessage';
@@ -28,40 +21,10 @@ import { useEquipmentList } from '../equipment/shared';
 import { EvaluationHeader, useEvaluationFilter } from './EvaluationHeader';
 import { sessionPath } from './evaluation';
 import { downloadReportCsv, ProgressChart } from './ProjectReportPage';
+import { etaOf, etaText, type Eta } from './eta';
 import styles from './evaluation.module.css';
 
 const TYPES = ['deep_sky', 'exoplanet'] as const;
-
-/** „Voraussichtlich fertig“ aus der Prognose (FA-FOL-02) bzw. Saisonwarnung (FA-FOL-04). */
-export interface Eta {
-  readonly tone: 'ok' | 'warn' | 'done' | 'none';
-  readonly kind: 'done' | 'nights' | 'season' | 'none' | 'open';
-  readonly nights?: number;
-  readonly night?: string;
-  readonly optimistic?: number | null;
-  readonly seasonNights?: number | null;
-}
-
-/** Rein: Prognose eines Projekts → Anzeige. Saisonwarnung vor der Schätzung (Hinweisfarbe). */
-export function etaOf(f: ForecastProject | undefined, currentNight: string | null): Eta {
-  if (!f) return { tone: 'none', kind: 'none' };
-  if (f.needFrames === 0) return { tone: 'done', kind: 'done' };
-  if (f.seasonWarning) {
-    const end = f.seasonWarning.seasonEnd;
-    const left =
-      end && currentNight ? Math.max(0, daysFromKey(end) - daysFromKey(currentNight)) : null;
-    return { tone: 'warn', kind: 'season', seasonNights: left };
-  }
-  const r = f.realistic;
-  if (r.nights === null || r.completesNight === null) return { tone: 'none', kind: 'open' };
-  return {
-    tone: 'ok',
-    kind: 'nights',
-    nights: r.nights,
-    night: r.completesNight,
-    optimistic: f.optimistic.nights,
-  };
-}
 
 export function ProjectsPage() {
   const { t } = useTranslation();
@@ -216,6 +179,7 @@ function ProjectRow({
   const total = p.filters.reduce((s, f) => s + f.integrationS, 0);
   const detailsId = useId();
   const [open, setOpen] = useState(false);
+  const etaView = etaText(eta, t, forecastPending);
   return (
     <article className={styles.projectCard} aria-label={p.name}>
       <div className={styles.projectRow}>
@@ -263,36 +227,8 @@ function ProjectRow({
         </ul>
         <div className={styles.eta} data-tone={eta.tone}>
           <span className={styles.etaLabel}>{t('evaluation.projects.eta')}</span>
-          <span className={styles.etaValue}>
-            {eta.kind === 'done'
-              ? t('evaluation.projects.etaDone')
-              : eta.kind === 'season'
-                ? eta.seasonNights !== null && eta.seasonNights !== undefined
-                  ? t('evaluation.projects.seasonEnds', { count: eta.seasonNights })
-                  : t('forecast.seasonShort')
-                : eta.kind === 'nights'
-                  ? t('evaluation.projects.etaNights', { count: eta.nights ?? 0 })
-                  : eta.kind === 'open'
-                    ? t('forecast.estimateNone')
-                    : forecastPending
-                      ? t('common.loading')
-                      : '–'}
-          </span>
-          <span className={styles.etaNote}>
-            {eta.kind === 'nights'
-              ? t('evaluation.projects.etaNote', {
-                  night: formatNightKey(eta.night ?? ''),
-                  optimistic:
-                    eta.optimistic === null || eta.optimistic === undefined
-                      ? '–'
-                      : String(eta.optimistic),
-                })
-              : eta.kind === 'season'
-                ? t('evaluation.projects.seasonNote')
-                : eta.kind === 'none' && !forecastPending
-                  ? t('evaluation.projects.noForecast')
-                  : ' '}
-          </span>
+          <span className={styles.etaValue}>{etaView.value}</span>
+          <span className={styles.etaNote}>{etaView.note}</span>
         </div>
         <button
           type="button"

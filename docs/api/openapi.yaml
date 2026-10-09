@@ -9945,6 +9945,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TonightInstance"
+        live:
+          $ref: "#/components/schemas/RigLive"
+        lastCapture:
+          $ref: "#/components/schemas/TonightLastCapture"
       required:
         - rigId
         - rigName
@@ -9965,6 +9969,8 @@ components:
         - projects
         - idleProjects
         - instances
+        - live
+        - lastCapture
     TonightCalendarNight:
       type: object
       properties:
@@ -10158,11 +10164,445 @@ components:
           type:
             - string
             - "null"
+        mismatchCodes:
+          type: array
+          items:
+            type: string
+            enum:
+              - flip_trigger_missing
+              - flip_timing_mismatch
+              - recenter_after_flip_on
+              - rotator_unavailable
+              - rotator_range_quarter
+              - plate_solve_tolerance
+              - mount_epoch_unsupported
+              - mount_site_mismatch
+              - nina_dither_trigger_present
+              - af_time_trigger_missing
+              - af_time_mismatch
+              - filter_wheel_changed
+              - optics_mismatch
+        profileSiteMismatch:
+          type: boolean
       required:
         - id
         - name
         - lastSeenAt
         - state
+        - mismatchCodes
+        - profileSiteMismatch
+    RigLive:
+      type:
+        - object
+        - "null"
+      properties:
+        instanceId:
+          type: string
+          format: uuid
+          description: UUID
+        instanceName:
+          type: string
+        receivedAtUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        state:
+          type:
+            - string
+            - "null"
+          enum:
+            - running
+            - idle
+            - paused
+            - flats
+            - offline
+            - blocked
+            - null
+        pluginVersion:
+          type:
+            - string
+            - "null"
+        camera:
+          type:
+            - object
+            - "null"
+          properties:
+            temperatureC:
+              type:
+                - number
+                - "null"
+            setPointC:
+              type:
+                - number
+                - "null"
+            coolerOn:
+              type: boolean
+            coolerPowerPct:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 100
+          required:
+            - temperatureC
+            - setPointC
+            - coolerOn
+            - coolerPowerPct
+        filterWheel:
+          type:
+            - array
+            - "null"
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                minimum: 1
+              name:
+                type: string
+                maxLength: 256
+              focusOffset:
+                type: number
+            required:
+              - position
+              - name
+              - focusOffset
+          maxItems: 64
+        devices:
+          $ref: "#/components/schemas/NinaDevices"
+        optics:
+          $ref: "#/components/schemas/NinaOptics"
+        pixelScaleArcsecPx:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+      required:
+        - instanceId
+        - instanceName
+        - receivedAtUtc
+        - state
+        - pluginVersion
+        - camera
+        - filterWheel
+        - devices
+        - optics
+        - pixelScaleArcsecPx
+    NinaDevices:
+      type:
+        - object
+        - "null"
+      properties:
+        connected:
+          type: object
+          properties:
+            camera:
+              type: boolean
+            mount:
+              type: boolean
+            focuser:
+              type: boolean
+            filterWheel:
+              type: boolean
+            rotator:
+              type: boolean
+            guider:
+              type: boolean
+            safetyMonitor:
+              type: boolean
+            weather:
+              type: boolean
+            flatDevice:
+              type: boolean
+            switch:
+              type: boolean
+            dome:
+              type: boolean
+          required:
+            - camera
+            - mount
+            - focuser
+            - filterWheel
+            - rotator
+            - guider
+            - safetyMonitor
+            - weather
+            - flatDevice
+            - switch
+            - dome
+        focuser:
+          type:
+            - object
+            - "null"
+          properties:
+            position:
+              type: number
+            temperatureC:
+              type:
+                - number
+                - "null"
+            moving:
+              type: boolean
+          required:
+            - position
+            - temperatureC
+            - moving
+        mountState:
+          type:
+            - object
+            - "null"
+          properties:
+            pierSide:
+              type:
+                - string
+                - "null"
+              enum:
+                - east
+                - west
+                - null
+            tracking:
+              type: boolean
+            atPark:
+              type: boolean
+            slewing:
+              type: boolean
+            altitudeDeg:
+              type:
+                - number
+                - "null"
+              minimum: -90
+              maximum: 90
+            azimuthDeg:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 360
+          required:
+            - pierSide
+            - tracking
+            - atPark
+            - slewing
+            - altitudeDeg
+            - azimuthDeg
+        guider:
+          type:
+            - object
+            - "null"
+          properties:
+            rmsTotalArcsec:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            rmsRaArcsec:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            rmsDecArcsec:
+              type:
+                - number
+                - "null"
+              minimum: 0
+          required:
+            - rmsTotalArcsec
+            - rmsRaArcsec
+            - rmsDecArcsec
+        filter:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        safe:
+          type:
+            - boolean
+            - "null"
+        weather:
+          $ref: "#/components/schemas/NinaWeatherNow"
+      required:
+        - connected
+        - focuser
+        - mountState
+        - guider
+        - filter
+        - safe
+        - weather
+    NinaWeatherNow:
+      type:
+        - object
+        - "null"
+      properties:
+        cloudCoverPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        skyQualityMag:
+          type: number
+        skyBrightnessLux:
+          type: number
+          minimum: 0
+        skyTemperatureC:
+          type: number
+        starFwhmArcsec:
+          type: number
+          minimum: 0
+        temperatureC:
+          type: number
+        humidityPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        dewPointC:
+          type: number
+        pressureHpa:
+          type: number
+          minimum: 0
+        windSpeedMs:
+          type: number
+          minimum: 0
+        windGustMs:
+          type: number
+          minimum: 0
+        windDirectionDeg:
+          type: number
+          minimum: 0
+          maximum: 360
+        rainRateMmH:
+          type: number
+          minimum: 0
+    NinaOptics:
+      type:
+        - object
+        - "null"
+      properties:
+        focalLengthMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        focalRatio:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        pixelSizeUm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        sensorWidthPx:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        sensorHeightPx:
+          type:
+            - integer
+            - "null"
+          exclusiveMinimum: 0
+        cameraName:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        telescopeName:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        ninaVersion:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+      required:
+        - focalLengthMm
+        - focalRatio
+        - pixelSizeUm
+        - sensorWidthPx
+        - sensorHeightPx
+        - cameraName
+        - telescopeName
+        - ninaVersion
+    TonightLastCapture:
+      type:
+        - object
+        - "null"
+      properties:
+        captureId:
+          type: string
+          format: uuid
+          description: UUID
+        sessionId:
+          type: string
+          format: uuid
+          description: UUID
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        projectName:
+          type: string
+        filter:
+          type: string
+        exposureS:
+          type: number
+          minimum: 0
+        capturedAtUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        hfr:
+          type:
+            - number
+            - "null"
+        stars:
+          type:
+            - number
+            - "null"
+        grade:
+          type: string
+          enum:
+            - ok
+            - flagged
+            - kept
+            - rejected
+            - none
+        flags:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageFlag"
+      required:
+        - captureId
+        - sessionId
+        - projectId
+        - projectName
+        - filter
+        - exposureS
+        - capturedAtUtc
+        - hfr
+        - stars
+        - grade
+        - flags
+    ImageFlag:
+      type: object
+      properties:
+        metric:
+          type: string
+          enum:
+            - hfr
+            - stars
+            - rms
+            - cloud
+        value:
+          type: number
+        limit:
+          type: number
+      required:
+        - metric
+        - value
+        - limit
     LineTonightInput:
       type: object
       properties:
@@ -11437,24 +11877,6 @@ components:
           type: number
         focuserTemperatureC:
           type: number
-    ImageFlag:
-      type: object
-      properties:
-        metric:
-          type: string
-          enum:
-            - hfr
-            - stars
-            - rms
-            - cloud
-        value:
-          type: number
-        limit:
-          type: number
-      required:
-        - metric
-        - value
-        - limit
     NightSessionEvent:
       type: object
       properties:
@@ -12620,340 +13042,6 @@ components:
         - t
         - series
         - latest
-    RigLive:
-      type:
-        - object
-        - "null"
-      properties:
-        instanceId:
-          type: string
-          format: uuid
-          description: UUID
-        instanceName:
-          type: string
-        receivedAtUtc:
-          type: string
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        state:
-          type:
-            - string
-            - "null"
-          enum:
-            - running
-            - idle
-            - paused
-            - flats
-            - offline
-            - blocked
-            - null
-        pluginVersion:
-          type:
-            - string
-            - "null"
-        camera:
-          type:
-            - object
-            - "null"
-          properties:
-            temperatureC:
-              type:
-                - number
-                - "null"
-            setPointC:
-              type:
-                - number
-                - "null"
-            coolerOn:
-              type: boolean
-            coolerPowerPct:
-              type:
-                - number
-                - "null"
-              minimum: 0
-              maximum: 100
-          required:
-            - temperatureC
-            - setPointC
-            - coolerOn
-            - coolerPowerPct
-        filterWheel:
-          type:
-            - array
-            - "null"
-          items:
-            type: object
-            properties:
-              position:
-                type: integer
-                minimum: 1
-              name:
-                type: string
-                maxLength: 256
-              focusOffset:
-                type: number
-            required:
-              - position
-              - name
-              - focusOffset
-          maxItems: 64
-        devices:
-          $ref: "#/components/schemas/NinaDevices"
-        optics:
-          $ref: "#/components/schemas/NinaOptics"
-        pixelScaleArcsecPx:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
-      required:
-        - instanceId
-        - instanceName
-        - receivedAtUtc
-        - state
-        - pluginVersion
-        - camera
-        - filterWheel
-        - devices
-        - optics
-        - pixelScaleArcsecPx
-    NinaDevices:
-      type:
-        - object
-        - "null"
-      properties:
-        connected:
-          type: object
-          properties:
-            camera:
-              type: boolean
-            mount:
-              type: boolean
-            focuser:
-              type: boolean
-            filterWheel:
-              type: boolean
-            rotator:
-              type: boolean
-            guider:
-              type: boolean
-            safetyMonitor:
-              type: boolean
-            weather:
-              type: boolean
-            flatDevice:
-              type: boolean
-            switch:
-              type: boolean
-            dome:
-              type: boolean
-          required:
-            - camera
-            - mount
-            - focuser
-            - filterWheel
-            - rotator
-            - guider
-            - safetyMonitor
-            - weather
-            - flatDevice
-            - switch
-            - dome
-        focuser:
-          type:
-            - object
-            - "null"
-          properties:
-            position:
-              type: number
-            temperatureC:
-              type:
-                - number
-                - "null"
-            moving:
-              type: boolean
-          required:
-            - position
-            - temperatureC
-            - moving
-        mountState:
-          type:
-            - object
-            - "null"
-          properties:
-            pierSide:
-              type:
-                - string
-                - "null"
-              enum:
-                - east
-                - west
-                - null
-            tracking:
-              type: boolean
-            atPark:
-              type: boolean
-            slewing:
-              type: boolean
-            altitudeDeg:
-              type:
-                - number
-                - "null"
-              minimum: -90
-              maximum: 90
-            azimuthDeg:
-              type:
-                - number
-                - "null"
-              minimum: 0
-              maximum: 360
-          required:
-            - pierSide
-            - tracking
-            - atPark
-            - slewing
-            - altitudeDeg
-            - azimuthDeg
-        guider:
-          type:
-            - object
-            - "null"
-          properties:
-            rmsTotalArcsec:
-              type:
-                - number
-                - "null"
-              minimum: 0
-            rmsRaArcsec:
-              type:
-                - number
-                - "null"
-              minimum: 0
-            rmsDecArcsec:
-              type:
-                - number
-                - "null"
-              minimum: 0
-          required:
-            - rmsTotalArcsec
-            - rmsRaArcsec
-            - rmsDecArcsec
-        filter:
-          type:
-            - string
-            - "null"
-          maxLength: 256
-        safe:
-          type:
-            - boolean
-            - "null"
-        weather:
-          $ref: "#/components/schemas/NinaWeatherNow"
-      required:
-        - connected
-        - focuser
-        - mountState
-        - guider
-        - filter
-        - safe
-        - weather
-    NinaWeatherNow:
-      type:
-        - object
-        - "null"
-      properties:
-        cloudCoverPct:
-          type: number
-          minimum: 0
-          maximum: 100
-        skyQualityMag:
-          type: number
-        skyBrightnessLux:
-          type: number
-          minimum: 0
-        skyTemperatureC:
-          type: number
-        starFwhmArcsec:
-          type: number
-          minimum: 0
-        temperatureC:
-          type: number
-        humidityPct:
-          type: number
-          minimum: 0
-          maximum: 100
-        dewPointC:
-          type: number
-        pressureHpa:
-          type: number
-          minimum: 0
-        windSpeedMs:
-          type: number
-          minimum: 0
-        windGustMs:
-          type: number
-          minimum: 0
-        windDirectionDeg:
-          type: number
-          minimum: 0
-          maximum: 360
-        rainRateMmH:
-          type: number
-          minimum: 0
-    NinaOptics:
-      type:
-        - object
-        - "null"
-      properties:
-        focalLengthMm:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
-        focalRatio:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
-        pixelSizeUm:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
-        sensorWidthPx:
-          type:
-            - integer
-            - "null"
-          exclusiveMinimum: 0
-        sensorHeightPx:
-          type:
-            - integer
-            - "null"
-          exclusiveMinimum: 0
-        cameraName:
-          type:
-            - string
-            - "null"
-          maxLength: 256
-        telescopeName:
-          type:
-            - string
-            - "null"
-          maxLength: 256
-        ninaVersion:
-          type:
-            - string
-            - "null"
-          maxLength: 256
-      required:
-        - focalLengthMm
-        - focalRatio
-        - pixelSizeUm
-        - sensorWidthPx
-        - sensorHeightPx
-        - cameraName
-        - telescopeName
-        - ninaVersion
     DsoList:
       type: object
       properties:

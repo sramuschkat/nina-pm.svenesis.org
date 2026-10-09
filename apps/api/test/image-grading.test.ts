@@ -311,6 +311,41 @@ describe('Bildbewertung (AP-72b)', () => {
     expect(v.items.find((x) => x.id === fine.id)?.rejected).toBe(false);
   });
 
+  it('Startseite „Heute“ (AP-73): letzte Aufnahme des Rigs mit Bewertung, Abweichungen je Instanz; älter als 36 h → null', async () => {
+    const w = await setup();
+    const { sessionId, lights } = await night(w);
+    s.clock.set(new Date('2026-09-19T12:00:00Z'));
+    const rig = async () => {
+      const r = await w.web(`/tonight?rigId=${w.rigId}`);
+      expect(r.status).toBe(200);
+      return (r.body.rigs as Body[])[0] as {
+        lastCapture: Body | null;
+        live: Body | null;
+        instances: { mismatchCodes: string[]; profileSiteMismatch: boolean }[];
+      };
+    };
+    const now = await rig();
+    // Letztes Light: Nr. 13 mit Guiding-RMS 2″ (> 1,5″) → markiert.
+    expect(now.lastCapture).toMatchObject({
+      captureId: lights[13]?.id,
+      sessionId,
+      projectId: w.pid,
+      projectName: 'NGC 281',
+      filter: 'Ha',
+      exposureS: 300,
+      hfr: 1.6,
+      stars: 800,
+      grade: 'flagged',
+      flags: [{ metric: 'rms', value: 2, limit: 1.5 }],
+    });
+    expect(now.instances).toEqual([
+      expect.objectContaining({ mismatchCodes: [], profileSiteMismatch: false }),
+    ]);
+    expect(now.live).toBeNull();
+    s.clock.set(new Date('2026-09-21T02:00:00Z'));
+    expect((await rig()).lastCapture).toBeNull();
+  });
+
   it('fremder Mandant: 404', async () => {
     const w = await setup();
     await night(w);
