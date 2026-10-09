@@ -159,3 +159,4 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-73](AP-73.md) | Startseite „Heute“: Übersicht und Heute Nacht zusammenlegen, Zu tun, Rig jetzt mit letzter Aufnahme, Restzeit je Projekt | L | AP-26d, AP-70, AP-72 | H-16 | ☑ 09.10.2026 |
 | [AP-74](AP-74.md) | Dropbox-Upload in NINA-PM: Bilder „gesichert“, Dropbox-Link je Projekt, Upload je Nacht (Begleitskript, Migration 0016) | L | AP-67, AP-72, AP-73 | H-22, H-15 | ☐ |
 | [AP-75](AP-75.md) | Weitere Objektkataloge: LDN, Barnard, LBN, vdB, Planetarische Nebel, Arp, HCG (VizieR, ohne Migration) | L | AP-20, AP-21, AP-25 | H-11, H-16 | ☐ |
+| [AP-76](AP-76.md) | Katalog-Vorschaubilder für alle Objekte (klein und groß, hips2fits, Job `catalog_preview`) | M | AP-25, AP-75 | H-16 | ☐ |
