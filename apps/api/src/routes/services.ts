@@ -26,6 +26,7 @@ import type {
   TenantContext,
   TenantRepository,
   DiscordRepository,
+  ImageQualityRepository,
   RigTelemetryRepository,
 } from '@nina-pm/db';
 import type { AuthConfig } from '../auth/config';
@@ -61,6 +62,7 @@ export interface ApiRepositories {
   tenant(): TenantRepository;
   discord(): DiscordRepository;
   telemetry(): RigTelemetryRepository;
+  imageQuality(): ImageQualityRepository;
 }
 
 /** Dienste der Lambda `api`, einmal je Container erzeugt (DB-Pool, S3, Lambda, SSM). */

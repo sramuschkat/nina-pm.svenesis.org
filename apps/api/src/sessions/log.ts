@@ -17,6 +17,7 @@ import {
 import {
   clearNightMonths,
   forecastAccuracy,
+  imagesForecastAccuracy,
   forecastSnapshot,
   ninaStats,
   prefillSessionLog,
@@ -178,6 +179,11 @@ export function clearNightView(input: {
    * nicht – eine Nacht, die läuft oder bevorsteht, ist nicht „klar, aber nicht genutzt“.
    */
   readonly currentNight: string;
+  /** „Klar laut Bildern“ je Nacht (AP-72); fehlt eine Nacht, bleibt sie ohne Urteil. */
+  readonly imagesClarity?: ReadonlyMap<
+    string,
+    { verdict: 'clear' | 'thin' | 'cloudy'; clearPct: number }
+  >;
 }): ClearNightView {
   const statOf = new Map(input.stats.map((s) => [s.night, s]));
   const forecastOf = new Map(
@@ -219,6 +225,8 @@ export function clearNightView(input: {
       transparencyPct: logged?.transparencyPct ?? null,
       forecastTransparencyPct: snap?.transparencyPct ?? null,
       rejectedPct: lights === 0 ? null : Math.round((rejected / lights) * 1000) / 10,
+      imagesClarity: input.imagesClarity?.get(night)?.verdict ?? null,
+      imagesClearPct: input.imagesClarity?.get(night)?.clearPct ?? null,
     };
   });
   return {
@@ -230,5 +238,6 @@ export function clearNightView(input: {
     months: clearNightMonths(nights),
     nights,
     accuracy: forecastAccuracy(nights),
+    imagesAccuracy: imagesForecastAccuracy(nights),
   };
 }

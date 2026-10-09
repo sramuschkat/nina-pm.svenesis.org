@@ -312,8 +312,18 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
     temperatureDeviation: false,
     result: 'saved',
     fileName: 'fake-plugin.fits',
-    // Optionale NINA-Metriken (AP-62) wie aus NINAs Sternanalyse.
-    metrics: { hfr: 2.1, stars: 380, meanAdu: 1500 },
+    // Optionale NINA-Metriken (AP-62) wie aus NINAs Sternanalyse; Guiding, Wetter, Bildstatistik (AP-70/71/72).
+    metrics: {
+      hfr: 2.1,
+      stars: 380,
+      meanAdu: 1500,
+      guidingRmsArcsec: 0.62,
+      altitudeDeg: 54,
+      cloudCoverPct: 0,
+      skyQualityMag: 21.4,
+      medianAdu: 1480,
+      saturatedPct: 0.02,
+    },
     ...over,
   });
   const upload = async (sid: string, list: unknown[]) =>
@@ -412,7 +422,12 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
   await step('Ereignisse', async () => {
     const events = [
       { id: newId(), occurredAtUtc: now, kind: 'plan_built', nightPlanId },
-      { id: newId(), occurredAtUtc: addSeconds(now, 250), kind: 'af' },
+      {
+        id: newId(),
+        occurredAtUtc: addSeconds(now, 250),
+        kind: 'af',
+        data: { result: 'ok', filter: 'Ha', position: 2050, temperatureC: 12.5 },
+      },
     ];
     expectStatus(
       await call(`/sessions/${sessionId}/events`, { method: 'POST', body: { events } }),

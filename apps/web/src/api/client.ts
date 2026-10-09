@@ -219,6 +219,7 @@ export type MoonProfileView = Schemas['MoonProfileView'];
 export type ExposureTemplateView = Schemas['ExposureTemplateView'];
 export type RigView = Schemas['RigView'];
 export type FilterWheelView = Schemas['FilterWheelView'];
+export type FocusOffsetsView = Schemas['FocusOffsetsView'];
 export type SiteNightsView = Schemas['SiteNightsView'];
 export type WeatherView = Schemas['WeatherView'];
 export type WeatherHourView = Schemas['WeatherHourView'];
@@ -328,6 +329,7 @@ export const equipmentApi = {
       ...ifMatch(version),
     }),
   filterWheel: (id: string) => apiFetch<FilterWheelView>(`${V1}/rigs/${id}/filter-wheel`),
+  focusOffsets: (id: string) => apiFetch<FocusOffsetsView>(`${V1}/rigs/${id}/focus-offsets`),
   putFilterWheel: (
     id: string,
     slots: { position: number; filterId: string | null; ninaFilterName: string | null }[],

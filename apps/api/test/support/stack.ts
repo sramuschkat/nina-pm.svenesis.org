@@ -29,6 +29,7 @@ import {
   readMaintenanceBanner,
   TenantRepository,
   DiscordRepository,
+  ImageQualityRepository,
   RigTelemetryRepository,
 } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
@@ -107,6 +108,7 @@ export async function createStack() {
       tenant: () => new TenantRepository(pg.db, ctx),
       discord: () => new DiscordRepository(pg.db, ctx),
       telemetry: () => new RigTelemetryRepository(pg.db, ctx),
+      imageQuality: () => new ImageQualityRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,

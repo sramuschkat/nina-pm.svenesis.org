@@ -221,6 +221,60 @@ export function captureMetrics(v: unknown): { hfr: number | null; stars: number 
   return { hfr, stars };
 }
 
+const QUALITY_KEYS = {
+  rmsArcsec: 'guidingRmsArcsec',
+  rmsRaArcsec: 'rmsRaArcsec',
+  rmsDecArcsec: 'rmsDecArcsec',
+  altitudeDeg: 'altitudeDeg',
+  airmass: 'airmass',
+  cloudCoverPct: 'cloudCoverPct',
+  skyQualityMag: 'skyQualityMag',
+  medianAdu: 'medianAdu',
+  saturatedPct: 'saturatedPct',
+  focusPosition: 'focusPosition',
+  focuserTemperatureC: 'focuserTemperatureC',
+} as const;
+
+/** Messwerte für die Qualitätskurve (AP-72) aus `capture.metrics`; nur endliche Zahlen, ohne jeden Wert `null`. */
+export function captureQuality(
+  v: unknown,
+): Partial<Record<keyof typeof QUALITY_KEYS, number>> | null {
+  let m: Record<string, unknown> | null;
+  try {
+    m = v === null || v === undefined ? null : parseJson<Record<string, unknown>>(v);
+  } catch {
+    m = null;
+  }
+  if (!m || typeof m !== 'object') return null;
+  const out: Partial<Record<keyof typeof QUALITY_KEYS, number>> = {};
+  for (const [key, source] of Object.entries(QUALITY_KEYS) as [
+    keyof typeof QUALITY_KEYS,
+    string,
+  ][]) {
+    const x = m[source];
+    if (typeof x === 'number' && Number.isFinite(x)) out[key] = x;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/** `af`-Daten eines Ereignisses (AP-72): Erfolg, Filter, Position, Temperatur. */
+export function afData(kind: string, data: unknown) {
+  if (kind !== 'af') return null;
+  let d: Record<string, unknown> | null;
+  try {
+    d = data === null || data === undefined ? null : parseJson<Record<string, unknown>>(data);
+  } catch {
+    d = null;
+  }
+  const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+  return {
+    ok: !(d?.result === 'failed' || d?.code === 'failed'),
+    filter: typeof d?.filter === 'string' && d.filter !== '' ? d.filter : null,
+    position: n(d?.position),
+    temperatureC: n(d?.temperatureC),
+  };
+}
+
 export class SessionReviewRepository extends TenantRepo {
   private base() {
     return this.db
@@ -829,7 +883,7 @@ export class SessionReviewRepository extends TenantRepo {
       .execute();
     const events = await this.db
       .selectFrom('sessionEvent')
-      .select(['id', 'occurredAt', 'kind', 'message', 'durationS'])
+      .select(['id', 'occurredAt', 'kind', 'message', 'durationS', 'data'])
       .where('tenantId', '=', t)
       .where('sessionId', '=', id)
       .orderBy('occurredAt')
@@ -932,6 +986,7 @@ export class SessionReviewRepository extends TenantRepo {
         rejectReason: c.rejectReason as RejectReason | null,
         fileName: c.fileName,
         ...captureMetrics(c.metrics),
+        quality: c.frameType === 'light' ? captureQuality(c.metrics) : null,
       })),
       capturesTruncated: captureRows.length > captureLimit,
       events: events.map((e) => ({
@@ -940,6 +995,7 @@ export class SessionReviewRepository extends TenantRepo {
         kind: e.kind,
         message: e.message,
         durationS: e.durationS === null ? null : num(e.durationS),
+        af: afData(e.kind, e.data),
       })),
       flats: flats.map((f) => ({
         filterShortName: f.filterShortName,

@@ -1313,6 +1313,8 @@ function Captures({
               timeZone={zone}
               fromUtc={detail.session.startedAt}
               toUtc={detail.session.endedAt}
+              scaleArcsecPx={detail.quality?.scaleArcsecPx ?? null}
+              refs={detail.quality?.refs ?? []}
             />
           ) : null}
         </section>

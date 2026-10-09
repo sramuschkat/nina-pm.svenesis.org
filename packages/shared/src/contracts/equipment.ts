@@ -601,6 +601,41 @@ export const FilterWheelView = z
   })
   .meta({ id: 'FilterWheelView' });
 
+/**
+ * Vorgeschlagene Filter-Offsets (AP-72, FA-RIG-20): aus den erfolgreichen Autofokus-Läufen (`af`) der letzten Nächte je
+ * NINA-Filter, Regression Position gegen Temperatur mit gemeinsamer Steigung. Offset relativ zum Bezugsfilter (L, sonst
+ * der Filter mit den meisten Läufen); ein Vorschlag erst ab `minRuns` Läufen. `ninaOffset` = von NINA gemeldeter Offset.
+ */
+export const FocusOffsetsView = z
+  .object({
+    rigId: Uuid,
+    fromNight: z.iso.date(),
+    toNight: z.iso.date(),
+    minRuns: z.number().int().min(1),
+    totalRuns: z.number().int().min(0),
+    reference: z.string().nullable(),
+    slopePerC: z.number().nullable(),
+    referenceTemperatureC: z.number().nullable(),
+    /** NINA meldet an allen Plätzen Offset 0 (mindestens zwei Filter) – Offsets noch nicht eingetragen. */
+    ninaWithoutOffsets: z.boolean(),
+    filters: z.array(
+      z.object({
+        filter: z.string(),
+        /** Kurzname des Web-Filters am Platz mit diesem NINA-Namen, sonst `null`. */
+        shortName: z.string().nullable(),
+        position: z.number().int().nullable(),
+        runs: z.number().int().min(0),
+        positionAtRef: z.number(),
+        offset: z.number().int().nullable(),
+        scatter: z.number().nullable(),
+        ninaOffset: z.number().nullable(),
+        lastRunAt: UtcInstant.nullable(),
+      }),
+    ),
+  })
+  .meta({ id: 'FocusOffsetsView' });
+export type FocusOffsetsView = z.infer<typeof FocusOffsetsView>;
+
 // ---- Nacht-Tabelle -------------------------------------------------------------------------------
 
 export const NightsQuery = z.object({

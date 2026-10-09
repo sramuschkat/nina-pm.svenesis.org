@@ -60,6 +60,7 @@ import { NINA_PATHS } from '../nina/NinaLayout';
 import { UptakeStatus } from '../nina/UptakeStatus';
 import { rebaseDraft } from '../../lib/draft-rebase';
 import { FilterWheelSection } from './FilterWheelSection';
+import { FocusOffsets } from './FocusOffsets';
 import { MeasuredOverheads } from './MeasuredOverheads';
 import { SORT_CHAIN_LABEL, SortChainEditor } from './SortChainEditor';
 import type { SortChainKey } from '@nina-pm/shared';
@@ -645,7 +646,10 @@ export function RigsPage() {
                         {t('rigs.wheel.osc')}
                       </p>
                     ) : (
-                      <FilterWheelSection rig={selected} canWrite={canSettings} />
+                      <>
+                        <FilterWheelSection rig={selected} canWrite={canSettings} />
+                        <FocusOffsets rig={selected} />
+                      </>
                     ),
                     nina: selected ? (
                       <section className={styles.flat} aria-labelledby="rig-nina-title">

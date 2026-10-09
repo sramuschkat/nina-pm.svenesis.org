@@ -296,6 +296,22 @@ export const GOOD_RATING_INDEX = 3;
  * nutzbar. Nächte ohne Session zählen nicht: Ohne Session ist nichts beobachtet (AP-64b, FA-AUS-16 „Vorhersage vs.
  * gemessen/beobachtet“); sie erscheinen im Kalender als „klar, aber nicht genutzt“.
  */
+/** Treffsicherheit der Vorhersage laut Bildern (AP-72, FA-AUS-24): Bewertung ≥ *Gut* ⇔ Nacht überwiegend klar. */
+export function imagesForecastAccuracy(nights: readonly ClearNightNight[]) {
+  let compared = 0;
+  let hits = 0;
+  for (const n of nights) {
+    if (!n.imagesClarity || n.forecastRatingIndex === null) continue;
+    compared += 1;
+    if (n.forecastRatingIndex >= GOOD_RATING_INDEX === (n.imagesClarity === 'clear')) hits += 1;
+  }
+  return {
+    compared,
+    hits,
+    hitPct: compared === 0 ? null : Math.round((hits / compared) * 1000) / 10,
+  };
+}
+
 export function forecastAccuracy(nights: readonly ClearNightNight[]) {
   let compared = 0;
   let hits = 0;

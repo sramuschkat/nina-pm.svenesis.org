@@ -289,6 +289,46 @@ export function metricPoints(captures: readonly NightSessionCapture[]): MetricPo
     .sort((a, b) => a.atS - b.atS);
 }
 
+/** Kennzahlen der Qualitätskurve (AP-72, FA-AUS-23). */
+export const QUALITY_KEYS = ['hfr', 'stars', 'rms', 'cloud', 'sqm', 'alt', 'adu'] as const;
+export type QualityKey = (typeof QUALITY_KEYS)[number];
+
+/** Punkt der Qualitätskurve: gespeichertes Light mit allen vorhandenen Werten; HFR in ″, wenn der Maßstab bekannt ist. */
+export interface QualityPoint {
+  readonly atS: number;
+  readonly filter: string;
+  readonly projectId: string | null;
+  readonly values: Partial<Record<QualityKey, number>>;
+}
+
+export function qualityPoints(
+  captures: readonly NightSessionCapture[],
+  scaleArcsecPx: number | null,
+): QualityPoint[] {
+  return captures
+    .filter((c) => c.frameType === 'light' && c.result === 'saved')
+    .map((c) => {
+      const q = c.quality ?? null;
+      const values: Partial<Record<QualityKey, number>> = {};
+      if (c.hfr !== null)
+        values.hfr = scaleArcsecPx ? c.hfr * scaleArcsecPx * (c.binning ?? 1) : c.hfr;
+      if (c.stars !== null) values.stars = c.stars;
+      if (q?.rmsArcsec !== undefined) values.rms = q.rmsArcsec;
+      if (q?.cloudCoverPct !== undefined) values.cloud = q.cloudCoverPct;
+      if (q?.skyQualityMag !== undefined) values.sqm = q.skyQualityMag;
+      if (q?.altitudeDeg !== undefined) values.alt = q.altitudeDeg;
+      if (q?.medianAdu !== undefined) values.adu = q.medianAdu;
+      return {
+        atS: Date.parse(c.capturedAt) / 1000,
+        filter: c.filterShortName,
+        projectId: c.projectId,
+        values,
+      };
+    })
+    .filter((p) => Object.keys(p.values).length > 0)
+    .sort((a, b) => a.atS - b.atS);
+}
+
 export function median(values: readonly number[]): number | null {
   if (values.length === 0) return null;
   const s = [...values].sort((a, b) => a - b);

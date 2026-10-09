@@ -30,3 +30,4 @@ export * from './flats-coverage';
 export * from './simulation-view';
 export * from './executed-night';
 export * from './measured-overheads';
+export * from './image-quality';

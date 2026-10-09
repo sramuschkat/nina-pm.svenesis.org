@@ -55,6 +55,24 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   // Optionale NINA-Metriken (AP-62): HFR und Sterne aus den Fake-Plugin-Meldungen, Median über der Tabelle.
   await expect(flagged).toContainText('2,10 px');
   await expect(admin.getByTestId('capture-metrics')).toContainText('Median HFR 2,10 px');
+  // Qualitätskurve (AP-72): Kennzahlen umschaltbar, Kurve so breit wie die Karte (Lage gemessen).
+  const keys = admin.getByRole('group', { name: 'Kennzahlen der Kurve' });
+  await expect(keys.getByRole('button', { name: 'Guiding-RMS' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await keys.getByRole('button', { name: 'Wolken' }).click();
+  await expect(keys.getByRole('button', { name: 'Wolken' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  const curve = await admin.getByRole('img', { name: /Qualitätskurve/ }).boundingBox();
+  const qualityCard = await admin
+    .getByRole('region', { name: 'Bildqualität über die Nacht' })
+    .boundingBox();
+  if (!curve || !qualityCard) throw new Error('Qualitätskurve oder Karte nicht sichtbar');
+  expect(curve.x).toBeGreaterThanOrEqual(qualityCard.x);
+  expect(curve.x + curve.width).toBeLessThanOrEqual(qualityCard.x + qualityCard.width + 1);
   await expect(flagged).toContainText('330 s');
   await expectNoSerious(admin, 'S-61 Aufnahmen');
 
