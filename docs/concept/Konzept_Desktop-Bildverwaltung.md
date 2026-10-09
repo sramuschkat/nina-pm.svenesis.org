@@ -212,3 +212,40 @@ crates/npm-library/           Ordner durchsuchen/beobachten, Zuordnung zu Aufnah
 - Stacken, Kalibrieren, Bildbearbeitung (bleibt PixInsight, Siril o. Ä.).
 - Hochladen von Bildern zu NINA-PM, Bildgalerie, Vorschaubilder im Web.
 - Steuerung von NINA oder des Rigs aus der App.
+
+## 13. Lehren aus PSF Guard (09.10.2026, nur Ideen)
+
+[PSF Guard](https://github.com/theatrus/psf-guard) (Apache-2.0) ist ein fast gleiches Programm: Rust-Kern, Tauri, React,
+Windows/macOS/Linux; Sichtung, Bewertung, Prüfungen, eigener Solver (Seiza), Stack-Vorschau, Export nach WBPP/AstroBin.
+Datenquelle ist die Datenbank des NINA-Plugins *Target Scheduler*; mit „Director“ entsteht dort zudem ein eigener Planer.
+
+**Übernehmen (als Idee):**
+- **Sterngrößen nie mischen:** NINA-gleich messen oder je Projekt und Filter nur aus einer Quelle bewerten – unser Bezug
+  stammt aus NINA-Werten des Plugins.
+- **Bewertung:** Toleranzband ohne Abzug, dann linear fallend; „bester“ Bezug (p10/p90) neben dem Median; fehlende
+  Messwerte herausrechnen; harte Grenzen („weiche Sterne“ ab 1,5–2× bestem HFR des Ziels über alle Nächte,
+  Sensortemperatur); nur gleiche Belichtung/Gain/Offset/Binning/Auslesemodus vergleichen.
+- **Schleier und Abdeckung** (Dach, Baum): 8×6-Raster „toter Zellen“, Transparenz über denselben Sternfluss,
+  Hintergrundanstieg – Sternzahl und HFR allein lassen solche Bilder durch.
+- **Zuordnung** über Dateiname **und** Aufnahmezeit (±2 s); Dateien, die noch kopiert werden, erkennen und abwarten.
+- **Abgleich** mit Vorschau → Übernehmen, 409 bei geändertem Stand; automatische Vorschläge mit „[Auto]“, Verwerfen
+  bestätigt ein Mensch.
+- **Hintergrundarbeit:** erst Header, dann Analyse als Job; Worker nach freiem RAM, Nutzerarbeit vor Hintergrund.
+- **Release:** Signieren nur über Tauris `signCommand`, Updater-Signatur nach Authenticode neu, DMG nach der App erneut
+  notarisieren, eigener Signier-Testlauf, E2E gegen die gebaute App mit FITS-Testdaten.
+- **Plate-Solving:** Seiza (Rust, Apache-2.0, nach eigener Angabe ASTAP-kompatibel und schneller) als Alternative zu
+  ASTAP; nur ein frisch gelöstes Bild zählt; „neben dem Ziel“, Drift, schiefe Rotation erkennen.
+
+**Vermeiden:** lokalen HTTP-Server ohne Anmeldung mit offenem CORS und ohne CSP (stattdessen Tauri-IPC/eigenes Protokoll);
+riesige Handler-Dateien; Kopplung an das Target-Scheduler-Schema. **Lizenz prüfen:** Die Nachbauten der NINA- und
+HocusFocus-Sternerkennung sind als Apache-2.0 markiert, die Originale stehen unter MPL-2.0.
+
+**Wege (offen, Entscheidung Sven):**
+
+| Weg | Was | Für | Gegen |
+|---|---|---|---|
+| A | Eigene App wie §1–§10 | ein Datenmodell, unsere Anmeldung und Optik | viel Arbeit (Erkennung, Prüfungen, Solver, Release) |
+| B | An PSF Guard andocken (Sync-API/MCP) | sofort nutzbar | fremde Richtung (Director), Target-Scheduler-Modell, ungeschützter lokaler Server |
+| C | Eigene App mit Seiza-Crates (Empfehlung) | spart den schwersten Teil, NINA-gleiche Messung | Abhängigkeit von einem Ein-Personen-Projekt, Lizenzprüfung |
+
+Vorher PSF Guard mit einer echten SFRO-Nacht ausprobieren (Download nur mit Freigabe).
