@@ -78,6 +78,11 @@ export interface CompatSwitches {
    * der nächsten Slotgrenze, wenn seine Einheit im angeschnittenen Slot nutzbar ist (Zuteilung bleibt im 5-min-Raster).
    */
   readonly moveUpBlocks: boolean;
+  /**
+   * A-36: Ein neuer Block mit Slew braucht Platz für mindestens `MIN_VISIT_SUBS` Belichtungen, außer er stellt die
+   * Einheit fertig (Entscheidung Sven 09.10.2026); sonst wird er behandelt wie ein Blockanfang ohne Arbeit (A-17/A-33).
+   */
+  readonly minVisitSubs: boolean;
   /** A-31: Restriktivität `A · W · arctan(14,77/W)` (sonst `A × (1 + 100/(maxIllum+1))`). */
   readonly restrictivenessWidth: boolean;
 }
@@ -117,6 +122,7 @@ export const DEVIATION_IDS: Readonly<Record<keyof CompatSwitches, string>> = {
   reofferFreedTime: 'A-33',
   continuationNoSlew: 'A-34',
   moveUpBlocks: 'A-35',
+  minVisitSubs: 'A-36',
 };
 
 const SWITCH_KEYS = Object.keys(DEVIATION_IDS).sort() as (keyof CompatSwitches)[];

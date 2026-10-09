@@ -27,6 +27,13 @@ public enum RefreshCause
     /// <c>replanned</c>, der Container plant sofort ab jetzt neu (Plugin 0.4.18).
     /// </summary>
     SkippedExposures,
+
+    /// <summary>
+    /// Lücke vor dem nächsten Block nach einem übersprungenen Block (<c>block_skipped</c>, AP-71): einmal je übersprungenem
+    /// Block, auch wenn der Plan schon aus einer <see cref="IdleAhead"/>-Neuplanung stammt (Rig-Nacht 08./09.10.2026: 12 min
+    /// Leerlauf nach dem zweiten <c>elapsed</c>).
+    /// </summary>
+    SkippedBlock,
 }
 
 /// <summary>Entscheidung vor einem Block: Plan behalten oder <c>POST /plan {reason: refresh, startAtUtc = jetzt}</c>.</summary>
@@ -105,6 +112,25 @@ public static class ReplanPolicy
     /// </summary>
     public static bool IdleAhead(DateTimeOffset plannedBlockStart, DateTimeOffset now, bool blockRanTonight, bool planFromIdleRefresh) =>
         blockRanTonight && !planFromIdleRefresh && plannedBlockStart - now > IdleRefreshMin;
+
+    /// <summary>
+    /// Grund der Neuplanung vor einer Lücke (&gt; <see cref="IdleRefreshMin"/>): <see cref="RefreshCause.SkippedBlock"/>, wenn seit
+    /// der letzten Neuplanung ein Block übersprungen wurde (gilt auch für einen Plan aus einer Lücken-Neuplanung), sonst
+    /// <see cref="RefreshCause.IdleAhead"/> nach <see cref="IdleAhead"/>; <c>null</c> = Plan behalten.
+    /// </summary>
+    /// <summary>
+    /// Überspring-Gründe, nach denen <see cref="RefreshCause.SkippedBlock"/> neu plant (AP-71): Block vorbei, gerade nicht
+    /// machbar, Zentrieren gescheitert. Fehlt ein Filter oder Auslesemodus, enthielte der neue Plan denselben Block.
+    /// </summary>
+    public static bool SkipReplans(string skipReason) => skipReason is "elapsed" or "not_viable" or "center_failed";
+
+    public static RefreshCause? IdleRefresh(DateTimeOffset plannedBlockStart, DateTimeOffset now, bool blockRanTonight,
+        bool planFromIdleRefresh, bool skippedSinceRefresh)
+    {
+        if (plannedBlockStart - now <= IdleRefreshMin) return null;
+        if (skippedSinceRefresh) return RefreshCause.SkippedBlock;
+        return IdleAhead(plannedBlockStart, now, blockRanTonight, planFromIdleRefresh) ? RefreshCause.IdleAhead : null;
+    }
 
     /// <summary>
     /// <see cref="RefreshCause.EmptyBlock"/>: Der Block lief an (Slew, Zentrieren), endete aber <c>completed</c> ohne

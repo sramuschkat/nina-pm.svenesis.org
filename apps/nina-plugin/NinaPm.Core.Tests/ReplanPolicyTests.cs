@@ -52,6 +52,24 @@ public sealed class ReplanPolicyTests
     public void Luecke_vor_dem_naechsten_Block(string name, string plannedStart, bool blockRan, bool fromIdle, bool expected) =>
         Assert.True(expected == ReplanPolicy.IdleAhead(T(plannedStart), T("2026-09-18T07:35:00Z"), blockRan, fromIdle), name);
 
+    [Theory]
+    [InlineData("übersprungener Block, Plan aus Lückenplanung", "2026-09-18T07:47:00Z", true, true, true, RefreshCause.SkippedBlock)]
+    [InlineData("übersprungener Block, Lücke genau 5 min", "2026-09-18T07:40:00Z", true, true, true, null)]
+    [InlineData("kein übersprungener Block, Plan aus Lückenplanung", "2026-09-18T07:47:00Z", true, true, false, null)]
+    [InlineData("gelaufener Block, normaler Plan", "2026-09-18T07:47:00Z", true, false, false, RefreshCause.IdleAhead)]
+    public void Luecke_nach_uebersprungenem_Block(string name, string plannedStart, bool blockRan, bool fromIdle, bool skipped, RefreshCause? expected) =>
+        Assert.True(expected == ReplanPolicy.IdleRefresh(T(plannedStart), T("2026-09-18T07:35:00Z"), blockRan, fromIdle, skipped), name);
+
+    [Theory]
+    [InlineData("elapsed", true)]
+    [InlineData("not_viable", true)]
+    [InlineData("center_failed", true)]
+    [InlineData("filter_not_found", false)] // derselbe Block käme wieder (kopfloser Lauf P-19)
+    [InlineData("readout_mode_not_found", false)]
+    [InlineData("user_skip", false)]
+    public void Neuplanung_nur_nach_Gruenden_die_ein_neuer_Plan_aendert(string reason, bool expected) =>
+        Assert.Equal(expected, ReplanPolicy.SkipReplans(reason));
+
     [Fact]
     public void Geplanter_Blockstart_eines_Transitblocks_ist_der_frueheste_Eintrag()
     {

@@ -53,6 +53,9 @@ export const RigLive = z
     camera: NinaHeartbeat.shape.camera.unwrap().unwrap().nullable(),
     filterWheel: NinaHeartbeat.shape.filterWheel.unwrap().unwrap().nullable(),
     devices: NinaHeartbeat.shape.devices.unwrap().unwrap().nullable(),
+    optics: NinaHeartbeat.shape.optics.unwrap().unwrap().nullable(),
+    /** 206,265 · Pixelgröße / Brennweite aus `optics` (″/px, ungebinnt, AP-71); ohne Angaben `null`. */
+    pixelScaleArcsecPx: z.number().positive().nullable(),
   })
   .meta({ id: 'RigLive' });
 export type RigLive = z.infer<typeof RigLive>;

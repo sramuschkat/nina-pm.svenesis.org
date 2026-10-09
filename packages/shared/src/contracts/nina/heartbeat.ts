@@ -78,6 +78,26 @@ export const NinaDevices = z
   })
   .meta({ id: 'NinaDevices' });
 
+/**
+ * Optik und Kamera aus dem aktiven NINA-Profil bzw. den verbundenen Geräten (AP-71, Plugin 0.4.22): Grundlage für den
+ * Pixelmaßstab in „Rig jetzt“ und den Abgleich mit der Rig-Konfiguration (`optics_mismatch`). Unbekannt = `null`.
+ */
+export const NinaOptics = z
+  .object({
+    /** `TelescopeSettings.FocalLength` – in NINA die wirksame Brennweite (mit Reducer). */
+    focalLengthMm: z.number().positive().nullable(),
+    focalRatio: z.number().positive().nullable(),
+    /** Kamera verbunden: `CameraInfo.PixelSize`, sonst `CameraSettings.PixelSize`. */
+    pixelSizeUm: z.number().positive().nullable(),
+    /** Ungebinnt (`CameraInfo.XSize`/`YSize`); ohne verbundene Kamera `null`. */
+    sensorWidthPx: z.number().int().positive().nullable(),
+    sensorHeightPx: z.number().int().positive().nullable(),
+    cameraName: Text.nullable(),
+    telescopeName: Text.nullable(),
+    ninaVersion: Text.nullable(),
+  })
+  .meta({ id: 'NinaOptics' });
+
 export const NinaHeartbeat = z
   .object({
     state: z.enum(heartbeatStates),
@@ -149,6 +169,7 @@ export const NinaHeartbeat = z
       .optional(),
     lastMeasuredRotationDeg: Angle.nullable().optional(),
     devices: NinaDevices.nullable().optional(),
+    optics: NinaOptics.nullable().optional(),
     filterWheel: z
       .array(z.object({ position: z.number().int().min(1), name: Text, focusOffset: z.number() }))
       .max(64)

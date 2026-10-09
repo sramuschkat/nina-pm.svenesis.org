@@ -2173,6 +2173,31 @@
                       "type": "number",
                       "minimum": 0,
                       "maximum": 360
+                    },
+                    "medianAdu": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "stdDevAdu": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "madAdu": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "minAdu": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "maxAdu": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "saturatedPct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
                     }
                   }
                 },
@@ -2909,6 +2934,9 @@
           "devices": {
             "$ref": "#/components/schemas/NinaDevices"
           },
+          "optics": {
+            "$ref": "#/components/schemas/NinaOptics"
+          },
           "filterWheel": {
             "type": "array",
             "nullable": true,
@@ -3036,6 +3064,67 @@
           "settingsVersion",
           "targetsEtag",
           "commands"
+        ]
+      },
+      "NinaOptics": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "focalLengthMm": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "focalRatio": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "pixelSizeUm": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "sensorWidthPx": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "sensorHeightPx": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "cameraName": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "telescopeName": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "ninaVersion": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "focalLengthMm",
+          "focalRatio",
+          "pixelSizeUm",
+          "sensorWidthPx",
+          "sensorHeightPx",
+          "cameraName",
+          "telescopeName",
+          "ninaVersion"
         ]
       },
       "NinaPlanRequest": {

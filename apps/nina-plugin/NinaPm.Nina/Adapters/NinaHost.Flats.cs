@@ -90,7 +90,8 @@ internal sealed partial class NinaHost
         var runner = Box.FlatsRunner;
         var filters = m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters;
         var filter = filters is not null && run.FilterIndex >= 0 && run.FilterIndex < filters.Count ? filters[run.FilterIndex] : null;
-        SetFlatsTarget(run.TargetName);
+        // Lesbares ASCII wie bei den Lights (AP-71): NINAs Flat-Anweisungen schreiben den Namen als NameAsAscii.
+        SetFlatsTarget(NinaPm.Core.Targets.AsciiName.Of(run.TargetName));
         ResetRecursive(runner);
         Apply(runner, run, filter);
         await RunBoxAsync(runner, token, reset: false);

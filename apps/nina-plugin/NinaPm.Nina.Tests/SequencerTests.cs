@@ -319,6 +319,45 @@ public sealed class SequencerTests
         Assert.Null(metrics.GuidingRmsArcsec); // ohne aufgezeichnetes Guiding
     }
 
+    [Fact]
+    public void Bildstatistik_je_Aufnahme_mit_Saettigung()
+    {
+        // AP-71: Median, Streuung, MAD, Minimum, Maximum und der Anteil gesättigter Pixel aus NINAs ImageStatistics.
+        var st = new Mock<NINA.Image.Interfaces.IImageStatistics>();
+        st.SetupGet(x => x.Median).Returns(812);
+        st.SetupGet(x => x.StDev).Returns(140.5);
+        st.SetupGet(x => x.MedianAbsoluteDeviation).Returns(35.2);
+        st.SetupGet(x => x.Min).Returns(410);
+        st.SetupGet(x => x.Max).Returns(65535);
+        st.SetupGet(x => x.MaxOccurrences).Returns(250);
+        st.SetupGet(x => x.BitDepth).Returns(16);
+        var metrics = new Metrics();
+        NinaHost.AddStatistics(metrics, st.Object, 1_000_000);
+        Assert.Equal((812d, 140.5d, 35.2d, 410d, 65535d, 0.025d), (metrics.MedianAdu!.Value, metrics.StdDevAdu!.Value,
+            metrics.MadAdu!.Value, metrics.MinAdu!.Value, metrics.MaxAdu!.Value, metrics.SaturatedPct!.Value));
+    }
+
+    [Fact]
+    public void Optik_aus_Profil_und_Kamera()
+    {
+        // AP-71: Brennweite und Öffnungsverhältnis aus dem Profil, Pixel- und Sensorgröße aus der verbundenen Kamera.
+        var profile = new Mock<NINA.Profile.Interfaces.IProfile>();
+        profile.SetupGet(p => p.TelescopeSettings.FocalLength).Returns(2938);
+        profile.SetupGet(p => p.TelescopeSettings.FocalRatio).Returns(6.8);
+        profile.SetupGet(p => p.TelescopeSettings.Name).Returns("CDK17");
+        profile.SetupGet(p => p.CameraSettings.PixelSize).Returns(3.8);
+        var camera = new NINA.Equipment.Equipment.MyCamera.CameraInfo { Connected = true, PixelSize = 3.76, XSize = 9576, YSize = 6388, Name = "ZWO ASI6200MM Pro" };
+        var o = NinaSettingsSource.Optics(profile.Object, camera);
+        Assert.Equal((2938d, 6.8d, 3.76d, 9576, 6388, "ZWO ASI6200MM Pro", "CDK17"),
+            (o.FocalLengthMm!.Value, o.FocalRatio!.Value, o.PixelSizeUm!.Value, o.SensorWidthPx!.Value, o.SensorHeightPx!.Value, o.CameraName, o.TelescopeName));
+
+        // Kamera getrennt: Pixelgröße aus dem Profil, Sensor und Kameraname unbekannt.
+        var off = NinaSettingsSource.Optics(profile.Object, new NINA.Equipment.Equipment.MyCamera.CameraInfo { Connected = false });
+        Assert.Equal(3.8d, off.PixelSizeUm);
+        Assert.Null(off.SensorWidthPx);
+        Assert.Null(off.CameraName);
+    }
+
     // ---- Bildpipeline: Plugin-Belichtung durch NINAs Sequenz und ImageSaved (execution.md §4.3, NT-10, NT-34) ----
 
     private sealed class ListSink : NinaPm.Core.Logging.ILogSink

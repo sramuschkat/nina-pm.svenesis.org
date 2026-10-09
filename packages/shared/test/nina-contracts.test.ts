@@ -42,6 +42,7 @@ const cases: [string, z.ZodType][] = [
   ['targets.response', nina.NinaTargets],
   ['plan.request', nina.NinaPlanRequest],
   ['plan.response', nina.NinaPlanResponse],
+  ['plan.response.tight', nina.NinaPlanResponse],
   ['simulation.response', nina.NinaSimulation],
   ['session.create.request', nina.NinaSessionCreate],
   ['session.create.response', nina.NinaSessionCreated],

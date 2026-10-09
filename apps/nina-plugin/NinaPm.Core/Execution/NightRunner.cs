@@ -127,6 +127,9 @@ public sealed class NightRunner(
     /// </summary>
     private string? blockSkippedNight;
 
+    /// <summary>Seit der letzten Lücken-Neuplanung wurde ein Block übersprungen (<see cref="RefreshCause.SkippedBlock"/>, AP-71).</summary>
+    private bool skippedSinceIdleRefresh;
+
     /// <summary>Zuletzt protokolliertes Warten auf einen Block (<c>WAIT_BLOCK</c> nur bei neuem Ziel bzw. neuer Zeit).</summary>
     private (Guid Block, DateTimeOffset Until)? waitBlockLogged;
 
@@ -510,6 +513,7 @@ public sealed class NightRunner(
                 ExecutingPlan = null;
                 skipRequested = false;
                 blockSkippedNight = null;
+                skippedSinceIdleRefresh = false;
                 waitBlockLogged = null;
                 return;
             case NightAction.FetchPlan:
@@ -774,8 +778,9 @@ public sealed class NightRunner(
     private async Task<bool> RefreshForIdleAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
     {
         var block = stored.Plan.Blocks[index];
-        if (!IdleAheadDue(stored, index)) return false;
-        log.Note($"Re-planning before block {block.Id}: {RefreshCause.IdleAhead}");
+        if (IdleCause(stored, index) is not { } cause) return false;
+        log.Note($"Re-planning before block {block.Id}: {cause}");
+        skippedSinceIdleRefresh = false;
         await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, clock.UtcNow).ConfigureAwait(false);
         if (PlanStore.Load(store, night) is { } fresh && fresh.Plan.NightPlanId != stored.Plan.NightPlanId)
             store.SetState(StateKeys.IdleRefreshPlan, fresh.Plan.NightPlanId.ToString());
@@ -789,11 +794,18 @@ public sealed class NightRunner(
     /// übersprungene zählen, Plugin 0.4.18), der Plan stammt nicht aus einer solchen Neuplanung, der Block beginnt erst in
     /// mehr als 5 min.
     /// </summary>
-    private bool IdleAheadDue(StoredPlan stored, int index)
+    private bool IdleAheadDue(StoredPlan stored, int index) => IdleCause(stored, index) is not null;
+
+    /// <summary>
+    /// <see cref="RefreshCause.IdleAhead"/> bzw. nach einem übersprungenen Block <see cref="RefreshCause.SkippedBlock"/> (auch für
+    /// einen Plan aus einer Lücken-Neuplanung, einmal je übersprungenem Block, AP-71); <c>null</c> = Plan behalten.
+    /// </summary>
+    private RefreshCause? IdleCause(StoredPlan stored, int index)
     {
         var fromIdle = store.GetState(StateKeys.IdleRefreshPlan) == stored.Plan.NightPlanId.ToString();
         var blockBefore = TonightLog.Load(store).HasPastBlocks || blockSkippedNight == stored.Plan.Night;
-        return ReplanPolicy.IdleAhead(ReplanPolicy.PlannedStart(stored.Plan.Blocks[index]), clock.UtcNow, blockBefore, fromIdle);
+        return ReplanPolicy.IdleRefresh(ReplanPolicy.PlannedStart(stored.Plan.Blocks[index]), clock.UtcNow, blockBefore, fromIdle,
+            skippedSinceIdleRefresh && blockSkippedNight == stored.Plan.Night);
     }
 
     /// <summary><c>WAIT_BLOCK</c> beim Warten auf einen späteren Block (ab 30 s, je Block und Startzeit einmal).</summary>
@@ -1128,7 +1140,12 @@ public sealed class NightRunner(
                 });
                 ReportEvent(EventsKind.Block_skipped, outcome.Reason, block.Id, projectId: block.ProjectId, nightPlanId: stored.Plan.NightPlanId);
             }
-            if (outcome.Skipped) blockSkippedNight = stored.Plan.Night;
+            if (outcome.Skipped)
+            {
+                blockSkippedNight = stored.Plan.Night;
+                // Nur, wo ein neuer Plan etwas ändert; filter_not_found, readout_mode_not_found usw. böte er wieder an.
+                if (ReplanPolicy.SkipReplans(outcome.Reason)) skippedSinceIdleRefresh = true;
+            }
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5). Ein schon verlangtes
             // Zurücksetzen (reset) bzw. initial bleibt (Plugin 0.4.18: vorher überschrieb refresh ein Zurücksetzen im Transit).

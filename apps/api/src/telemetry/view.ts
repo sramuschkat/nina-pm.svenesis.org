@@ -103,6 +103,7 @@ interface LastState {
   camera?: unknown;
   filterWheel?: unknown;
   devices?: unknown;
+  optics?: { focalLengthMm?: number | null; pixelSizeUm?: number | null } | null;
 }
 
 /**
@@ -132,5 +133,15 @@ export function rigLive(instances: readonly InstanceState[]): RigLive | null {
     camera: st.camera ?? null,
     filterWheel: st.filterWheel ?? null,
     devices: st.devices ?? null,
+    optics: st.optics ?? null,
+    pixelScaleArcsecPx: pixelScale(st.optics),
   });
+}
+
+/** ″/px mit drei Nachkommastellen wie `imageScale` (geometry.md §1). */
+function pixelScale(o: LastState['optics']): number | null {
+  const f = o?.focalLengthMm;
+  const px = o?.pixelSizeUm;
+  if (!f || !px || f <= 0 || px <= 0) return null;
+  return Math.round(((206.265 * px) / f) * 1000) / 1000;
 }

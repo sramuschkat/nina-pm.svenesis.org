@@ -612,6 +612,35 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     }
     return cost;
   };
+  /**
+   * A-36 (Entscheidung Sven 09.10.2026): Hätte ein neuer Besuch der Einheit ab `at` (nach den Rüstkosten) bis `end` Platz
+   * für weniger als `MIN_VISIT_SUBS` Belichtungen und stellt er die Einheit damit nicht fertig? Die zweite Belichtung
+   * rechnet mit Dither (bei `ditherEvery` = 1) und Filterwechsel; geprüft wird seiteneffektfrei mit `pick`.
+   */
+  const shortVisit = (row: Row, cs: number, at: number, end: number, first: Picked): boolean => {
+    if (!sw.minVisitSubs) return false;
+    let rest = 0;
+    for (const l of needLines(row)) rest += restOf(l);
+    if (rest <= 1) return false; // eine Belichtung stellt die Einheit fertig
+    const cost1 = first.line.exposureS + dl;
+    const dither = settings.ditherEnabled && settings.ditherEvery <= 1 ? settings.ditherSettleS : 0;
+    const at2 = at + cost1 + dither;
+    const cs2 = Math.min(n - 1, Math.floor(at2 / SLOT_S));
+    emitted.set(first.line.id, (emitted.get(first.line.id) ?? 0) + 1);
+    try {
+      const second = pick(row, cs2 < cs ? cs : cs2, {
+        targetRemainingSec: end - at2,
+        includeCompleted: false,
+        allowedPanel: row.profile.panelIndex,
+        atS: at2,
+      });
+      if (second === null) return true;
+      const change = second.line.filter !== first.line.filter ? settings.filterChangeS : 0;
+      return at2 + change + second.line.exposureS + dl > end;
+    } finally {
+      emitted.set(first.line.id, (emitted.get(first.line.id) ?? 0) - 1);
+    }
+  };
   const viableAt = (row: Row, k: number, end: number) => {
     const at = Math.max(t, k * SLOT_S);
     return (
@@ -847,11 +876,18 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       const startCost = continuing ? 0 : settings.slewCenterS;
       // Blockanfang ohne Arbeit (§8, FA-SCH-19, A-17): Ersatz oder Freigabe.
       const runEnd = runEndOf(r, s);
-      const probe = pick(row, s, {
+      const firstPick = pick(row, s, {
         targetRemainingSec: runEnd * SLOT_S - (t + startCost),
         includeCompleted: false,
         allowedPanel: row.profile.panelIndex,
       });
+      // A-36: ein Besuch mit Slew für nur eine Belichtung zählt wie ein Blockanfang ohne Arbeit (außer er stellt fertig).
+      const probe =
+        firstPick !== null &&
+        startCost > 0 &&
+        shortVisit(row, s, t + startCost, runEnd * SLOT_S, firstPick)
+          ? null
+          : firstPick;
       if (probe === null && !m.locked[s]) {
         let firstViable = -1;
         for (let fs = s + 1; fs < runEnd; fs++) {
@@ -881,12 +917,14 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
                 break;
               }
             if (!all) continue;
+            const otherPick = pick(other, s, {
+              targetRemainingSec: reassignEnd * SLOT_S - (t + settings.slewCenterS),
+              includeCompleted: false,
+              allowedPanel: other.profile.panelIndex,
+            });
             if (
-              pick(other, s, {
-                targetRemainingSec: reassignEnd * SLOT_S - (t + settings.slewCenterS),
-                includeCompleted: false,
-                allowedPanel: other.profile.panelIndex,
-              })
+              otherPick !== null &&
+              !shortVisit(other, s, t + settings.slewCenterS, reassignEnd * SLOT_S, otherPick)
             ) {
               fallback = other.index;
               break;

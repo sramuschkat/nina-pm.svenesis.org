@@ -404,8 +404,9 @@ public sealed class BlockExecutorTests
     {
         // Zentrieren dauert 90 s statt der geplanten 35 s: ohne weiches Blockende endete der Block leer (Log 05:37–05:52 CDT).
         var (executor, _, sink, _) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        // Seit AP-71 deckt die Verzugstoleranz (60 s) die 55 s Verzug auch ohne weiches Blockende.
         var hard = await executor.RunAsync(SingleExposure(), T("2026-10-06T11:15:00Z"), default, new BlockRunOptions(DownloadS: 1));
-        Assert.Equal(("completed", 0), (hard.Reason, hard.Exposures));
+        Assert.Equal(("completed", 1), (hard.Reason, hard.Exposures));
 
         var block = SingleExposure();
         (executor, _, sink, var clock) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);

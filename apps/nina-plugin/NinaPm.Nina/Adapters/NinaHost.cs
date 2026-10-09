@@ -217,7 +217,8 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     }
 
     /// <summary>Name, unter dem die Lights gespeichert werden: Projekt bzw. „Projekt – Panel-Label“ (§4.1 Nr. 4).</summary>
-    private string TargetName(Blocks block) => NinaPm.Core.Targets.TargetTitle.For(block, Runtime?.Runner.Targets);
+    /// <summary>Zielname für NINA (Ordner, Dateien, FITS <c>OBJECT</c>): lesbares ASCII, damit Lights und NINAs Flats denselben Ordner haben (AP-71).</summary>
+    private string TargetName(Blocks block) => NinaPm.Core.Targets.TargetTitle.FileName(block, Runtime?.Runner.Targets);
 
     public bool CanSkipSlew(Blocks block)
     {
@@ -593,6 +594,7 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
             SetPointC = e.MetaData?.Camera is { } cam2 && double.IsFinite(cam2.SetPoint) ? cam2.SetPoint : null,
         };
         if (e.MetaData is { } md) AddMetaData(metrics, md);
+        if (e.Statistics is { } stats) AddStatistics(metrics, stats, PixelCount(e.Image));
         try { Rules.Saved(facts, metrics, file); }
         finally { Interlocked.Decrement(ref unsettled); }
         ReleaseIfDrained();
@@ -637,6 +639,27 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
             metrics.WindGustMs = NinaSettingsSource.NonNegative(w.WindGust);
             metrics.WindDirectionDeg = NinaSettingsSource.InRange(w.WindDirection, 0, 360);
         }
+    }
+
+    /// <summary>
+    /// Bildstatistik (AP-71): Median, Streuung, MAD, Minimum und Maximum in ADU sowie der Anteil gesättigter Pixel
+    /// (<see cref="ImageStats.SaturatedPct"/>). Was NINA nicht liefert (NaN, negativ), fehlt.
+    /// </summary>
+    internal static void AddStatistics(Metrics metrics, NINA.Image.Interfaces.IImageStatistics st, long pixels)
+    {
+        metrics.MedianAdu = NinaSettingsSource.NonNegative(st.Median);
+        metrics.StdDevAdu = NinaSettingsSource.NonNegative(st.StDev);
+        metrics.MadAdu = NinaSettingsSource.NonNegative(st.MedianAbsoluteDeviation);
+        metrics.MinAdu = NinaSettingsSource.NonNegative(st.Min);
+        metrics.MaxAdu = NinaSettingsSource.NonNegative(st.Max);
+        metrics.SaturatedPct = ImageStats.SaturatedPct(st.Max, st.MaxOccurrences, st.BitDepth, pixels);
+    }
+
+    /// <summary>Pixelzahl des gespeicherten Bilds (Binning, Ausschnitt); nicht lesbar → 0 (keine Sättigung).</summary>
+    private static long PixelCount(System.Windows.Media.Imaging.BitmapSource? image)
+    {
+        try { return image is null ? 0 : (long)image.PixelWidth * image.PixelHeight; }
+        catch (InvalidOperationException) { return 0; }
     }
 
     private void ReleaseIfDrained()

@@ -321,6 +321,8 @@ export function settingsMismatch(
       ninaFilterName: string | null;
       ninaConfirmedAt: string | null;
     }[];
+    /** Optik der Rig-Konfiguration (Teleskop mit Reducer, Kamera); fehlt = keine Prüfung. */
+    optics?: { effFocalMm: number; pixelSizeUm: number; widthPx: number; heightPx: number } | null;
   },
 ): { codes: NinaSettingsMismatchCode[]; changedPositions: number[] } {
   const codes = new Set<NinaSettingsMismatchCode>();
@@ -370,7 +372,29 @@ export function settingsMismatch(
     ? changedWheelPositions(rig.filterWheel, hb.filterWheel)
     : [];
   if (changedPositions.length > 0) codes.add('filter_wheel_changed');
+  if (hb.optics && rig.optics && opticsMismatch(hb.optics, rig.optics))
+    codes.add('optics_mismatch');
   return { codes: [...codes].sort(), changedPositions };
+}
+
+/** Relative Abweichung, ab der Brennweite bzw. Pixelgröße als abweichend gelten (AP-71, execution.md §6). */
+export const OPTICS_TOLERANCE = 0.02;
+
+/**
+ * `optics_mismatch` (AP-71): Brennweite aus dem NINA-Profil gegen die wirksame Brennweite des Rigs (Teleskop · Reducer) und
+ * Pixelgröße jeweils mehr als 2 % daneben, oder Sensorgröße (ungebinnt, auch um 90° gedreht) anders. Unbekannte Werte
+ * (`null`, z. B. Kamera getrennt) prüfen nichts.
+ */
+export function opticsMismatch(
+  hb: NonNullable<Heartbeat['optics']>,
+  rig: { effFocalMm: number; pixelSizeUm: number; widthPx: number; heightPx: number },
+): boolean {
+  const off = (a: number | null, b: number) => a !== null && Math.abs(a - b) > OPTICS_TOLERANCE * b;
+  if (off(hb.focalLengthMm, rig.effFocalMm) || off(hb.pixelSizeUm, rig.pixelSizeUm)) return true;
+  const w = hb.sensorWidthPx;
+  const h = hb.sensorHeightPx;
+  if (w === null || h === null) return false;
+  return !((w === rig.widthPx && h === rig.heightPx) || (w === rig.heightPx && h === rig.widthPx));
 }
 
 export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbeat) {
@@ -389,6 +413,10 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
     },
     now,
   );
+  // Optik nur nachschlagen, wenn das Plugin sie meldet (ab 0.4.22).
+  const [telescope, camera] = hb.optics
+    ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
+    : [undefined, undefined];
   const mismatch = settingsMismatch(hb, {
     hasRotator: rig.hasRotator,
     rotationToleranceDeg: rig.rotationToleranceDeg,
@@ -399,6 +427,15 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
     afEveryMin: rig.overhead.afEveryMin,
     site,
     filterWheel: rig.filterWheel,
+    optics:
+      telescope && camera
+        ? {
+            effFocalMm: telescope.focalLengthMm * telescope.reducerFactor,
+            pixelSizeUm: camera.pixelSizeUm,
+            widthPx: camera.widthPx,
+            heightPx: camera.heightPx,
+          }
+        : null,
   });
   // Gemeldetes Filterrad speichern (NT-E1, S-10) und umgesteckte Plätze entbestätigen – dieselbe Regel
   // wie `settingsMismatch` (fehlende Plätze gelten nicht als geändert). Geschrieben wird die Rig-Zeile

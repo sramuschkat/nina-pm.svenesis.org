@@ -152,7 +152,9 @@ public sealed class FlatPlanningTests
 
     [Theory]
     [InlineData(@"D:\Astro\2026-10-03\M 31\FLAT\L_0001.fits", "M 31", "NGC 7000", @"D:\Astro\2026-10-03\NGC 7000\FLAT\L_0001.fits")]
-    [InlineData("/data/M 31/FLAT/x.fits", "M 31", "M 31 – P2", "/data/M 31 – P2/FLAT/x.fits")]
+    [InlineData("/data/M 31/FLAT/x.fits", "M 31", "M 31 – P2", "/data/M 31 - P2/FLAT/x.fits")] // lesbares ASCII (AP-71)
+    // Rig-Nacht 07./08.10.2026: Flats unter dem ASCII-Namen, Kopie fand das Ziel nicht (no_target_segment) – jetzt derselbe Name
+    [InlineData(@"D:\Astro\IC 5146 - Cocoon Nebula\FLAT\x.fits", "IC 5146 – Cocoon Nebula", "Sh2-132 Löwe", @"D:\Astro\Sh2-132 Loewe\FLAT\x.fits")]
     [InlineData(@"D:\Astro\M 310\FLAT\x.fits", "M 31", "NGC 7000", null)] // kein Teilstring-Ersatz
     [InlineData(@"D:\Astro\FLAT\M 31_x.fits", "M 31", "NGC 7000", null)] // Ziel nicht als ganzes Segment
     [InlineData(@"D:\Astro\Sh2_132\FLAT\x.fits", "Sh2:132", "M 31", @"D:\Astro\M 31\FLAT\x.fits")] // sanitisiert wie NINA

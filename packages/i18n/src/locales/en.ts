@@ -315,6 +315,7 @@ export const en: Messages = {
     unallocatedComputed:
       "Neither in the rig's stored plan nor exposed tonight – reasons from the plan from now.",
     noReason: 'no diagnostic reason',
+    nightOver: 'night over',
     card: {
       open: 'Open “{{name}}”',
       creator: 'Created by',
@@ -2089,6 +2090,10 @@ export const en: Messages = {
       moving: 'moving',
       filter: 'Filter',
       noOffsets: 'no filter offsets in NINA',
+      optics: 'Optics',
+      focal: '{{v}} mm',
+      focalRatio: 'f/{{v}}',
+      pixelScale: '{{v}}″/px',
       guider: 'Guider',
       rms: 'RMS {{total}}″ (RA {{ra}}″ · Dec {{dec}}″)',
       safety: 'Safety',
@@ -2233,6 +2238,7 @@ export const en: Messages = {
       af_time_trigger_missing: 'Trigger “Autofocus after time” missing',
       af_time_mismatch: 'Autofocus interval differs',
       filter_wheel_changed: 'Filter wheel changed',
+      optics_mismatch: 'Optics differ from the rig configuration',
     },
     uptake: {
       title: 'Uptake in NINA',

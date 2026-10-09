@@ -231,6 +231,31 @@
                         "type": "number",
                         "minimum": 0,
                         "maximum": 360
+                      },
+                      "medianAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "stdDevAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "madAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "minAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "maxAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "saturatedPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
                       }
                     }
                   },
@@ -589,6 +614,31 @@
                         "type": "number",
                         "minimum": 0,
                         "maximum": 360
+                      },
+                      "medianAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "stdDevAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "madAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "minAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "maxAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "saturatedPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
                       }
                     }
                   },
@@ -858,6 +908,31 @@
                         "type": "number",
                         "minimum": 0,
                         "maximum": 360
+                      },
+                      "medianAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "stdDevAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "madAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "minAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "maxAdu": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "saturatedPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
                       }
                     }
                   },

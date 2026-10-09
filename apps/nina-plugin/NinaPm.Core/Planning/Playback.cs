@@ -49,6 +49,26 @@ public static class Playback
     /// <summary>Höchstens so weit darf eine verspätete Belichtung über das Blockende laufen (ein Slot der Engine).</summary>
     public static readonly TimeSpan SoftEndMax = TimeSpan.FromMinutes(5);
 
+    /// <summary>
+    /// Verzugstoleranz (AP-71, „Block passt noch“, execution.md §4.1/§4.2, allocation.md §8.1): Die Engine legt
+    /// <c>endUtc</c> auf das Ende der letzten Aktion, und der nächste Block rückt direkt dahinter (A-35) – es bleibt keine
+    /// Sekunde Spiel. Bis zu dieser Dauer darf der aufgelaufene Verzug (Startverzug eingeschlossen) die letzte Belichtung über
+    /// <c>endUtc</c> schieben; der nächste Block beginnt dann entsprechend später und baut den Verzug selbst ab.
+    /// Rig-Nacht 08./09.10.2026: 0,7 s Startverzug → <c>BLOCK_SKIPPED elapsed</c> für einen Block mit einer Belichtung.
+    /// </summary>
+    public static readonly TimeSpan LateGraceMax = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Blockende mit Verzugstoleranz: <c>endUtc + min(Verzug, LateGraceMax)</c>, mindestens das weiche Blockende
+    /// <paramref name="softEndUtc"/>. Transitblöcke enden hart (Fensterende).
+    /// </summary>
+    public static DateTimeOffset? WithLateGrace(Blocks block, DateTimeOffset? softEndUtc, TimeSpan late)
+    {
+        if (block.Kind == BlocksKind.Transit || late <= TimeSpan.Zero) return softEndUtc;
+        var grace = block.EndUtc + (late < LateGraceMax ? late : LateGraceMax);
+        return softEndUtc is { } s && s > grace ? s : grace;
+    }
+
     /// <param name="after">Index des zuletzt abgearbeiteten Eintrags (-1 am Blockanfang).</param>
     /// <param name="softEndUtc">Weiches Blockende (<see cref="SoftEnd"/>); <c>null</c> = harter Blockschluss bei <c>endUtc</c>.</param>
     /// <param name="pullForward">
