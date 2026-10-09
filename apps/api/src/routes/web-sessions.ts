@@ -29,6 +29,7 @@ import {
   NightSessionReviewed,
   NightSessionSummary,
   NightSessionSummaryQuery,
+  imageScale,
   ProblemError,
   ReportResendResult,
   Uuid,
@@ -240,8 +241,19 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
         settings: { userCorrections },
       }),
     }));
+    // Bildqualität (AP-72): Pixelmaßstab des Rigs und Bezugswerte der letzten 30 Nächte.
+    const eq = repos.equipment();
+    const rig = await eq.rig(detail.session.rigId);
+    const [telescope, camera] = rig
+      ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
+      : [undefined, undefined];
+    const quality = {
+      scaleArcsecPx:
+        telescope && camera ? imageScale({ ...telescope, ...camera }).scaleArcsecPx : null,
+      refs: await repos.imageQuality().refs(detail.session.rigId, detail.session.night),
+    };
     c.header('cache-control', 'no-store');
-    return c.json({ ...detail, rows }, 200);
+    return c.json({ ...detail, rows, quality }, 200);
   });
 
   app.openapi(sessionCorrectionRoute, async (c) => {

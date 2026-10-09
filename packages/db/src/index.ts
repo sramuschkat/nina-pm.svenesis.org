@@ -184,6 +184,13 @@ export {
   type StaleSession,
 } from './repositories/session-ops';
 export {
+  FOCUS_RUN_NIGHTS,
+  ImageQualityRepository,
+  QUALITY_REF_NIGHTS,
+  type FocusRunRow,
+  type NightLights,
+} from './repositories/image-quality';
+export {
   RigTelemetryRepository,
   TELEMETRY_RAW_DAYS,
   TELEMETRY_ROLLUP_DAYS,

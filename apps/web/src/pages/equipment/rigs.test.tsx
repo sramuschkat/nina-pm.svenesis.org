@@ -22,6 +22,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { FilterWheelView, Me, RigView } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { confirmPayload, draftRows, slotStatus } from './FilterWheelSection';
+import { FocusOffsets } from './FocusOffsets';
 import { MeasuredOverheads } from './MeasuredOverheads';
 import { RigsPage, rigTabOf, SchedulerForm } from './RigsPage';
 import { moveItem, SortChainEditor } from './SortChainEditor';
@@ -33,6 +34,7 @@ const state = vi.hoisted(() => ({
   updateRig: vi.fn(),
   wheelVersion: 4,
   putWheel: vi.fn(),
+  focus: null as unknown,
 }));
 
 vi.mock('../../api/client', () => ({
@@ -60,6 +62,7 @@ vi.mock('../../api/client', () => ({
         ],
       }),
     putFilterWheel: (...args: unknown[]) => state.putWheel(...args) as Promise<unknown>,
+    focusOffsets: () => Promise.resolve(state.focus),
   },
   ninaApi: { instances: () => Promise.resolve({ items: [] }) },
 }));
@@ -676,5 +679,50 @@ describe('Gemessene Overheads (AP-65, FA-RIG-04b)', () => {
     await screen.findByRole('heading', { name: 'Gemessene Overheads' });
     for (const box of screen.getAllByRole('checkbox'))
       expect((box as HTMLInputElement).disabled).toBe(true);
+  });
+});
+
+describe('Vorgeschlagene Filter-Offsets (AP-72)', () => {
+  const rig = { id: ID(700) } as RigView;
+  const row = (filter: string, o: Record<string, unknown>) => ({
+    filter,
+    shortName: null,
+    position: null,
+    runs: 5,
+    positionAtRef: 2020,
+    offset: 0,
+    scatter: 2.1,
+    ninaOffset: 0,
+    lastRunAt: '2026-10-09T09:00:00Z',
+    ...o,
+  });
+
+  it('Bezug, Vorschlag je Filter, „weicht ab“, zu wenig Läufe, Hinweis ohne NINA-Offsets, Text zum Übertragen', async () => {
+    state.focus = {
+      rigId: ID(700),
+      fromNight: '2026-08-11',
+      toNight: '2026-10-09',
+      minRuns: 3,
+      totalRuns: 12,
+      reference: 'LUMINOS',
+      slopePerC: -5,
+      referenceTemperatureC: 10,
+      ninaWithoutOffsets: true,
+      filters: [
+        row('LUMINOS', { shortName: 'L', position: 1 }),
+        row('RED', { shortName: 'R', position: 2, offset: 45 }),
+        row('SII', { shortName: 'SII', position: 7, runs: 2, offset: null, scatter: 4 }),
+      ],
+    };
+    const { container } = wrap(<FocusOffsets rig={rig} />);
+    await screen.findByRole('heading', { name: 'Vorgeschlagene Filter-Offsets' });
+    expect(screen.getByText(/Temperaturdrift -5 Schritte\/°C/)).toBeTruthy();
+    expect(screen.getByRole('note').textContent).toContain('NINA hat noch keine Filter-Offsets');
+    const red = screen.getByRole('row', { name: /RED/ });
+    expect(red.textContent).toContain('+45');
+    expect(red.textContent).toContain('weicht ab');
+    expect(screen.getByRole('row', { name: /SII/ }).textContent).toContain('unter 3 Läufen');
+    expect(screen.getByTestId('focus-transfer').textContent).toBe('LUMINOS 0 · RED +45');
+    await expectNoSeriousA11y(container);
   });
 });

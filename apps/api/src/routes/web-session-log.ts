@@ -22,6 +22,7 @@ import {
   Uuid,
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
+import { imagesClarityByNight } from '../sessions/images-clarity';
 import { noonNightKey } from '../lib/night-table';
 import { clearNightView, sessionLogView } from '../sessions/log';
 import { defineRoute, problemContent } from './define';
@@ -188,9 +189,17 @@ export function webSessionLogRoutes(services: () => Promise<ApiServices>) {
     if (!(days >= 0) || days > MAX_RANGE_DAYS) throw new ProblemError('validation.failed');
     const site = await repo.site(c.req.valid('param').id);
     const data = await repo.clearNightData(site.id, from, to);
+    // „Klar laut Bildern“ (AP-72): Lights aller Rigs des Standorts im Zeitraum.
+    const repos = svc.repositories(requireTenant(c).tenant);
+    const rigIds = (await repos.equipment().rigs())
+      .filter((r) => r.siteId === site.id)
+      .map((r) => r.id);
+    const imagesClarity = imagesClarityByNight(
+      await repos.imageQuality().nightLights(rigIds, from, to),
+    );
     c.header('cache-control', 'no-store');
     const currentNight = noonNightKey(site.timeZone, svc.now().getTime());
-    return c.json(clearNightView({ site, from, to, ...data, currentNight }), 200);
+    return c.json(clearNightView({ site, from, to, ...data, currentNight, imagesClarity }), 200);
   });
 
   app.openapi(clearNightMarkRoute, async (c) => {

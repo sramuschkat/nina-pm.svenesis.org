@@ -27,6 +27,7 @@ import { NotificationRepository } from './notification';
 import { PreferenceRepository } from './preference';
 import { TenantAdminRepository, type SystemActor } from './tenant-admin';
 import { TenantRepository } from './tenant';
+import { ImageQualityRepository } from './image-quality';
 import { RigTelemetryRepository } from './rig-telemetry';
 
 export interface OpenDatabase {
@@ -54,6 +55,7 @@ export interface OpenDatabase {
     transits: () => TransitRepository;
     discord: () => DiscordRepository;
     telemetry: () => RigTelemetryRepository;
+    imageQuality: () => ImageQualityRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -91,6 +93,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       transits: () => new TransitRepository(db, ctx),
       discord: () => new DiscordRepository(db, ctx),
       telemetry: () => new RigTelemetryRepository(db, ctx),
+      imageQuality: () => new ImageQualityRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

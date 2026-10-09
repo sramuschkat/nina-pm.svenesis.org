@@ -4053,6 +4053,98 @@ components:
         - filters
         - moonProfiles
         - rigs
+    FocusOffsetsView:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        fromNight:
+          type: string
+          format: date
+        toNight:
+          type: string
+          format: date
+        minRuns:
+          type: integer
+          minimum: 1
+        totalRuns:
+          type: integer
+          minimum: 0
+        reference:
+          type:
+            - string
+            - "null"
+        slopePerC:
+          type:
+            - number
+            - "null"
+        referenceTemperatureC:
+          type:
+            - number
+            - "null"
+        ninaWithoutOffsets:
+          type: boolean
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              shortName:
+                type:
+                  - string
+                  - "null"
+              position:
+                type:
+                  - integer
+                  - "null"
+              runs:
+                type: integer
+                minimum: 0
+              positionAtRef:
+                type: number
+              offset:
+                type:
+                  - integer
+                  - "null"
+              scatter:
+                type:
+                  - number
+                  - "null"
+              ninaOffset:
+                type:
+                  - number
+                  - "null"
+              lastRunAt:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - filter
+              - shortName
+              - position
+              - runs
+              - positionAtRef
+              - offset
+              - scatter
+              - ninaOffset
+              - lastRunAt
+      required:
+        - rigId
+        - fromNight
+        - toNight
+        - minRuns
+        - totalRuns
+        - reference
+        - slopePerC
+        - referenceTemperatureC
+        - ninaWithoutOffsets
+        - filters
     FilterWheelView:
       type: object
       properties:
@@ -10960,6 +11052,50 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/NightSessionReason"
+        quality:
+          type: object
+          properties:
+            scaleArcsecPx:
+              type:
+                - number
+                - "null"
+              exclusiveMinimum: 0
+            refs:
+              type: array
+              items:
+                type: object
+                properties:
+                  projectId:
+                    type: string
+                    format: uuid
+                    description: UUID
+                  filter:
+                    type: string
+                  stars:
+                    type:
+                      - number
+                      - "null"
+                  hfr:
+                    type:
+                      - number
+                      - "null"
+                  medianAdu:
+                    type:
+                      - number
+                      - "null"
+                  n:
+                    type: integer
+                    minimum: 0
+                required:
+                  - projectId
+                  - filter
+                  - stars
+                  - hfr
+                  - medianAdu
+                  - n
+          required:
+            - scaleArcsecPx
+            - refs
       required:
         - session
         - rows
@@ -11178,6 +11314,8 @@ components:
             - integer
             - "null"
           minimum: 0
+        quality:
+          $ref: "#/components/schemas/CaptureQuality"
       required:
         - id
         - capturedAt
@@ -11202,6 +11340,44 @@ components:
         - fileName
         - hfr
         - stars
+    CaptureQuality:
+      type:
+        - object
+        - "null"
+      properties:
+        rmsArcsec:
+          type: number
+          minimum: 0
+        rmsRaArcsec:
+          type: number
+          minimum: 0
+        rmsDecArcsec:
+          type: number
+          minimum: 0
+        altitudeDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        airmass:
+          type: number
+          minimum: 1
+        cloudCoverPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        skyQualityMag:
+          type: number
+        medianAdu:
+          type: number
+          minimum: 0
+        saturatedPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        focusPosition:
+          type: number
+        focuserTemperatureC:
+          type: number
     NightSessionEvent:
       type: object
       properties:
@@ -11223,6 +11399,30 @@ components:
           type:
             - number
             - "null"
+        af:
+          type:
+            - object
+            - "null"
+          properties:
+            ok:
+              type: boolean
+            filter:
+              type:
+                - string
+                - "null"
+            position:
+              type:
+                - number
+                - "null"
+            temperatureC:
+              type:
+                - number
+                - "null"
+          required:
+            - ok
+            - filter
+            - position
+            - temperatureC
       required:
         - id
         - occurredAt
@@ -11783,6 +11983,25 @@ components:
             - compared
             - hits
             - hitPct
+        imagesAccuracy:
+          type: object
+          properties:
+            compared:
+              type: integer
+              minimum: 0
+            hits:
+              type: integer
+              minimum: 0
+            hitPct:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 100
+          required:
+            - compared
+            - hits
+            - hitPct
       required:
         - siteId
         - siteName
@@ -11880,6 +12099,21 @@ components:
             - number
             - "null"
         rejectedPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        imagesClarity:
+          type:
+            - string
+            - "null"
+          enum:
+            - clear
+            - thin
+            - cloudy
+            - null
+        imagesClearPct:
           type:
             - number
             - "null"
@@ -22827,6 +23061,50 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed, rig.sort_chain_invalid, rig.flip_settings_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/focus-offsets:
+    get:
+      summary: Vorgeschlagene Filter-Offsets aus den Autofokus-Läufen der letzten 60 Nächte
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-RIG-20, AP-72"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-RIG-20
+        - AP-72
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Vorschlag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusOffsetsView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
           content:
             application/problem+json:
               schema:

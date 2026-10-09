@@ -586,7 +586,7 @@ describe('S-61 Nacht (AP-64)', () => {
     expect(screen.getByTestId('capture-metrics').textContent).toBe(
       'Median HFR 2,13 px · Median Sterne 412 · 1 Aufnahmen mit Messwerten',
     );
-    expect(screen.getByRole('img', { name: /HFR- und Sterne-Verlauf: 1 Aufnahmen/ })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /Qualitätskurve: 1 Aufnahmen/ })).toBeTruthy();
     await expectNoSeriousA11y();
     fireEvent.click(within(chips).getByRole('button', { name: 'Flats 1' }));
     expect(screen.getByRole('list', { name: 'Flats je Kombination' }).textContent).toContain(
@@ -615,6 +615,53 @@ describe('S-61 Nacht (AP-64)', () => {
     expect(within(events).getByText('Meridian-Flip')).toBeTruthy();
     expect(within(events).getByText('23:33 CDT')).toBeTruthy();
     expect(within(events).getByText('HFR 2,1')).toBeTruthy();
+  });
+
+  it('Qualitätskurve (AP-72): HFR in ″, Kennzahlen umschaltbar, Autofokus-Marke, klar laut Bildern; axe', async () => {
+    const d = detail();
+    const first = d.captures[0] as (typeof d.captures)[number];
+    d.captures = [
+      { ...first, quality: { rmsArcsec: 0.6, cloudCoverPct: 0, medianAdu: 1000 } },
+      {
+        ...first,
+        id: ID(33),
+        capturedAt: '2026-09-18T03:34:00Z',
+        stars: 60,
+        quality: { rmsArcsec: 1.4, cloudCoverPct: 80, medianAdu: 1900 },
+      },
+      ...d.captures.slice(1),
+    ];
+    d.events = [
+      ...d.events,
+      {
+        id: ID(80),
+        occurredAt: '2026-09-18T02:30:00Z',
+        kind: 'af',
+        message: null,
+        durationS: 180,
+        af: { ok: true, filter: 'Ha 3nm', position: 2050, temperatureC: 12 },
+      },
+    ];
+    d.quality = {
+      scaleArcsecPx: 0.5,
+      refs: [{ projectId: ID(10), filter: 'Ha', stars: 400, hfr: 2.1, medianAdu: 1000, n: 30 }],
+    };
+    state.detail = d;
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17?ansicht=aufnahmen`);
+    const figure = await screen.findByRole('img', { name: /Qualitätskurve: 2 Aufnahmen/ });
+    // HFR 2,134 px × 0,5 ″/px; eine Stunde klar, eine bewölkt.
+    expect(figure.getAttribute('aria-label')).toContain('HFR 1,07 bis 1,07 ″');
+    expect(figure.getAttribute('aria-label')).toContain('Autofokus: 2'); // einer im Grundbestand der Nacht
+    expect(figure.getAttribute('aria-label')).toContain('1 h klar, 0 h dünne Wolken, 1 h bewölkt');
+    const keys = screen.getByRole('group', { name: 'Kennzahlen der Kurve' });
+    const clouds = within(keys).getByRole('button', { name: 'Wolken' });
+    expect(clouds.getAttribute('aria-pressed')).toBe('false');
+    expect(
+      within(keys).getByRole('button', { name: 'Guiding-RMS' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    fireEvent.click(clouds);
+    expect(clouds.getAttribute('aria-pressed')).toBe('true');
+    await expectNoSeriousA11y();
   });
 
   it('User: kein „Als geprüft markieren“, kein Zuordnen; Korrektur nur mit canCorrect', async () => {

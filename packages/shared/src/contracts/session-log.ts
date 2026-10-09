@@ -134,6 +134,12 @@ export const ClearNightNight = z
     forecastTransparencyPct: z.number().nullable(),
     /** Verworfen-Quote der Nacht (verworfen / aufgenommen, Lights). `null` ohne Aufnahmen. */
     rejectedPct: z.number().min(0).max(100).nullable(),
+    /**
+     * „Klar laut Bildern“ (AP-72, FA-AUS-24): Urteil der Nacht aus den Stunden mit Lights (≥ 75 % klar → `clear`,
+     * ≥ 25 % → `thin`, sonst `cloudy`) und Anteil klarer Stunden in %; `null` ohne verwertbare Lights (Plugin ≥ 0.4.21).
+     */
+    imagesClarity: z.enum(['clear', 'thin', 'cloudy']).nullable().optional(),
+    imagesClearPct: z.number().min(0).max(100).nullable().optional(),
   })
   .meta({ id: 'ClearNightNight' });
 export type ClearNightNight = z.infer<typeof ClearNightNight>;
@@ -171,6 +177,17 @@ export const ClearNightView = z
       hits: z.number().int().min(0),
       hitPct: z.number().min(0).max(100).nullable(),
     }),
+    /**
+     * Treffsicherheit laut Bildern (AP-72, FA-AUS-24): Nächte mit Urteil aus den Bildern und Vorhersage; „Treffer“ =
+     * Bewertung ≥ *Gut* und überwiegend klar bzw. < *Gut* und nicht überwiegend klar.
+     */
+    imagesAccuracy: z
+      .object({
+        compared: z.number().int().min(0),
+        hits: z.number().int().min(0),
+        hitPct: z.number().min(0).max(100).nullable(),
+      })
+      .optional(),
   })
   .meta({ id: 'ClearNightView' });
 export type ClearNightView = z.infer<typeof ClearNightView>;

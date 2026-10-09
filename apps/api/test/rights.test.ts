@@ -410,6 +410,10 @@ async function equipmentExamples(): Promise<Record<string, Example>> {
       url: `/api/web/v1/rigs/${rig.id}/filter-wheel`,
       resource: own,
     },
+    'GET /api/web/v1/rigs/{id}/focus-offsets': {
+      url: `/api/web/v1/rigs/${rig.id}/focus-offsets`,
+      resource: own,
+    },
     'PUT /api/web/v1/rigs/{id}/filter-wheel': {
       url: `/api/web/v1/rigs/${rig.id}/filter-wheel`,
       method: 'PUT',

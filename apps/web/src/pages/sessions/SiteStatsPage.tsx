@@ -133,6 +133,19 @@ function SiteStatsBody({ view }: { view: ClearNightView }) {
                   hits: view.accuracy.hits,
                   compared: view.accuracy.compared,
                 })}
+                {view.imagesAccuracy && view.imagesAccuracy.compared > 0 ? (
+                  <>
+                    <br />
+                    {t('clearNights.imagesAccuracy', {
+                      pct:
+                        view.imagesAccuracy.hitPct === null
+                          ? '–'
+                          : `${fmt(view.imagesAccuracy.hitPct, 0)} %`,
+                      hits: view.imagesAccuracy.hits,
+                      compared: view.imagesAccuracy.compared,
+                    })}
+                  </>
+                ) : null}
               </span>
             </div>
           </section>
@@ -478,6 +491,20 @@ function NightsTable({ view }: { view: ClearNightView }) {
       priority: 2,
       align: 'end',
       cell: (n) => num(n.rejectedPct, 1, ' %'),
+    },
+    {
+      id: 'images',
+      header: t('clearNights.col.images'),
+      sortValue: (n) => n.imagesClearPct ?? null,
+      priority: 2,
+      nowrap: true,
+      cell: (n) =>
+        n.imagesClarity
+          ? t('clearNights.imagesValue', {
+              verdict: t(`clearNights.images.${n.imagesClarity}`),
+              pct: n.imagesClearPct ?? 0,
+            })
+          : '–',
     },
     ...(canMark
       ? [

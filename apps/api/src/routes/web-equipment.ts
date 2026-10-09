@@ -27,6 +27,7 @@ import {
   FilterView,
   FilterWheelPut,
   FilterWheelView,
+  FocusOffsetsView,
   imageScale,
   type MeasuredOverheads,
   MoonProfileCreate,
@@ -54,6 +55,7 @@ import {
 } from '@nina-pm/shared';
 import { latestWeather } from '@nina-pm/db';
 import type { Context } from 'hono';
+import { focusOffsetsView } from '../equipment/focus-offsets';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc } from '../lib/format';
 import { siteNights } from '../lib/night-table';
@@ -395,6 +397,22 @@ export const putFilterWheelRoute = defineRoute(
   },
 );
 
+export const focusOffsetsRoute = defineRoute(
+  { action: 'equipment.read', requirements: ['FA-RIG-20', 'AP-72'] },
+  {
+    method: 'get',
+    path: `${BASE}/rigs/{id}/focus-offsets`,
+    summary: 'Vorgeschlagene Filter-Offsets aus den Autofokus-Läufen der letzten 60 Nächte',
+    tags: ['equipment'],
+    request: { params: idParam },
+    responses: {
+      200: { description: 'Vorschlag', ...json(FocusOffsetsView) },
+      ...read,
+      404: problemContent('resource.not_found'),
+    },
+  },
+);
+
 export const siteNightsRoute = defineRoute(
   { action: 'project.read', requirements: ['NT-02', 'NT-01', 'H1', 'night.md §1'] },
   {
@@ -457,6 +475,7 @@ export const EQUIPMENT_ROUTES = [
   schedulerSettingsRoute,
   getFilterWheelRoute,
   putFilterWheelRoute,
+  focusOffsetsRoute,
   siteNightsRoute,
   siteWeatherRoute,
 ] as const;
@@ -661,6 +680,19 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
     );
     c.header('etag', `"${String(row.settingsVersion)}"`);
     return c.json((await rigContext(repo, [row.id]))(row), 200);
+  });
+
+  app.openapi(focusOffsetsRoute, async (c) => {
+    const svc = await services();
+    const { tenant } = requireTenant(c);
+    const repos = svc.repositories(tenant);
+    const rigId = c.req.valid('param').id;
+    const eq = repos.equipment();
+    const [wheel, filters] = await Promise.all([eq.filterWheel(rigId), eq.filters()]);
+    const toNight = svc.now().toISOString().slice(0, 10);
+    const runs = await repos.imageQuality().focusRuns(rigId, toNight);
+    c.header('cache-control', 'no-store');
+    return c.json(focusOffsetsView(rigId, toNight, runs, wheel, filters), 200);
   });
 
   app.openapi(getFilterWheelRoute, async (c) => {

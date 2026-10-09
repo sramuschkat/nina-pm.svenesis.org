@@ -195,6 +195,24 @@ export const NightSessionLineRow = z
   .meta({ id: 'NightSessionLineRow' });
 export type NightSessionLineRow = z.infer<typeof NightSessionLineRow>;
 
+/** Messwerte einer Aufnahme für die Qualitätskurve (AP-72); alle optional, nie 0 statt „unbekannt“. */
+export const CaptureQuality = z
+  .object({
+    rmsArcsec: z.number().min(0).optional(),
+    rmsRaArcsec: z.number().min(0).optional(),
+    rmsDecArcsec: z.number().min(0).optional(),
+    altitudeDeg: z.number().min(-90).max(90).optional(),
+    airmass: z.number().min(1).optional(),
+    cloudCoverPct: z.number().min(0).max(100).optional(),
+    skyQualityMag: z.number().optional(),
+    medianAdu: z.number().min(0).optional(),
+    saturatedPct: z.number().min(0).max(100).optional(),
+    focusPosition: z.number().optional(),
+    focuserTemperatureC: z.number().optional(),
+  })
+  .meta({ id: 'CaptureQuality' });
+export type CaptureQuality = z.infer<typeof CaptureQuality>;
+
 export const NightSessionCapture = z
   .object({
     id: Uuid,
@@ -225,6 +243,11 @@ export const NightSessionCapture = z
      */
     hfr: z.number().min(0).nullable(),
     stars: z.number().int().min(0).nullable(),
+    /**
+     * Weitere Messwerte für die Qualitätskurve (AP-72, FA-AUS-23; Plugin ≥ 0.4.21/0.4.22): fehlende Werte fehlen, ohne
+     * jeden Wert `null`.
+     */
+    quality: CaptureQuality.nullable().optional(),
   })
   .meta({ id: 'NightSessionCapture' });
 export type NightSessionCapture = z.infer<typeof NightSessionCapture>;
@@ -236,6 +259,16 @@ export const NightSessionEvent = z
     kind: z.string(),
     message: z.string().nullable(),
     durationS: z.number().nullable(),
+    /** Nur bei `af` (AP-72, Plugin ≥ 0.4.21): Filter (NINA-Name), Position, Temperatur, Erfolg. */
+    af: z
+      .object({
+        ok: z.boolean(),
+        filter: z.string().nullable(),
+        position: z.number().nullable(),
+        temperatureC: z.number().nullable(),
+      })
+      .nullable()
+      .optional(),
   })
   .meta({ id: 'NightSessionEvent' });
 
@@ -327,6 +360,25 @@ export const NightSessionDetail = z
     flats: z.array(NightSessionFlat),
     kpis: NightSessionKpis,
     reasons: z.array(NightSessionReason),
+    /**
+     * Grundlage der Bildqualität (AP-72): Pixelmaßstab des Rigs (″/px ungebinnt; HFR″ = HFR · Maßstab · Binning) und
+     * Bezugswerte je Projekt und Filter aus den letzten 30 Nächten („klar laut Bildern“).
+     */
+    quality: z
+      .object({
+        scaleArcsecPx: z.number().positive().nullable(),
+        refs: z.array(
+          z.object({
+            projectId: Uuid,
+            filter: z.string(),
+            stars: z.number().nullable(),
+            hfr: z.number().nullable(),
+            medianAdu: z.number().nullable(),
+            n: z.number().int().min(0),
+          }),
+        ),
+      })
+      .optional(),
   })
   .meta({ id: 'NightSessionDetail' });
 export type NightSessionDetail = z.infer<typeof NightSessionDetail>;

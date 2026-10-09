@@ -5433,6 +5433,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/rigs/{id}/focus-offsets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vorgeschlagene Filter-Offsets aus den Autofokus-Läufen der letzten 60 Nächte
+         * @description Aktion: `equipment.read` · FA-RIG-20, AP-72
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Vorschlag */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FocusOffsetsView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/rigs/{id}/filter-wheel": {
         parameters: {
             query?: never;
@@ -16676,6 +16745,38 @@ export interface components {
             moonProfiles: components["schemas"]["MoonProfileView"][];
             rigs: components["schemas"]["RigView"][];
         };
+        FocusOffsetsView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            /** Format: date */
+            fromNight: string;
+            /** Format: date */
+            toNight: string;
+            minRuns: number;
+            totalRuns: number;
+            reference: string | null;
+            slopePerC: number | null;
+            referenceTemperatureC: number | null;
+            ninaWithoutOffsets: boolean;
+            filters: {
+                filter: string;
+                shortName: string | null;
+                position: number | null;
+                runs: number;
+                positionAtRef: number;
+                offset: number | null;
+                scatter: number | null;
+                ninaOffset: number | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lastRunAt: string | null;
+            }[];
+        };
         FilterWheelView: {
             slots: {
                 position: number;
@@ -19677,6 +19778,21 @@ export interface components {
             flats: components["schemas"]["NightSessionFlat"][];
             kpis: components["schemas"]["NightSessionKpis"];
             reasons: components["schemas"]["NightSessionReason"][];
+            quality?: {
+                scaleArcsecPx: number | null;
+                refs: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    projectId: string;
+                    filter: string;
+                    stars: number | null;
+                    hfr: number | null;
+                    medianAdu: number | null;
+                    n: number;
+                }[];
+            };
         };
         NightSessionLineRow: {
             /**
@@ -19773,7 +19889,21 @@ export interface components {
             fileName: string | null;
             hfr: number | null;
             stars: number | null;
+            quality?: components["schemas"]["CaptureQuality"];
         };
+        CaptureQuality: {
+            rmsArcsec?: number;
+            rmsRaArcsec?: number;
+            rmsDecArcsec?: number;
+            altitudeDeg?: number;
+            airmass?: number;
+            cloudCoverPct?: number;
+            skyQualityMag?: number;
+            medianAdu?: number;
+            saturatedPct?: number;
+            focusPosition?: number;
+            focuserTemperatureC?: number;
+        } | null;
         NightSessionEvent: {
             /**
              * Format: uuid
@@ -19788,6 +19918,12 @@ export interface components {
             kind: string;
             message: string | null;
             durationS: number | null;
+            af?: {
+                ok: boolean;
+                filter: string | null;
+                position: number | null;
+                temperatureC: number | null;
+            } | null;
         };
         NightSessionFlat: {
             filterShortName: string;
@@ -19991,6 +20127,11 @@ export interface components {
                 hits: number;
                 hitPct: number | null;
             };
+            imagesAccuracy?: {
+                compared: number;
+                hits: number;
+                hitPct: number | null;
+            };
         };
         ClearNightMonth: {
             month: string;
@@ -20017,6 +20158,9 @@ export interface components {
             transparencyPct: number | null;
             forecastTransparencyPct: number | null;
             rejectedPct: number | null;
+            /** @enum {string|null} */
+            imagesClarity?: "clear" | "thin" | "cloudy" | null;
+            imagesClearPct?: number | null;
         };
         ClearNightMark: {
             /** @enum {boolean} */

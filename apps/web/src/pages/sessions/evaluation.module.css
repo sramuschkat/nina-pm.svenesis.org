@@ -652,7 +652,97 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* HFR- und Sterne-Verlauf */
+/* Qualitätskurve (AP-72): Auswahl der Kennzahlen, Autofokus-Marken, Band „klar laut Bildern“ */
+.quality {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.qualityKeys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+}
+.qualityKey {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.qualityKey[aria-pressed='true'] {
+  background: var(--npm-button);
+  border-color: var(--npm-button);
+  color: var(--npm-on-button);
+}
+.qualityKey:focus-visible {
+  outline: none;
+  box-shadow: var(--npm-focus-ring);
+}
+.metricAf,
+.legendAf {
+  background: var(--npm-chart-marker);
+}
+.metricAf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  opacity: 0.8;
+}
+.legendAf {
+  width: 1px;
+  height: 12px;
+}
+.clarityRow {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: var(--npm-space-2);
+  align-items: center;
+}
+.clarityLabel {
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+  text-align: right;
+  hyphens: auto;
+}
+.clarityBand {
+  position: relative;
+  height: 0.9rem;
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
+  overflow: hidden;
+}
+.clarityHour {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid var(--npm-white);
+}
+.clarityHour[data-verdict='clear'],
+.legendClarity[data-verdict='clear'] {
+  background: var(--npm-success);
+}
+.clarityHour[data-verdict='thin'],
+.legendClarity[data-verdict='thin'] {
+  background: var(--npm-warning);
+}
+.clarityHour[data-verdict='cloudy'],
+.legendClarity[data-verdict='cloudy'] {
+  background: var(--npm-danger);
+}
+.legendClarity {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* HFR- und Sterne-Verlauf (Grundlage der Qualitätskurve) */
 .metrics {
   display: flex;
   flex-direction: column;
