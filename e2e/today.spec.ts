@@ -94,6 +94,25 @@ test('NT-01: 09:00/16:00/20:00 MESZ am 18.09.2026 → 17./18., 18./19., 18./19.0
   await page.context().clearCookies({ name: 'npm_test_now' });
 });
 
+/** Wartet, bis die Seitenhöhe 600 ms lang gleich bleibt (Karten laden nach; Prognose-Jobs fragen weiter ab). */
+async function settled(page: Page) {
+  let last = -1;
+  let since = Date.now();
+  await expect
+    .poll(
+      async () => {
+        const h = await page.evaluate(() => document.documentElement.scrollHeight);
+        if (h !== last) {
+          last = h;
+          since = Date.now();
+        }
+        return Date.now() - since >= 600;
+      },
+      { timeout: 15_000, intervals: [150] },
+    )
+    .toBe(true);
+}
+
 const box = async (l: ReturnType<Page['locator']>) => {
   const b = await l.boundingBox();
   if (!b) throw new Error('nicht sichtbar');
@@ -121,10 +140,18 @@ test('S-02: Kopf „Heute“, Rig zuerst wählen, Kennzahlen, Zeitleiste, Aufkla
   );
   await expect(menu.getByRole('link', { name: /Heute Nacht|Übersicht/ })).toHaveCount(0);
   const context = page.getByRole('region', { name: 'Rig und Nacht' });
+  // Die Startseite lädt nach (Plan, Zu tun, Prognose); erst danach die Rig-Liste öffnen, sonst schließt ein
+  // Neuzeichnen sie vor dem Klick auf die Option.
+  await settled(page);
   await context.getByRole('combobox', { name: 'Rig wählen' }).click();
-  await page.getByRole('option', { name: new RegExp(rigName) }).click();
+  // Per Tastatur (Typeahead der Liste): mit vielen Test-Rigs liegt die Option sonst außerhalb des sichtbaren Teils.
+  const option = page.getByRole('option', { name: new RegExp(rigName) });
+  await page.keyboard.type(rigName);
+  await expect(option).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`rig=${rigId}`));
   await expect(context).toContainText(`E2E-Heute`);
+  await settled(page);
   const tiles = page.getByRole('list', { name: 'Kennzahlen der Nacht' }).getByRole('listitem');
   await expect(tiles).toHaveCount(5);
   await expect(tiles.nth(4)).toContainText('Rig jetzt');
@@ -158,7 +185,8 @@ test('S-02: Kopf „Heute“, Rig zuerst wählen, Kennzahlen, Zeitleiste, Aufkla
   );
   await page.getByRole('button', { name: /Mond und Planeten – Sichtbarkeit/ }).click();
   await expect(page.getByRole('img', { name: /Sichtbarkeit von Mond und Planeten/ })).toBeVisible();
-  // Aufklapper liegen zwischen Zeitleiste und Plan.
+  // Aufklapper liegen zwischen Zeitleiste und Plan; gemessen erst, wenn alles nachgeladen ist.
+  await settled(page);
   const t = await box(timeline);
   const e = await box(events);
   const p = await box(plan);
@@ -194,6 +222,8 @@ test('Tablet 768 px: „Dunkel“ über die volle Breite, Plan, Rig jetzt und Zu
   await page.setViewportSize({ width: 768, height: 1000 });
   await testLogin(page, 'owner');
   await page.goto('/');
+  // Erst messen, wenn Plan, Zu tun und Prognose nachgeladen sind (sonst wächst eine Karte zwischen zwei Messungen).
+  await settled(page);
   const kpis = page.getByRole('list', { name: 'Kennzahlen der Nacht' });
   const tiles = kpis.getByRole('listitem');
   await expect(tiles).toHaveCount(5);
