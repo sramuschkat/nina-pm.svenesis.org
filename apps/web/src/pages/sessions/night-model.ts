@@ -237,6 +237,7 @@ export const CAPTURE_TYPES = [
   'flats',
   'deviations',
   'unassigned',
+  'flagged',
   'rejected',
 ] as const;
 export type CaptureType = (typeof CAPTURE_TYPES)[number];
@@ -251,6 +252,8 @@ export function captureMatches(c: NightSessionCapture, type: CaptureType): boole
       return c.temperatureDeviation || c.settingsDeviation;
     case 'unassigned':
       return c.assignment === 'unassigned';
+    case 'flagged':
+      return c.grade === 'flagged';
     case 'rejected':
       return c.rejected;
     default:

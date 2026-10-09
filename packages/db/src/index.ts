@@ -186,7 +186,9 @@ export {
 export {
   FOCUS_RUN_NIGHTS,
   ImageQualityRepository,
+  PROJECT_IMAGE_LIMIT,
   QUALITY_REF_NIGHTS,
+  type ProjectImageRow,
   type FocusRunRow,
   type NightLights,
 } from './repositories/image-quality';

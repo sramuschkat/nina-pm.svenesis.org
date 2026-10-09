@@ -41,6 +41,8 @@ export interface CaptureInput {
   readonly temperatureDeviation: boolean;
   readonly result: 'saved' | 'aborted' | 'failed';
   readonly fileName?: string | undefined;
+  /** Relativ zum NINA-Bildordner (AP-72b); landet in `metrics.relativePath`. */
+  readonly relativePath?: string | undefined;
   readonly metrics?: Readonly<Record<string, number | undefined>> | undefined;
   // Lights
   readonly blockId?: string | null | undefined;
@@ -311,7 +313,14 @@ export class NinaIngestRepository extends TenantRepo {
           result: c.result,
           temperatureDeviation: c.temperatureDeviation,
           fileName: c.fileName ?? null,
-          metrics: c.metrics ? JSON.stringify(c.metrics) : null,
+          // Relativer Pfad (AP-72b) ohne Migration neben den Messwerten.
+          metrics:
+            c.metrics || c.relativePath
+              ? JSON.stringify({
+                  ...(c.metrics ?? {}),
+                  ...(c.relativePath ? { relativePath: c.relativePath } : {}),
+                })
+              : null,
         };
         if (c.frameType === 'light') {
           const light = {
@@ -744,7 +753,8 @@ export async function rejectCapture(
   db: Kysely<Database>,
   input: {
     tenantId: string;
-    userId: string;
+    /** Wer verwirft; ohne = die Bildbewertung beim Eingang (AP-72b). */
+    userId?: string | undefined;
     captureId: string;
     rejected: boolean;
     reason: string | null;
@@ -890,7 +900,7 @@ export async function rejectCapture(
         .execute();
       const status = await new ProjectRepository(trx, {
         tenantId: input.tenantId,
-        memberId: input.userId,
+        ...(input.userId ? { memberId: input.userId } : {}),
       }).autoStatusAfterCounts(trx, line.projectId, now);
       return {
         captureId: c.id,

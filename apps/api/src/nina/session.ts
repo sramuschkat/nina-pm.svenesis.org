@@ -11,6 +11,7 @@ import {
   LATE_LIGHT_AFTER_END_MS,
   LATE_REPORT_MS,
   OFFLINE_MAX_MS,
+  rejectCapture,
   type NinaPrincipal,
 } from '@nina-pm/db';
 import {
@@ -27,6 +28,7 @@ import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
 import { captureForecastSnapshot } from '../sessions/log';
+import { gradeCapture, refsByProject } from '../sessions/project-images';
 import { graceNight, noonNightKey, siteNights } from '../lib/night-table';
 import { createNotificationService } from '../notifications/service';
 import type { ApiServices } from '../routes/services';
@@ -286,7 +288,62 @@ export async function ingestCaptures(
     .ninaIngest(p.rigId)
     .ingestCaptures(sessionId, body.captures, svc.now(), () => randomUUID());
   if (r.withoutLease) logger.warn('captures_without_lease', { sessionId, rigId: p.rigId });
+  await autoRejectByQuality(svc, p, body.captures, r.results);
   return { results: r.results };
+}
+
+/**
+ * Bildbewertung beim Eingang (AP-72b, FA-AUS-25): Steht das Rig auf „automatisch verwerfen“, werden neue Lights über
+ * einem Grenzwert mit Grund `auto_quality` verworfen – dieselbe Zählerlogik wie beim manuellen Verwerfen, die Engine plant
+ * sie nach. Im Standard „markieren“ geschieht hier nichts (die Markierung rechnet die Ansicht).
+ */
+async function autoRejectByQuality(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  captures: z.output<typeof nina.NinaCaptureBatch>['captures'],
+  results: readonly { id: string; status: string }[],
+) {
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  const rig = await repos.equipment().rig(p.rigId);
+  if (rig?.imageQuality.mode !== 'reject') return;
+  const accepted = new Set(results.filter((x) => x.status === 'accepted').map((x) => x.id));
+  type Light = Extract<(typeof captures)[number], { frameType: 'light' }>;
+  const lights = captures.filter(
+    (x): x is Light & { projectId: string } =>
+      x.frameType === 'light' &&
+      accepted.has(x.id) &&
+      x.result === 'saved' &&
+      x.projectId !== null &&
+      x.metrics !== undefined,
+  );
+  if (lights.length === 0) return;
+  const refs = refsByProject(
+    await repos.imageQuality().gradeBasis([...new Set(lights.map((x) => x.projectId as string))]),
+  );
+  for (const light of lights) {
+    const flags = gradeCapture(
+      refs,
+      light.projectId,
+      light.filterShortName,
+      light.metrics ?? {},
+      rig.imageQuality,
+    );
+    if (flags.length === 0) continue;
+    try {
+      await rejectCapture(
+        svc.db,
+        { tenantId: p.tenantId, captureId: light.id, rejected: true, reason: 'auto_quality' },
+        svc.now(),
+      );
+      logger.info('capture_auto_rejected', {
+        captureId: light.id,
+        rigId: p.rigId,
+        metrics: flags.map((f) => f.metric).join(','),
+      });
+    } catch (error) {
+      if (!(error instanceof ProblemError && error.code === 'capture.not_rejectable')) throw error;
+    }
+  }
 }
 
 export async function ingestEvents(

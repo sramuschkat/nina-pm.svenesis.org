@@ -69,12 +69,21 @@ const PANELS_TAB = 'panels';
 /** Schlüssel des Reiters *Sessions & Protokoll* (S-31): Geplantes und Aufgenommenes in einem Bereich (Sven 04.10.2026). */
 const SESSIONS_TAB = 'sessions';
 
+/** Schlüssel des Reiters *Bilder* (AP-72b): Lights des Projekts mit Bewertung. */
+export const IMAGES_TAB = 'images';
+
 export function ExposurePlan(
-  props: ExposurePlanProps & { panelsTab?: ReactNode; sessionsTab?: ReactNode },
+  props: ExposurePlanProps & {
+    panelsTab?: ReactNode;
+    sessionsTab?: ReactNode;
+    imagesTab?: ReactNode;
+    /** Anfangsreiter (z. B. `IMAGES_TAB` aus einem Link der Nacht). */
+    initialTab?: string | null;
+  },
 ) {
   const { t } = useTranslation();
   const { project, canEdit } = props;
-  const [tab, setTab] = useState<string>(project.panels[0]?.id ?? PANELS_TAB);
+  const [tab, setTab] = useState<string>(props.initialTab ?? project.panels[0]?.id ?? PANELS_TAB);
   const allLines = project.panels.flatMap((p) => p.lines);
   // *Vorlage* in der Reiterleiste klappt die Vorlagenzeile auf; ohne Zeilen ist sie gleich offen.
   const [templateOpen, setTemplateOpen] = useState(allLines.length === 0);
@@ -102,8 +111,10 @@ export function ExposurePlan(
       ? PANELS_TAB
       : tab === SESSIONS_TAB && props.sessionsTab
         ? SESSIONS_TAB
-        : ((project.panels.find((p) => p.id === tab) ?? project.panels[0])?.id ?? PANELS_TAB);
-  const panelTab = active !== PANELS_TAB && active !== SESSIONS_TAB;
+        : tab === IMAGES_TAB && props.imagesTab
+          ? IMAGES_TAB
+          : ((project.panels.find((p) => p.id === tab) ?? project.panels[0])?.id ?? PANELS_TAB);
+  const panelTab = active !== PANELS_TAB && active !== SESSIONS_TAB && active !== IMAGES_TAB;
   const panelBody = (panelId: string) => {
     const panel = project.panels.find((p) => p.id === panelId);
     if (!panel) return null;
@@ -157,6 +168,7 @@ export function ExposurePlan(
           ...(props.sessionsTab
             ? [{ key: SESSIONS_TAB, label: t('projectEditor.tabs.sessions') }]
             : []),
+          ...(props.imagesTab ? [{ key: IMAGES_TAB, label: t('projectEditor.tabs.images') }] : []),
         ]}
         toolbar={
           canEdit && panelTab ? (
@@ -180,6 +192,10 @@ export function ExposurePlan(
             props.sessionsTab ? (
               <div className={styles.sessionsBody}>{props.sessionsTab}</div>
             ) : null,
+          ],
+          [
+            IMAGES_TAB,
+            props.imagesTab ? <div className={styles.sessionsBody}>{props.imagesTab}</div> : null,
           ],
         ])}
       />

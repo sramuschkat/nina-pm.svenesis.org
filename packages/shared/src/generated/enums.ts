@@ -114,6 +114,18 @@ export type PierSide = (typeof pierSides)[number];
 export const rejectReasons = ["clouds","wind","focus","satellite","guiding","other"] as const;
 export type RejectReason = (typeof rejectReasons)[number];
 
+export const captureRejectReasons = ["clouds","wind","focus","satellite","guiding","other","auto_quality"] as const;
+export type CaptureRejectReason = (typeof captureRejectReasons)[number];
+
+export const imageQualityModes = ["mark","reject"] as const;
+export type ImageQualityMode = (typeof imageQualityModes)[number];
+
+export const imageGrades = ["ok","flagged","kept","rejected","none"] as const;
+export type ImageGrade = (typeof imageGrades)[number];
+
+export const imageGradeMetrics = ["hfr","stars","rms","cloud"] as const;
+export type ImageGradeMetric = (typeof imageGradeMetrics)[number];
+
 export const deviationReasons = ["center_failed","block_skipped","safety_pause","transit","autofocus","meridian_flip","exposure_aborted","exposure_failed","skipped_timeaware","device_error","lease_lost"] as const;
 export type DeviationReason = (typeof deviationReasons)[number];
 

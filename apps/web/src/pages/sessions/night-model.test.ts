@@ -306,6 +306,7 @@ describe('Ergebnis je Projekt, Kennzahlen, Aufnahmen', () => {
       flats: 2,
       deviations: 1,
       unassigned: 1,
+      flagged: 0,
       rejected: 1,
     });
     expect(metricPoints(list)).toHaveLength(2);

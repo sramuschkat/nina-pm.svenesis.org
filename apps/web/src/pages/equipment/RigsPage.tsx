@@ -17,13 +17,15 @@ import {
   playbackModes,
   RigInput,
   SchedulerSettings,
+  IMAGE_QUALITY_DEFAULTS,
+  imageQualityModes,
   strategies,
   telescopeDerived,
 } from '@nina-pm/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { equipmentApi, type RigView } from '../../api/client';
 import { ApiError, useCan } from '../../auth';
 import { Tabs } from '../../components/Tabs';
@@ -171,12 +173,17 @@ export function RigsPage() {
   const [creating, setCreating] = useState(false);
   /** *Neu* vor dem Laden der Stammdaten: Standort/Teleskop/Kamera vorbelegen, sobald sie da sind. */
   const [needsDefaults, setNeedsDefaults] = useState(false);
-  const [tab, setTab] = useState<RigTab>('general');
+  // `?rig=…&reiter=…` (AP-72b, Link „Grenzwerte ändern“ aus dem Reiter „Bilder“): Rig und Reiter vorwählen.
+  const [params] = useSearchParams();
+  const wantedTab = params.get('reiter');
+  const [tab, setTab] = useState<RigTab>(
+    (RIG_TABS as readonly string[]).includes(wantedTab ?? '') ? (wantedTab as RigTab) : 'general',
+  );
   const num = useNumber();
   const items = rigs.data ?? [];
   if (!picked && rigs.data) {
     setPicked(true);
-    const first = items[0];
+    const first = items.find((r) => r.id === params.get('rig')) ?? items[0];
     if (first) {
       setSelectedId(first.id);
       setDraft(rigDraft(first));
@@ -797,6 +804,10 @@ export function SchedulerForm({
   };
   const setOverhead = (key: keyof Scheduler['overhead'], value: number | null) =>
     set('overhead', { ...draft.overhead, [key]: value } as Scheduler['overhead']);
+  // Bildbewertung (AP-72b): leeres Feld = Grenzwert aus.
+  const quality = draft.imageQuality ?? IMAGE_QUALITY_DEFAULTS;
+  const setQuality = <K extends keyof typeof quality>(key: K, value: (typeof quality)[K]) =>
+    set('imageQuality', { ...quality, [key]: value });
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const result = validate(SchedulerSettings, draft);
@@ -940,6 +951,53 @@ export function SchedulerForm({
               onChange={(v) => set('filterSwitchTolerancePct', v ?? 0)}
               error={fieldError('filterSwitchTolerancePct')}
               disabled={disabled || !draft.filterSwitchEnabled}
+            />
+          </div>
+        </section>
+        <section className={sched.box} aria-labelledby="scheduler-quality">
+          <h4 id="scheduler-quality">{t('rigs.scheduler.qualitySection')}</h4>
+          <SelectField
+            label={t('rigs.scheduler.qualityMode')}
+            value={quality.mode}
+            onChange={(v) => setQuality('mode', v)}
+            options={imageQualityModes.map((m) => ({ value: m, label: t(`images.mode.${m}`) }))}
+            hint={t('rigs.scheduler.qualityHint')}
+            disabled={disabled}
+          />
+          <div className={sched.pair}>
+            <NumberField
+              label={t('rigs.scheduler.qualityHfr')}
+              unit="%"
+              value={quality.hfrPct}
+              onChange={(v) => setQuality('hfrPct', v)}
+              error={fieldError('imageQuality.hfrPct')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('rigs.scheduler.qualityStars')}
+              unit="%"
+              value={quality.starsPct}
+              onChange={(v) => setQuality('starsPct', v)}
+              error={fieldError('imageQuality.starsPct')}
+              disabled={disabled}
+            />
+          </div>
+          <div className={sched.pair}>
+            <NumberField
+              label={t('rigs.scheduler.qualityRms')}
+              unit="″"
+              value={quality.rmsArcsec}
+              onChange={(v) => setQuality('rmsArcsec', v)}
+              error={fieldError('imageQuality.rmsArcsec')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('rigs.scheduler.qualityCloud')}
+              unit="%"
+              value={quality.cloudPct}
+              onChange={(v) => setQuality('cloudPct', v)}
+              error={fieldError('imageQuality.cloudPct')}
+              disabled={disabled}
             />
           </div>
         </section>

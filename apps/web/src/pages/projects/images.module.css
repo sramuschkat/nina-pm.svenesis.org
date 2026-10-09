@@ -1,0 +1,264 @@
+/* Reiter „Bilder“ im Projekt (AP-72b): Kopf, Bezugsleiste, Tabelle und Seitenleiste nebeneinander, unter 1100 px untereinander. */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-3) var(--npm-space-4);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.label {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.chip,
+.button,
+.primary,
+.danger,
+.iconButton {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.chip[aria-pressed='true'],
+.primary {
+  background: var(--npm-button);
+  border-color: var(--npm-button);
+  color: var(--npm-on-button);
+}
+.danger {
+  background: var(--npm-danger);
+  border-color: var(--npm-danger);
+  color: var(--npm-on-button);
+}
+.chip:focus-visible,
+.button:focus-visible,
+.primary:focus-visible,
+.danger:focus-visible,
+.iconButton:focus-visible,
+.rowButton:focus-visible {
+  outline: none;
+  box-shadow: var(--npm-focus-ring);
+}
+.primary:disabled,
+.button:disabled,
+.danger:disabled,
+.iconButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.nightSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.nightSelect select {
+  min-height: var(--npm-row-h);
+  font: inherit;
+  color: var(--npm-text);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+  margin-left: auto;
+}
+.refBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2) var(--npm-space-4);
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  font-size: var(--npm-font-small);
+}
+.limits {
+  margin-left: auto;
+  color: var(--npm-text-light);
+}
+.limits a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.muted {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tableBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.tableBox tr[data-selected='true'] > td {
+  background: var(--npm-surface-sub);
+}
+.tableBox [data-bad='true'] {
+  color: var(--npm-warning);
+  font-weight: 600;
+}
+.rowButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--npm-link);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.grade {
+  font-size: var(--npm-font-small);
+}
+.grade[data-grade='flagged'] {
+  color: var(--npm-warning);
+  font-weight: 600;
+}
+.grade[data-grade='rejected'] {
+  color: var(--npm-text-light);
+  text-decoration: line-through;
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  min-width: 0;
+}
+.sideHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.sideHead h3 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  margin-left: auto;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.iconButton {
+  min-width: var(--npm-row-h);
+  padding: 0;
+}
+.verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-success-bg);
+  font-size: var(--npm-font-small);
+}
+.verdict[data-grade='flagged'] {
+  background: var(--npm-warning-bg);
+}
+.verdict[data-grade='rejected'],
+.verdict[data-grade='none'] {
+  background: var(--npm-surface-sub);
+}
+.values {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+  font-size: var(--npm-font-small);
+}
+.values dt {
+  color: var(--npm-text-light);
+}
+.values dd {
+  margin: 0;
+}
+.file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.file code {
+  flex: 1 1 100%;
+  padding: var(--npm-space-2);
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
+  font-family: var(--npm-font-mono);
+  font-size: var(--npm-font-label);
+  word-break: break-all;
+}
+.spark {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.sparkPlot {
+  position: relative;
+  height: 64px;
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
+}
+.sparkPlot > span {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: 0 0 -3px -3px;
+  border-radius: 50%;
+  background: var(--npm-text-light);
+}
+.sparkPlot > span[data-current='true'] {
+  width: 10px;
+  height: 10px;
+  margin: 0 0 -5px -5px;
+  background: var(--npm-warning);
+}
+.sideActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.sideLink {
+  margin-left: auto;
+  font-size: var(--npm-font-small);
+}

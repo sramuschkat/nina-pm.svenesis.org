@@ -31,3 +31,4 @@ export * from './simulation-view';
 export * from './executed-night';
 export * from './measured-overheads';
 export * from './image-quality';
+export * from './image-grading';

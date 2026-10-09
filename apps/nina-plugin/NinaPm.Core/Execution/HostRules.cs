@@ -176,10 +176,10 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
     }
 
     /// <summary><c>ImageSaved</c> zur Aufnahme: <c>CAPTURE result=saved</c>, Meldung mit Messwerten.</summary>
-    public void Saved(CaptureFacts facts, Metrics metrics, string file)
+    public void Saved(CaptureFacts facts, Metrics metrics, string file, string? relativePath = null)
     {
         log()?.Event("CAPTURE", ("id", facts.CaptureId), ("result", "saved"), ("file", file), ("atUtc", clock.UtcNow));
-        runner()?.ReportCapture(facts with { Metrics = metrics }, CapturesResult.Saved, file);
+        runner()?.ReportCapture(facts with { Metrics = metrics, RelativePath = relativePath }, CapturesResult.Saved, file);
     }
 
     /// <summary>Belichtung abgebrochen (Safety, Benutzer-Stopp): <c>CAPTURE result=aborted</c>.</summary>

@@ -1090,6 +1090,32 @@ async function projectExamples(): Promise<Record<string, Example>> {
         okStatus: 204,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      'GET /api/web/v1/projects/{id}/images': {
+        url: `/api/web/v1/projects/${SP}/images`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'POST /api/web/v1/projects/{id}/images/reject': {
+        url: `/api/web/v1/projects/${SP}/images/reject`,
+        method: 'POST',
+        body: { captureIds: [captureId], rejected: false },
+        resource: {
+          tenantId: world.tenantA,
+          createdBy: submitter,
+          settings: { userCorrections: false },
+        },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'PATCH /api/web/v1/captures/{id}/quality': {
+        url: `/api/web/v1/captures/${captureId}/quality`,
+        method: 'PATCH',
+        body: { kept: false },
+        resource: {
+          tenantId: world.tenantA,
+          createdBy: submitter,
+          settings: { userCorrections: false },
+        },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'PATCH /api/web/v1/captures/{id}': {
         url: `/api/web/v1/captures/${captureId}`,
         method: 'PATCH',

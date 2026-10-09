@@ -29,12 +29,16 @@ import {
   NightSessionReviewed,
   NightSessionSummary,
   NightSessionSummaryQuery,
+  gradeFlags,
+  IMAGE_QUALITY_DEFAULTS,
+  imageGrade,
   imageScale,
   ProblemError,
   ReportResendResult,
   Uuid,
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
+import { refsByProject } from '../sessions/project-images';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
@@ -252,8 +256,39 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
         telescope && camera ? imageScale({ ...telescope, ...camera }).scaleArcsecPx : null,
       refs: await repos.imageQuality().refs(detail.session.rigId, detail.session.night),
     };
+    // Bildbewertung (AP-72b): je gespeichertem, zugeordnetem Light mit dem Bezug seines Projekts und den Grenzwerten des Rigs.
+    const settings = rig?.imageQuality ?? IMAGE_QUALITY_DEFAULTS;
+    const projectIds = [
+      ...new Set(detail.captures.flatMap((x) => (x.projectId ? [x.projectId] : []))),
+    ];
+    const refs = refsByProject(await repos.imageQuality().gradeBasis(projectIds));
+    const captures = detail.captures.map((x) => {
+      if (
+        x.frameType !== 'light' ||
+        x.result !== 'saved' ||
+        !x.projectId ||
+        x.assignment !== 'assigned'
+      )
+        return x;
+      const input = {
+        hfr: x.hfr,
+        stars: x.stars,
+        rmsArcsec: x.quality?.rmsArcsec ?? null,
+        cloudCoverPct: x.quality?.cloudCoverPct ?? null,
+      };
+      const flags = gradeFlags(
+        input,
+        refs.get(x.projectId)?.get(x.filterShortName) ?? null,
+        settings,
+      );
+      return {
+        ...x,
+        flags,
+        grade: imageGrade(input, flags, { rejected: x.rejected, kept: x.kept ?? false }),
+      };
+    });
     c.header('cache-control', 'no-store');
-    return c.json({ ...detail, rows, quality }, 200);
+    return c.json({ ...detail, captures, rows, quality }, 200);
   });
 
   app.openapi(sessionCorrectionRoute, async (c) => {

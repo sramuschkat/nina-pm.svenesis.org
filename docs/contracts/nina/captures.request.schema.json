@@ -135,6 +135,10 @@
                     "type": "string",
                     "maxLength": 512
                   },
+                  "relativePath": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
                   "metrics": {
                     "type": "object",
                     "properties": {
@@ -518,6 +522,10 @@
                     "type": "string",
                     "maxLength": 512
                   },
+                  "relativePath": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
                   "metrics": {
                     "type": "object",
                     "properties": {
@@ -811,6 +819,10 @@
                   "fileName": {
                     "type": "string",
                     "maxLength": 512
+                  },
+                  "relativePath": {
+                    "type": "string",
+                    "maxLength": 1024
                   },
                   "metrics": {
                     "type": "object",
