@@ -220,6 +220,9 @@ export type ExposureTemplateView = Schemas['ExposureTemplateView'];
 export type RigView = Schemas['RigView'];
 export type FilterWheelView = Schemas['FilterWheelView'];
 export type FocusOffsetsView = Schemas['FocusOffsetsView'];
+export type ProjectImagesView = Schemas['ProjectImagesView'];
+export type ProjectImage = Schemas['ProjectImage'];
+export type ImageQualitySettings = Schemas['ImageQualitySettings'];
 export type SiteNightsView = Schemas['SiteNightsView'];
 export type WeatherView = Schemas['WeatherView'];
 export type WeatherHourView = Schemas['WeatherHourView'];
@@ -750,6 +753,19 @@ export const sessionsApi = {
     apiFetch<CaptureRejectResult>(
       `${V1}/captures/${captureId}`,
       json('PATCH', { rejected, reason }),
+    ),
+  /** Bilder des Projekts mit Bewertung (AP-72b). */
+  projectImages: (projectId: string) =>
+    apiFetch<ProjectImagesView>(`${V1}/projects/${projectId}/images`),
+  rejectImages: (projectId: string, captureIds: string[], rejected: boolean) =>
+    apiFetch<Schemas['ProjectImagesRejectResult']>(
+      `${V1}/projects/${projectId}/images/reject`,
+      json('POST', { captureIds, rejected }),
+    ),
+  keepImage: (captureId: string, kept: boolean) =>
+    apiFetch<Schemas['CaptureKeepResult']>(
+      `${V1}/captures/${captureId}/quality`,
+      json('PATCH', { kept }),
     ),
   /** Nicht zugeordnete Aufnahme einer Zeile zuordnen (FA-AUS-22, Admin). */
   assign: (captureId: string, exposureLineId: string) =>

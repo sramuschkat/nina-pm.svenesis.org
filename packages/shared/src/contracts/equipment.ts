@@ -10,6 +10,7 @@ import {
   filterTypes,
   flatsAutoModes,
   flatsSources,
+  imageQualityModes,
   moonModes,
   observatoryTypes,
   opticalDesigns,
@@ -466,6 +467,25 @@ export const RigOverheadsView = z
 export type RigOverheadsView = z.infer<typeof RigOverheadsView>;
 
 /**
+ * Automatische Bildbewertung je Rig (AP-72b, FA-AUS-25; Entscheidung Sven 09.10.2026): Grenzwerte, `null` = aus. HFR
+ * und Sterne relativ zum Median desselben Projekts und Filters, RMS und Wolken absolut. `mark` = nur markieren
+ * (Standard), `reject` = beim Eingang verwerfen (Grund `auto_quality`).
+ */
+export const ImageQualitySettings = z
+  .object({
+    mode: z.enum(imageQualityModes),
+    /** Markieren, wenn HFR mehr als so viele % über dem Median liegt. */
+    hfrPct: z.number().min(1).max(500).nullable(),
+    /** Markieren, wenn die Sternzahl unter so vielen % des Medians liegt. */
+    starsPct: z.number().min(1).max(100).nullable(),
+    rmsArcsec: z.number().min(0.1).max(20).nullable(),
+    cloudPct: z.number().min(0).max(100).nullable(),
+  })
+  .strict()
+  .meta({ id: 'ImageQualitySettings' });
+export type ImageQualitySettings = z.infer<typeof ImageQualitySettings>;
+
+/**
  * Scheduler-Einstellungen je Rig (FA-RIG-04, FA-SCH, flip-rotation.md §1). Die Sortierkette ist hier
  * bewusst eine Liste freier Zeichenketten: unbekannte oder doppelte Schlüssel ergeben
  * `422 rig.sort_chain_invalid` (sort-chain.md), `maxAfter < after` ergibt `422 rig.flip_settings_invalid`.
@@ -511,6 +531,8 @@ export const SchedulerSettings = z
       .max(overheadValueKeys.length)
       .refine((a) => new Set(a).size === a.length, { message: 'doppelt' })
       .optional(),
+    /** Bildbewertung (AP-72b); fehlt das Feld beim Speichern, bleibt die gespeicherte (Standard: Startwerte). */
+    imageQuality: ImageQualitySettings.optional(),
   })
   .strict()
   .meta({ id: 'SchedulerSettings' });

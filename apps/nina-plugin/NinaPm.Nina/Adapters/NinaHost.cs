@@ -595,7 +595,11 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
         };
         if (e.MetaData is { } md) AddMetaData(metrics, md);
         if (e.Statistics is { } stats) AddStatistics(metrics, stats, PixelCount(e.Image));
-        try { Rules.Saved(facts, metrics, file); }
+        // Relativ zum NINA-Bildordner (AP-72b): ohne Laufwerk und Benutzername.
+        string? relative = null;
+        try { relative = ImagePaths.Relative(m.Profile.ActiveProfile.ImageFileSettings.FilePath, e.PathToImage?.LocalPath); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { relative = null; }
+        try { Rules.Saved(facts, metrics, file, relative); }
         finally { Interlocked.Decrement(ref unsettled); }
         ReleaseIfDrained();
     }

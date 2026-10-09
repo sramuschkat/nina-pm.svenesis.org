@@ -11637,6 +11637,239 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/projects/{id}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lights des Projekts über alle Nächte mit Messwerten, Bewertung und Datei (Reiter „Bilder“)
+         * @description Aktion: `session.read` · FA-AUS-25, AP-72b, S-31
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bilder */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectImagesView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/images/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mehrere Lights des Projekts verwerfen (Grund auto_quality) bzw. zurücknehmen
+         * @description Aktion: `session.correct` · FA-AUS-25, FA-AUS-20, FK 8.4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectImagesReject"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectImagesRejectResult"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/captures/{id}/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * „Behalten“: Light bestätigen, die Bildbewertung markiert es nicht wieder
+         * @description Aktion: `session.correct` · FA-AUS-25
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CaptureKeep"];
+                };
+            };
+            responses: {
+                /** @description Gespeichert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CaptureKeepResult"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description capture.not_rejectable */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/web/v1/sessions/{id}/log": {
         parameters: {
             query?: never;
@@ -16601,6 +16834,15 @@ export interface components {
                 downloadS: number;
             };
             overheadFixed?: ("slewCenterS" | "filterChangeS" | "ditherSettleS" | "afDurationS" | "downloadS" | "flipDurationS")[];
+            imageQuality?: components["schemas"]["ImageQualitySettings"];
+        };
+        ImageQualitySettings: {
+            /** @enum {string} */
+            mode: "mark" | "reject";
+            hfrPct: number | null;
+            starsPct: number | null;
+            rmsArcsec: number | null;
+            cloudPct: number | null;
         };
         FilterWheelSlot: {
             position: number;
@@ -19885,11 +20127,15 @@ export interface components {
             settingsDeviation: boolean;
             rejected: boolean;
             /** @enum {string|null} */
-            rejectReason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
+            rejectReason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | "auto_quality" | null;
             fileName: string | null;
             hfr: number | null;
             stars: number | null;
             quality?: components["schemas"]["CaptureQuality"];
+            /** @enum {string|null} */
+            grade?: "ok" | "flagged" | "kept" | "rejected" | "none" | null;
+            flags?: components["schemas"]["ImageFlag"][];
+            kept?: boolean;
         };
         CaptureQuality: {
             rmsArcsec?: number;
@@ -19904,6 +20150,12 @@ export interface components {
             focusPosition?: number;
             focuserTemperatureC?: number;
         } | null;
+        ImageFlag: {
+            /** @enum {string} */
+            metric: "hfr" | "stars" | "rms" | "cloud";
+            value: number;
+            limit: number;
+        };
         NightSessionEvent: {
             /**
              * Format: uuid
@@ -20007,13 +20259,112 @@ export interface components {
              * @default null
              * @enum {string|null}
              */
-            reason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
+            reason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | "auto_quality" | null;
         };
         NightSessionReviewed: {
             reviewed: boolean;
         };
         ReportResendResult: {
             channels: number;
+        };
+        ProjectImagesView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string | null;
+            settings: components["schemas"]["ImageQualitySettings"];
+            scaleArcsecPx: number | null;
+            minRef: number;
+            refs: {
+                filter: string;
+                hfr: number | null;
+                hfrArcsec: number | null;
+                stars: number | null;
+                rmsArcsec: number | null;
+                n: number;
+            }[];
+            items: components["schemas"]["ProjectImage"][];
+            truncated: boolean;
+            canCorrect: boolean;
+        };
+        ProjectImage: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            capturedAt: string;
+            filter: string;
+            exposureS: number;
+            gain: number | null;
+            offset: number | null;
+            binning: number | null;
+            isBonus: boolean;
+            rejected: boolean;
+            /** @enum {string|null} */
+            rejectReason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | "auto_quality" | null;
+            kept: boolean;
+            /** @enum {string} */
+            grade: "ok" | "flagged" | "kept" | "rejected" | "none";
+            flags: components["schemas"]["ImageFlag"][];
+            fileName: string | null;
+            relativePath: string | null;
+            hfr: number | null;
+            hfrArcsec: number | null;
+            stars: number | null;
+            rmsArcsec: number | null;
+            rmsRaArcsec: number | null;
+            rmsDecArcsec: number | null;
+            cloudCoverPct: number | null;
+            skyQualityMag: number | null;
+            altitudeDeg: number | null;
+            airmass: number | null;
+            focusPosition: number | null;
+            focuserTemperatureC: number | null;
+            medianAdu: number | null;
+            saturatedPct: number | null;
+            sensorTempC: number | null;
+            setPointC: number | null;
+        };
+        ProjectImagesRejectResult: {
+            changed: number;
+            skipped: number;
+            projectStatus: string | null;
+        };
+        ProjectImagesReject: {
+            captureIds: string[];
+            rejected: boolean;
+        };
+        CaptureKeepResult: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            captureId: string;
+            kept: boolean;
+        };
+        CaptureKeep: {
+            kept: boolean;
         };
         SessionLogView: {
             /**
@@ -22595,6 +22946,7 @@ export interface components {
                 /** @enum {string} */
                 result: "saved" | "aborted" | "failed";
                 fileName?: string;
+                relativePath?: string;
                 metrics?: {
                     hfr?: number;
                     stars?: number;
@@ -22708,6 +23060,7 @@ export interface components {
                 /** @enum {string} */
                 result: "saved" | "aborted" | "failed";
                 fileName?: string;
+                relativePath?: string;
                 metrics?: {
                     hfr?: number;
                     stars?: number;
@@ -22784,6 +23137,7 @@ export interface components {
                 /** @enum {string} */
                 result: "saved" | "aborted" | "failed";
                 fileName?: string;
+                relativePath?: string;
                 metrics?: {
                     hfr?: number;
                     stars?: number;

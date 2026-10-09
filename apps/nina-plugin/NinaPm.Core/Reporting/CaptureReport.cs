@@ -28,7 +28,8 @@ public sealed record CaptureFacts(
     bool TemperatureDeviation,
     Metrics? Metrics,
     double? RotationDeg = null,
-    Guid? SessionId = null);
+    Guid? SessionId = null,
+    string? RelativePath = null);
 
 /// <summary>Meldung einer Light-Aufnahme (<c>captures</c>, contracts/nina/README.md) aus den Fakten der Belichtung.</summary>
 public static class CaptureMapper
@@ -56,6 +57,8 @@ public static class CaptureMapper
         TemperatureDeviation = f.TemperatureDeviation,
         Result = result,
         FileName = result == CapturesResult.Saved ? fileName : null,
+        // Relativ zum NINA-Bildordner (AP-72b, Plugin 0.4.23): zum Wiederfinden in der Dropbox.
+        RelativePath = result == CapturesResult.Saved ? f.RelativePath : null,
         Metrics = f.Metrics,
         FrameType = CapturesFrameType.Light,
         BlockId = f.Block.Id,

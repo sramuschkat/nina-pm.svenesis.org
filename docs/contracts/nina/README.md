@@ -87,6 +87,10 @@ Gekürzte IDs (`a91f…`) in den Beispielen werden in den Schema-Tests durch gü
   meldet `optics_mismatch` (`ninaSettingsMismatchCodes`). `TelemetryView.live` trägt `optics` und `pixelScaleArcsecPx`.
 - **`captures.metrics` – Bildstatistik (AP-71):** `medianAdu`, `stdDevAdu`, `madAdu`, `minAdu`, `maxAdu` aus NINAs
   `ImageStatistics` und `saturatedPct` (Anteil der Pixel am Maximalwert der Bittiefe in %; Bildmaximum darunter → 0).
+- **`captures.relativePath` (AP-72b, Plugin 0.4.23):** Pfad der Datei relativ zum NINA-Bildordner
+  (`ImageFileSettings.FilePath`), mit `/` getrennt, ohne Laufwerk und Benutzername; außerhalb des Bildordners nur der
+  Dateiname. Der Server legt ihn ohne Migration in `capture.metrics.relativePath` ab; die Web-App zeigt ihn im Reiter
+  „Bilder“ zum Kopieren und in der CSV.
 - **`plan.response.tight` (AP-71):** Ablauf der Engine ohne Spiel zwischen den Blöcken (`endUtc` = Ende der letzten
   Belichtung, der nächste Block rückt dorthin); gemeinsamer Testfall „Block passt noch“ für Engine
   (`packages/engine/test/block-fits.spec.ts`) und Plugin (`BlockFitsTests`).

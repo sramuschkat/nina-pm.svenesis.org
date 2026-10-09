@@ -3736,6 +3736,8 @@ components:
               - downloadS
               - flipDurationS
           maxItems: 6
+        imageQuality:
+          $ref: "#/components/schemas/ImageQualitySettings"
       required:
         - strategy
         - playback
@@ -3760,6 +3762,45 @@ components:
         - flipPauseBeforeMeridianMin
         - flipDurationS
         - overhead
+      additionalProperties: false
+    ImageQualitySettings:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - mark
+            - reject
+        hfrPct:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 500
+        starsPct:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 100
+        rmsArcsec:
+          type:
+            - number
+            - "null"
+          minimum: 0.1
+          maximum: 20
+        cloudPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+      required:
+        - mode
+        - hfrPct
+        - starsPct
+        - rmsArcsec
+        - cloudPct
       additionalProperties: false
     FilterWheelSlot:
       type: object
@@ -11299,6 +11340,7 @@ components:
             - satellite
             - guiding
             - other
+            - auto_quality
             - null
         fileName:
           type:
@@ -11316,6 +11358,23 @@ components:
           minimum: 0
         quality:
           $ref: "#/components/schemas/CaptureQuality"
+        grade:
+          type:
+            - string
+            - "null"
+          enum:
+            - ok
+            - flagged
+            - kept
+            - rejected
+            - none
+            - null
+        flags:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageFlag"
+        kept:
+          type: boolean
       required:
         - id
         - capturedAt
@@ -11378,6 +11437,24 @@ components:
           type: number
         focuserTemperatureC:
           type: number
+    ImageFlag:
+      type: object
+      properties:
+        metric:
+          type: string
+          enum:
+            - hfr
+            - stars
+            - rms
+            - cloud
+        value:
+          type: number
+        limit:
+          type: number
+      required:
+        - metric
+        - value
+        - limit
     NightSessionEvent:
       type: object
       properties:
@@ -11681,6 +11758,7 @@ components:
             - satellite
             - guiding
             - other
+            - auto_quality
             - null
           default: null
       required:
@@ -11701,6 +11779,306 @@ components:
           type: integer
       required:
         - channels
+    ProjectImagesView:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        settings:
+          $ref: "#/components/schemas/ImageQualitySettings"
+        scaleArcsecPx:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+        minRef:
+          type: integer
+        refs:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              hfr:
+                type:
+                  - number
+                  - "null"
+              hfrArcsec:
+                type:
+                  - number
+                  - "null"
+              stars:
+                type:
+                  - number
+                  - "null"
+              rmsArcsec:
+                type:
+                  - number
+                  - "null"
+              n:
+                type: integer
+                minimum: 0
+            required:
+              - filter
+              - hfr
+              - hfrArcsec
+              - stars
+              - rmsArcsec
+              - n
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectImage"
+        truncated:
+          type: boolean
+        canCorrect:
+          type: boolean
+      required:
+        - projectId
+        - rigId
+        - settings
+        - scaleArcsecPx
+        - minRef
+        - refs
+        - items
+        - truncated
+        - canCorrect
+    ProjectImage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        sessionId:
+          type: string
+          format: uuid
+          description: UUID
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        capturedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        filter:
+          type: string
+        exposureS:
+          type: number
+          minimum: 0
+        gain:
+          type:
+            - integer
+            - "null"
+        offset:
+          type:
+            - integer
+            - "null"
+        binning:
+          type:
+            - integer
+            - "null"
+        isBonus:
+          type: boolean
+        rejected:
+          type: boolean
+        rejectReason:
+          type:
+            - string
+            - "null"
+          enum:
+            - clouds
+            - wind
+            - focus
+            - satellite
+            - guiding
+            - other
+            - auto_quality
+            - null
+        kept:
+          type: boolean
+        grade:
+          type: string
+          enum:
+            - ok
+            - flagged
+            - kept
+            - rejected
+            - none
+        flags:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageFlag"
+        fileName:
+          type:
+            - string
+            - "null"
+        relativePath:
+          type:
+            - string
+            - "null"
+        hfr:
+          type:
+            - number
+            - "null"
+        hfrArcsec:
+          type:
+            - number
+            - "null"
+        stars:
+          type:
+            - number
+            - "null"
+        rmsArcsec:
+          type:
+            - number
+            - "null"
+        rmsRaArcsec:
+          type:
+            - number
+            - "null"
+        rmsDecArcsec:
+          type:
+            - number
+            - "null"
+        cloudCoverPct:
+          type:
+            - number
+            - "null"
+        skyQualityMag:
+          type:
+            - number
+            - "null"
+        altitudeDeg:
+          type:
+            - number
+            - "null"
+        airmass:
+          type:
+            - number
+            - "null"
+        focusPosition:
+          type:
+            - number
+            - "null"
+        focuserTemperatureC:
+          type:
+            - number
+            - "null"
+        medianAdu:
+          type:
+            - number
+            - "null"
+        saturatedPct:
+          type:
+            - number
+            - "null"
+        sensorTempC:
+          type:
+            - number
+            - "null"
+        setPointC:
+          type:
+            - number
+            - "null"
+      required:
+        - id
+        - sessionId
+        - night
+        - capturedAt
+        - filter
+        - exposureS
+        - gain
+        - offset
+        - binning
+        - isBonus
+        - rejected
+        - rejectReason
+        - kept
+        - grade
+        - flags
+        - fileName
+        - relativePath
+        - hfr
+        - hfrArcsec
+        - stars
+        - rmsArcsec
+        - rmsRaArcsec
+        - rmsDecArcsec
+        - cloudCoverPct
+        - skyQualityMag
+        - altitudeDeg
+        - airmass
+        - focusPosition
+        - focuserTemperatureC
+        - medianAdu
+        - saturatedPct
+        - sensorTempC
+        - setPointC
+    ProjectImagesRejectResult:
+      type: object
+      properties:
+        changed:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        projectStatus:
+          type:
+            - string
+            - "null"
+      required:
+        - changed
+        - skipped
+        - projectStatus
+    ProjectImagesReject:
+      type: object
+      properties:
+        captureIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            description: UUID
+          minItems: 1
+          maxItems: 500
+        rejected:
+          type: boolean
+      required:
+        - captureIds
+        - rejected
+      additionalProperties: false
+    CaptureKeepResult:
+      type: object
+      properties:
+        captureId:
+          type: string
+          format: uuid
+          description: UUID
+        kept:
+          type: boolean
+      required:
+        - captureId
+        - kept
+    CaptureKeep:
+      type: object
+      properties:
+        kept:
+          type: boolean
+      required:
+        - kept
+      additionalProperties: false
     SessionLogView:
       type: object
       properties:
@@ -17917,6 +18295,9 @@ components:
                   fileName:
                     type: string
                     maxLength: 512
+                  relativePath:
+                    type: string
+                    maxLength: 1024
                   metrics:
                     type: object
                     properties:
@@ -18164,6 +18545,9 @@ components:
                   fileName:
                     type: string
                     maxLength: 512
+                  relativePath:
+                    type: string
+                    maxLength: 1024
                   metrics:
                     type: object
                     properties:
@@ -18360,6 +18744,9 @@ components:
                   fileName:
                     type: string
                     maxLength: 512
+                  relativePath:
+                    type: string
+                    maxLength: 1024
                   metrics:
                     type: object
                     properties:
@@ -27623,6 +28010,163 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/images:
+    get:
+      summary: Lights des Projekts über alle Nächte mit Messwerten, Bewertung und Datei (Reiter „Bilder“)
+      tags:
+        - sessions
+      description: "Aktion: `session.read` · FA-AUS-25, AP-72b, S-31"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-AUS-25
+        - AP-72b
+        - S-31
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Bilder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectImagesView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/images/reject:
+    post:
+      summary: Mehrere Lights des Projekts verwerfen (Grund auto_quality) bzw. zurücknehmen
+      tags:
+        - sessions
+      description: "Aktion: `session.correct` · FA-AUS-25, FA-AUS-20, FK 8.4"
+      x-npm-action: session.correct
+      x-npm-requirements:
+        - FA-AUS-25
+        - FA-AUS-20
+        - FK 8.4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectImagesReject"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectImagesRejectResult"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/captures/{id}/quality:
+    patch:
+      summary: "„Behalten“: Light bestätigen, die Bildbewertung markiert es nicht wieder"
+      tags:
+        - sessions
+      description: "Aktion: `session.correct` · FA-AUS-25"
+      x-npm-action: session.correct
+      x-npm-requirements:
+        - FA-AUS-25
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptureKeep"
+      responses:
+        "200":
+          description: Gespeichert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptureKeepResult"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: capture.not_rejectable
           content:
             application/problem+json:
               schema:

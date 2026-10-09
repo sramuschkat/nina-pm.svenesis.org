@@ -11,6 +11,8 @@
  * - Jede Änderung landet im Änderungsprotokoll (`change_log`, S-72).
  */
 import {
+  IMAGE_QUALITY_DEFAULTS,
+  ImageQualitySettings,
   ProblemError,
   suggestNinaFilterName,
   validateFlip,
@@ -99,6 +101,8 @@ export type RigRow = Omit<
   overhead: Overhead;
   /** Werte mit Schalter „fest“ (AP-65); gespeichert in `rig.overhead.fixed` (keine eigene Spalte). */
   overheadFixed: OverheadValueKey[];
+  /** Bildbewertung (AP-72b); gespeichert in `rig.overhead.imageQuality` (keine Migration), sonst die Startwerte. */
+  imageQuality: ImageQualitySettings;
   sortChain: string[];
 };
 
@@ -140,7 +144,16 @@ const json = (value: unknown) => JSON.stringify(value);
 function parseOverhead(value: unknown): Overhead {
   const o: Record<string, unknown> = { ...((value ?? {}) as Record<string, unknown>) };
   delete o.fixed;
+  delete o.imageQuality;
   return { ...DEFAULT_OVERHEAD, ...(o as Partial<Overhead>) };
+}
+
+/** Bildbewertung (AP-72b) aus `rig.overhead.imageQuality`; fehlt oder ungültig → Startwerte. */
+function parseImageQuality(value: unknown): ImageQualitySettings {
+  const parsed = ImageQualitySettings.safeParse(
+    (value as { imageQuality?: unknown } | null)?.imageQuality,
+  );
+  return parsed.success ? parsed.data : { ...IMAGE_QUALITY_DEFAULTS };
 }
 
 /** Schalter „fest“ je Overhead-Wert (AP-65) aus `rig.overhead.fixed`; Unbekanntes entfällt. */
@@ -199,6 +212,7 @@ function toRig(row: Selectable<RigTable>): RigRow {
     ninaFilterWheel: parseReported(row.ninaFilterWheel),
     overhead: parseOverhead(row.overhead),
     overheadFixed: parseOverheadFixed(row.overhead),
+    imageQuality: parseImageQuality(row.overhead),
     sortChain: (Array.isArray(row.sortChain) ? row.sortChain : []) as string[],
   };
 }
@@ -1323,15 +1337,20 @@ export class EquipmentRepository extends TenantRepo {
         const before = await this.rig(id, trx);
         if (!before) throw notFound();
         this.checkVersion(before, expectedVersion);
-        const { sortChain, overhead, overheadFixed, ...rest } = input;
+        const { sortChain, overhead, overheadFixed, imageQuality, ...rest } = input;
         const fixed = overheadFixed ?? before.overheadFixed;
+        const quality = imageQuality ?? before.imageQuality;
         await trx
           .updateTable('rig')
           .set({
             ...rest,
             sortChain: json(sortChain),
-            // Schalter „fest“ (AP-65) im selben jsonb wie die getippten Werte – keine Migration.
-            overhead: json(fixed.length > 0 ? { ...overhead, fixed } : overhead),
+            // Schalter „fest“ (AP-65) und Bildbewertung (AP-72b) im selben jsonb wie die getippten Werte – keine Migration.
+            overhead: json({
+              ...overhead,
+              ...(fixed.length > 0 ? { fixed } : {}),
+              imageQuality: quality,
+            }),
             settingsVersion: before.settingsVersion + 1,
             updatedAt: now,
           })

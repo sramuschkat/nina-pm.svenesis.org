@@ -576,7 +576,15 @@ describe('S-61 Nacht (AP-64)', () => {
       within(chips)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Alle 3', 'Lights 2', 'Flats 1', 'Abweichung 1', 'Ohne Zuordnung 1', 'Verworfen 0']);
+    ).toEqual([
+      'Alle 3',
+      'Lights 2',
+      'Flats 1',
+      'Abweichung 1',
+      'Ohne Zuordnung 1',
+      'Markiert 0',
+      'Verworfen 0',
+    ]);
     const table = screen.getByRole('table', { name: 'Aufnahmen' });
     const flagged = within(table).getByRole('row', { name: /330 s/ });
     expect(

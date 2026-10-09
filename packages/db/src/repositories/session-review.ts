@@ -257,6 +257,17 @@ export function captureQuality(
   return Object.keys(out).length > 0 ? out : null;
 }
 
+/** „Behalten“ der Bildbewertung (AP-72b, `capture.metrics.qualityKept`). */
+export function qualityKept(v: unknown): boolean {
+  try {
+    return (
+      v !== null && v !== undefined && parseJson<Record<string, unknown>>(v).qualityKept === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** `af`-Daten eines Ereignisses (AP-72): Erfolg, Filter, Position, Temperatur. */
 export function afData(kind: string, data: unknown) {
   if (kind !== 'af') return null;
@@ -987,6 +998,7 @@ export class SessionReviewRepository extends TenantRepo {
         fileName: c.fileName,
         ...captureMetrics(c.metrics),
         quality: c.frameType === 'light' ? captureQuality(c.metrics) : null,
+        kept: c.frameType === 'light' && qualityKept(c.metrics),
       })),
       capturesTruncated: captureRows.length > captureLimit,
       events: events.map((e) => ({

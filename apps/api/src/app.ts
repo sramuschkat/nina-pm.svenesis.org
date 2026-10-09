@@ -40,6 +40,7 @@ import { REPORT_ROUTES, webReportRoutes } from './routes/web-reports';
 import { TONIGHT_ROUTES, webTonightRoutes } from './routes/web-tonight';
 import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
 import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
+import { IMAGE_ROUTES, webImageRoutes } from './routes/web-images';
 import { SESSION_ROUTES, webSessionRoutes } from './routes/web-sessions';
 import { SESSION_LOG_ROUTES, webSessionLogRoutes } from './routes/web-session-log';
 import { TELEMETRY_ROUTES, webTelemetryRoutes } from './routes/web-telemetry';
@@ -85,6 +86,7 @@ export const ROUTES = [
   ...NINA_INSTANCE_ROUTES,
   ...NINA_OPS_ROUTES,
   ...SESSION_ROUTES,
+  ...IMAGE_ROUTES,
   ...SESSION_LOG_ROUTES,
   ...TELEMETRY_ROUTES,
   ...CATALOG_ROUTES,
@@ -170,6 +172,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webNinaInstanceRoutes(services));
   app.route('/', webNinaOpsRoutes(services));
   app.route('/', webSessionRoutes(services));
+  app.route('/', webImageRoutes(services));
   app.route('/', webSessionLogRoutes(services));
   app.route('/', webTelemetryRoutes(services));
   app.route('/', catalogRoutes(services));

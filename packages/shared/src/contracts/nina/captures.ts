@@ -67,6 +67,11 @@ const common = {
   temperatureDeviation: z.boolean(),
   result: z.enum(captureResults),
   fileName: z.string().max(512).optional(),
+  /**
+   * Pfad der Datei relativ zum NINA-Bildordner (AP-72b, Plugin ≥ 0.4.23), mit `/` getrennt, ohne Laufwerk und
+   * Benutzername – zum Wiederfinden in der Dropbox; außerhalb des Bildordners nur der Dateiname.
+   */
+  relativePath: z.string().max(1024).optional(),
   metrics: Metrics.optional(),
 };
 

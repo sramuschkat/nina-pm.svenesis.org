@@ -11,9 +11,13 @@ import {
   captureResults,
   deviationReasons,
   rejectReasons,
+  captureRejectReasons,
+  imageGrades,
+  imageGradeMetrics,
   sessionStatuses,
 } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
+import { ImageQualitySettings } from './equipment';
 
 export const NightSessionQuery = z.object({
   rigId: Uuid.optional(),
@@ -195,6 +199,11 @@ export const NightSessionLineRow = z
   .meta({ id: 'NightSessionLineRow' });
 export type NightSessionLineRow = z.infer<typeof NightSessionLineRow>;
 
+/** Überschrittener Grenzwert der Bildbewertung (AP-72b): Kennzahl, Wert, Grenze (HFR in px wie der Bezug). */
+export const ImageFlag = z
+  .object({ metric: z.enum(imageGradeMetrics), value: z.number(), limit: z.number() })
+  .meta({ id: 'ImageFlag' });
+
 /** Messwerte einer Aufnahme für die Qualitätskurve (AP-72); alle optional, nie 0 statt „unbekannt“. */
 export const CaptureQuality = z
   .object({
@@ -235,7 +244,7 @@ export const NightSessionCapture = z
     temperatureDeviation: z.boolean(),
     settingsDeviation: z.boolean(),
     rejected: z.boolean(),
-    rejectReason: z.enum(rejectReasons).nullable(),
+    rejectReason: z.enum(captureRejectReasons).nullable(),
     fileName: z.string().nullable(),
     /**
      * Optionale NINA-Metriken (AP-62, `capture.metrics`): mittlerer HFR in Pixeln und Zahl der erkannten Sterne aus
@@ -248,6 +257,11 @@ export const NightSessionCapture = z
      * jeden Wert `null`.
      */
     quality: CaptureQuality.nullable().optional(),
+    /** Bildbewertung (AP-72b) mit den überschrittenen Grenzwerten; nur bei gespeicherten, zugeordneten Lights. */
+    grade: z.enum(imageGrades).nullable().optional(),
+    flags: z.array(ImageFlag).optional(),
+    /** „Behalten“ bestätigt (AP-72b). */
+    kept: z.boolean().optional(),
   })
   .meta({ id: 'NightSessionCapture' });
 export type NightSessionCapture = z.infer<typeof NightSessionCapture>;
@@ -401,9 +415,104 @@ export const NightSessionReviewed = z
 export const CaptureReject = z
   .strictObject({
     rejected: z.boolean(),
-    reason: z.enum(rejectReasons).nullable().default(null),
+    /** `auto_quality` = Vorschlag der Bildbewertung übernommen (AP-72b). */
+    reason: z.enum(captureRejectReasons).nullable().default(null),
   })
   .meta({ id: 'CaptureReject' });
+
+// ---- Bilder im Projekt (AP-72b, FA-AUS-25) ------------------------------------------------------------
+
+const n = z.number().nullable();
+
+/** Ein Light des Projekts mit Messwerten, Bewertung und Datei (Reiter „Bilder“). */
+export const ProjectImage = z
+  .object({
+    id: Uuid,
+    sessionId: Uuid,
+    night: NightKey,
+    capturedAt: UtcInstant,
+    filter: z.string(),
+    exposureS: z.number().min(0),
+    gain: z.number().int().nullable(),
+    offset: z.number().int().nullable(),
+    binning: z.number().int().nullable(),
+    isBonus: z.boolean(),
+    rejected: z.boolean(),
+    rejectReason: z.enum(captureRejectReasons).nullable(),
+    kept: z.boolean(),
+    grade: z.enum(imageGrades),
+    flags: z.array(ImageFlag),
+    fileName: z.string().nullable(),
+    relativePath: z.string().nullable(),
+    hfr: n,
+    hfrArcsec: n,
+    stars: n,
+    rmsArcsec: n,
+    rmsRaArcsec: n,
+    rmsDecArcsec: n,
+    cloudCoverPct: n,
+    skyQualityMag: n,
+    altitudeDeg: n,
+    airmass: n,
+    focusPosition: n,
+    focuserTemperatureC: n,
+    medianAdu: n,
+    saturatedPct: n,
+    sensorTempC: n,
+    setPointC: n,
+  })
+  .meta({ id: 'ProjectImage' });
+export type ProjectImage = z.infer<typeof ProjectImage>;
+
+export const ProjectImagesView = z
+  .object({
+    projectId: Uuid,
+    rigId: Uuid.nullable(),
+    /** Grenzwerte des Rigs (Startwerte, solange das Projekt kein Rig hat). */
+    settings: ImageQualitySettings,
+    /** Pixelmaßstab des Rigs (″/px ungebinnt); HFR″ = HFR · Maßstab · Binning. */
+    scaleArcsecPx: z.number().positive().nullable(),
+    /** Ab so vielen Lights im Bezug prüfen HFR und Sterne. */
+    minRef: z.number().int(),
+    refs: z.array(
+      z.object({
+        filter: z.string(),
+        hfr: n,
+        hfrArcsec: n,
+        stars: n,
+        rmsArcsec: n,
+        n: z.number().int().min(0),
+      }),
+    ),
+    items: z.array(ProjectImage),
+    truncated: z.boolean(),
+    /** Darf der Aufrufer verwerfen und behalten (wie beim manuellen Verwerfen, `session.correct`)? */
+    canCorrect: z.boolean(),
+  })
+  .meta({ id: 'ProjectImagesView' });
+export type ProjectImagesView = z.infer<typeof ProjectImagesView>;
+
+/** Mehrere Lights des Projekts verwerfen bzw. zurücknehmen (AP-72b, „Markierte verwerfen“). */
+export const ProjectImagesReject = z
+  .strictObject({
+    captureIds: z.array(Uuid).min(1).max(500),
+    rejected: z.boolean(),
+  })
+  .meta({ id: 'ProjectImagesReject' });
+
+export const ProjectImagesRejectResult = z
+  .object({
+    changed: z.number().int().min(0),
+    skipped: z.number().int().min(0),
+    projectStatus: z.string().nullable(),
+  })
+  .meta({ id: 'ProjectImagesRejectResult' });
+
+/** „Behalten“ (AP-72b): Light bestätigt, die Bewertung markiert es nicht wieder. */
+export const CaptureKeep = z.strictObject({ kept: z.boolean() }).meta({ id: 'CaptureKeep' });
+export const CaptureKeepResult = z
+  .object({ captureId: Uuid, kept: z.boolean() })
+  .meta({ id: 'CaptureKeepResult' });
 
 export const CaptureRejectResult = z
   .object({

@@ -321,6 +321,32 @@
   "guiding",
   "other"
  ],
+ "captureRejectReasons": [
+  "clouds",
+  "wind",
+  "focus",
+  "satellite",
+  "guiding",
+  "other",
+  "auto_quality"
+ ],
+ "imageQualityModes": [
+  "mark",
+  "reject"
+ ],
+ "imageGrades": [
+  "ok",
+  "flagged",
+  "kept",
+  "rejected",
+  "none"
+ ],
+ "imageGradeMetrics": [
+  "hfr",
+  "stars",
+  "rms",
+  "cloud"
+ ],
  "deviationReasons": [
   "center_failed",
   "block_skipped",

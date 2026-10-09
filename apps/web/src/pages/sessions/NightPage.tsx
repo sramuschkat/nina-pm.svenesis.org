@@ -1093,6 +1093,14 @@ function ResultCell({ c }: { c: NightSessionCapture }) {
       {c.assignment === 'unassigned' ? (
         <span className={styles.badgeWarn}>{t('sessions.captures.unassignedFlag')}</span>
       ) : null}
+      {c.grade === 'flagged' && c.projectId ? (
+        // Bildbewertung (AP-72b): Vorschlag im Reiter „Bilder“ des Projekts ansehen und entscheiden.
+        <Link className={styles.badgeWarn} to={`/projekte/${c.projectId}?bild=${c.id}`}>
+          {t('sessions.captures.flagged', {
+            reason: (c.flags ?? []).map((f) => t(`images.metric.${f.metric}`)).join(', '),
+          })}
+        </Link>
+      ) : null}
       {flags.length > 0 ? (
         <span
           className={styles.flagIcon}

@@ -5,6 +5,7 @@
  */
 import { medianOf, type ClarityLight, type QualityRef } from '@nina-pm/shared';
 import { sql } from 'kysely';
+import { withTx } from '../tx';
 import { TenantRepo } from './base';
 
 /** Fenster der Bezugswerte bzw. Autofokus-Läufe in Nächten bis zur Nacht der Session. */
@@ -43,7 +44,163 @@ export interface NightLights {
   readonly lights: ClarityLight[];
 }
 
+/** Ein Light des Projekts für die Bildbewertung (AP-72b) mit allen Messwerten aus `capture.metrics`. */
+export interface ProjectImageRow {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly night: string;
+  readonly capturedAt: string;
+  readonly filter: string;
+  readonly exposureS: number;
+  readonly gain: number | null;
+  readonly offset: number | null;
+  readonly binning: number | null;
+  readonly isBonus: boolean;
+  readonly rejected: boolean;
+  readonly rejectReason: string | null;
+  readonly fileName: string | null;
+  /** Rohwerte aus `capture.metrics` (Zahlen, `relativePath`, `qualityKept`). */
+  readonly metrics: Record<string, unknown>;
+}
+
+/** Höchstzahl Lights je Projekt in der Ansicht „Bilder“ (ein großes Projekt hat einige tausend). */
+export const PROJECT_IMAGE_LIMIT = 8000;
+
+const object = (v: unknown): Record<string, unknown> => {
+  const o = typeof v === 'string' ? (JSON.parse(v) as unknown) : v;
+  return o !== null && typeof o === 'object' && !Array.isArray(o)
+    ? (o as Record<string, unknown>)
+    : {};
+};
+
 export class ImageQualityRepository extends TenantRepo {
+  /**
+   * Gespeicherte, zugeordnete Lights eines Projekts über alle Nächte (AP-72b, Reiter „Bilder“), neueste zuerst; höchstens
+   * `limit` (+1 zum Erkennen des Abschneidens).
+   */
+  async projectImages(projectId: string, limit = PROJECT_IMAGE_LIMIT): Promise<ProjectImageRow[]> {
+    const rows = await this.db
+      .selectFrom('capture')
+      .select([
+        'id',
+        'sessionId',
+        'night',
+        'capturedAt',
+        'filterShortName',
+        'exposureS',
+        'gain',
+        'offsetAdu',
+        'binning',
+        'isBonus',
+        'rejected',
+        'rejectReason',
+        'fileName',
+        'metrics',
+      ])
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where('projectId', '=', projectId)
+      .where('frameType', '=', 'light')
+      .where('result', '=', 'saved')
+      .where('assignment', '=', 'assigned')
+      .orderBy('capturedAt', 'desc')
+      .orderBy('id')
+      .limit(limit + 1)
+      .execute();
+    return rows.map((r) => ({
+      id: r.id,
+      sessionId: r.sessionId,
+      night: nightKey(r.night),
+      capturedAt: new Date(ms(r.capturedAt)).toISOString(),
+      filter: r.filterShortName,
+      exposureS: Number(r.exposureS),
+      gain: r.gain,
+      offset: r.offsetAdu,
+      binning: r.binning,
+      isBonus: Boolean(r.isBonus),
+      rejected: Boolean(r.rejected),
+      rejectReason: r.rejectReason,
+      fileName: r.fileName,
+      metrics: object(r.metrics),
+    }));
+  }
+
+  /**
+   * „Behalten“ (AP-72b): Light bestätigt, die Bewertung markiert es nicht wieder – ohne Migration in
+   * `capture.metrics.qualityKept`. Nur gespeicherte, zugeordnete Lights; sonst `false`.
+   */
+  /**
+   * Grundlage der Bewertung (AP-72b): je Projekt die Lights mit Filter, HFR (px), Sternen und Verworfen – für den Bezug
+   * je Projekt und Filter (Median der nicht verworfenen).
+   */
+  async gradeBasis(projectIds: readonly string[]): Promise<
+    {
+      projectId: string;
+      filter: string;
+      hfr: number | null;
+      stars: number | null;
+      rejected: boolean;
+    }[]
+  > {
+    if (projectIds.length === 0) return [];
+    const rows = await this.db
+      .selectFrom('capture')
+      .select([
+        'projectId',
+        'filterShortName',
+        'rejected',
+        sql<unknown>`metrics->>'hfr'`.as('hfr'),
+        sql<unknown>`metrics->>'stars'`.as('stars'),
+      ])
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where('projectId', 'in', [...projectIds])
+      .where('frameType', '=', 'light')
+      .where('result', '=', 'saved')
+      .where('assignment', '=', 'assigned')
+      .limit(ROW_LIMIT)
+      .execute();
+    return rows.flatMap((r) =>
+      r.projectId
+        ? [
+            {
+              projectId: r.projectId,
+              filter: r.filterShortName,
+              hfr: positive(r.hfr),
+              stars: positive(r.stars),
+              rejected: Boolean(r.rejected),
+            },
+          ]
+        : [],
+    );
+  }
+
+  async setKept(captureId: string, kept: boolean): Promise<{ projectId: string } | null> {
+    return withTx(this.db, async (trx) => {
+      const row = await trx
+        .selectFrom('capture')
+        .select(['projectId', 'metrics', 'frameType', 'result', 'assignment'])
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('id', '=', captureId)
+        .executeTakeFirst();
+      if (
+        !row?.projectId ||
+        row.frameType !== 'light' ||
+        row.result !== 'saved' ||
+        row.assignment !== 'assigned'
+      )
+        return null;
+      const metrics = { ...object(row.metrics) };
+      if (kept) metrics.qualityKept = true;
+      else delete metrics.qualityKept;
+      await trx
+        .updateTable('capture')
+        .set({ metrics: JSON.stringify(metrics) })
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('id', '=', captureId)
+        .execute();
+      return { projectId: row.projectId };
+    });
+  }
+
   /** Gespeicherte, zugeordnete, nicht verworfene Lights des Rigs mit Messwerten in den Nächten `from…to`. */
   private lightRows(rigIds: readonly string[], fromNight: string, toNight: string) {
     return this.db
