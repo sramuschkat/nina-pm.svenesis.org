@@ -78,8 +78,7 @@ export function TwilightTable({
     );
   };
   return (
-    <table className={styles.twilight}>
-      <caption className="visually-hidden">{t('tonight.kpi.twilight.caption')}</caption>
+    <table className={styles.twilight} aria-label={t('tonight.kpi.twilight.caption')}>
       <thead>
         <tr>
           <th scope="col">
