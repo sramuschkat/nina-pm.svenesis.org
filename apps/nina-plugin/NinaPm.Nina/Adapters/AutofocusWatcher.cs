@@ -19,7 +19,8 @@ internal sealed class AutofocusWatcher(AutofocusTracker tracker, Func<string?> c
 
     public void NewAutoFocusPoint(OxyPlot.DataPoint dataPoint) => Safe(tracker.Point);
 
-    public void UpdateEndAutoFocusRun(AutoFocusInfo info) => Safe(() => tracker.Completed(info?.Filter ?? Filter()));
+    public void UpdateEndAutoFocusRun(AutoFocusInfo info) =>
+        Safe(() => tracker.Completed(info?.Filter ?? Filter(), info?.Position, info?.Temperature));
 
     public void UpdateUserFocused(FocuserInfo info)
     {

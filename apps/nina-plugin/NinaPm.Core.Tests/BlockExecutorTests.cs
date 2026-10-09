@@ -1106,7 +1106,8 @@ public sealed class BlockExecutorTests
         await executor.RunAsync(Regular(), null, default, options);
 
         var af = nina.Calls.FindIndex(c => c.StartsWith("af@", StringComparison.Ordinal));
-        Assert.True(af >= 0 && af < nina.Calls.IndexOf("filter:Ha"));
+        // AP-70: vor dem Autofokus der Filter der nächsten Belichtung (Ha), nicht der, der noch im Rad liegt.
+        Assert.True(af > 0 && nina.Calls[af - 1] == "filter:Ha", string.Join(", ", nina.Calls.Take(af + 1)));
         Assert.Equal(2, nina.Autofocuses); // beide Plan-Slots (07:40:30, 08:46:28)
         Assert.Contains(sink.Lines, l => l.Contains("AF_START") && l.Contains("reason=plan"));
         Assert.Equal(EntryOutcome.Done, executor.EntryOutcomes[2]);
@@ -1144,6 +1145,8 @@ public sealed class BlockExecutorTests
         await executor.RunAsync(block, null, default, new BlockRunOptions(Autofocus: new AutofocusSettings(60, 180, null)));
         var af = nina.Calls.FindIndex(c => c.StartsWith("af@", StringComparison.Ordinal));
         Assert.True(af > nina.Calls.FindIndex(c => c.StartsWith("center@", StringComparison.Ordinal)) && af < nina.Calls.IndexOf("guide"));
+        // AP-70 (Rig-Nacht 08./09.10.2026: Autofokus mit B für einen L-Block): erst der Filter der ersten Belichtung.
+        Assert.Equal("filter:Ha", nina.Calls[af - 1]);
         Assert.Contains(sink.Lines, l => l.Contains("AF_START") && l.Contains("reason=block_start"));
 
         // Frisch fokussiert (z. B. im Wiederherstellungsteil nach dem Dach) bzw. Block direkt nach dem vorigen: kein Autofokus.

@@ -11926,11 +11926,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TelemetrySeries"
+        live:
+          $ref: "#/components/schemas/RigLive"
       required:
         - rigId
         - from
         - to
         - sources
+        - live
     TelemetrySeries:
       type: object
       properties:
@@ -12004,6 +12007,277 @@ components:
         - t
         - series
         - latest
+    RigLive:
+      type:
+        - object
+        - "null"
+      properties:
+        instanceId:
+          type: string
+          format: uuid
+          description: UUID
+        instanceName:
+          type: string
+        receivedAtUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        state:
+          type:
+            - string
+            - "null"
+          enum:
+            - running
+            - idle
+            - paused
+            - flats
+            - offline
+            - blocked
+            - null
+        pluginVersion:
+          type:
+            - string
+            - "null"
+        camera:
+          type:
+            - object
+            - "null"
+          properties:
+            temperatureC:
+              type:
+                - number
+                - "null"
+            setPointC:
+              type:
+                - number
+                - "null"
+            coolerOn:
+              type: boolean
+            coolerPowerPct:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 100
+          required:
+            - temperatureC
+            - setPointC
+            - coolerOn
+            - coolerPowerPct
+        filterWheel:
+          type:
+            - array
+            - "null"
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                minimum: 1
+              name:
+                type: string
+                maxLength: 256
+              focusOffset:
+                type: number
+            required:
+              - position
+              - name
+              - focusOffset
+          maxItems: 64
+        devices:
+          $ref: "#/components/schemas/NinaDevices"
+      required:
+        - instanceId
+        - instanceName
+        - receivedAtUtc
+        - state
+        - pluginVersion
+        - camera
+        - filterWheel
+        - devices
+    NinaDevices:
+      type:
+        - object
+        - "null"
+      properties:
+        connected:
+          type: object
+          properties:
+            camera:
+              type: boolean
+            mount:
+              type: boolean
+            focuser:
+              type: boolean
+            filterWheel:
+              type: boolean
+            rotator:
+              type: boolean
+            guider:
+              type: boolean
+            safetyMonitor:
+              type: boolean
+            weather:
+              type: boolean
+            flatDevice:
+              type: boolean
+            switch:
+              type: boolean
+            dome:
+              type: boolean
+          required:
+            - camera
+            - mount
+            - focuser
+            - filterWheel
+            - rotator
+            - guider
+            - safetyMonitor
+            - weather
+            - flatDevice
+            - switch
+            - dome
+        focuser:
+          type:
+            - object
+            - "null"
+          properties:
+            position:
+              type: number
+            temperatureC:
+              type:
+                - number
+                - "null"
+            moving:
+              type: boolean
+          required:
+            - position
+            - temperatureC
+            - moving
+        mountState:
+          type:
+            - object
+            - "null"
+          properties:
+            pierSide:
+              type:
+                - string
+                - "null"
+              enum:
+                - east
+                - west
+                - null
+            tracking:
+              type: boolean
+            atPark:
+              type: boolean
+            slewing:
+              type: boolean
+            altitudeDeg:
+              type:
+                - number
+                - "null"
+              minimum: -90
+              maximum: 90
+            azimuthDeg:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 360
+          required:
+            - pierSide
+            - tracking
+            - atPark
+            - slewing
+            - altitudeDeg
+            - azimuthDeg
+        guider:
+          type:
+            - object
+            - "null"
+          properties:
+            rmsTotalArcsec:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            rmsRaArcsec:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            rmsDecArcsec:
+              type:
+                - number
+                - "null"
+              minimum: 0
+          required:
+            - rmsTotalArcsec
+            - rmsRaArcsec
+            - rmsDecArcsec
+        filter:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        safe:
+          type:
+            - boolean
+            - "null"
+        weather:
+          $ref: "#/components/schemas/NinaWeatherNow"
+      required:
+        - connected
+        - focuser
+        - mountState
+        - guider
+        - filter
+        - safe
+        - weather
+    NinaWeatherNow:
+      type:
+        - object
+        - "null"
+      properties:
+        cloudCoverPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        skyQualityMag:
+          type: number
+        skyBrightnessLux:
+          type: number
+          minimum: 0
+        skyTemperatureC:
+          type: number
+        starFwhmArcsec:
+          type: number
+          minimum: 0
+        temperatureC:
+          type: number
+        humidityPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        dewPointC:
+          type: number
+        pressureHpa:
+          type: number
+          minimum: 0
+        windSpeedMs:
+          type: number
+          minimum: 0
+        windGustMs:
+          type: number
+          minimum: 0
+        windDirectionDeg:
+          type: number
+          minimum: 0
+          maximum: 360
+        rainRateMmH:
+          type: number
+          minimum: 0
     DsoList:
       type: object
       properties:
@@ -17364,6 +17638,12 @@ components:
                       guidingRmsArcsec:
                         type: number
                         minimum: 0
+                      rmsRaArcsec:
+                        type: number
+                        minimum: 0
+                      rmsDecArcsec:
+                        type: number
+                        minimum: 0
                       altitudeDeg:
                         type: number
                         minimum: -90
@@ -17374,6 +17654,43 @@ components:
                         maximum: 40
                       focusPosition:
                         type: number
+                      focuserTemperatureC:
+                        type: number
+                      cloudCoverPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      skyQualityMag:
+                        type: number
+                      skyBrightnessLux:
+                        type: number
+                        minimum: 0
+                      skyTemperatureC:
+                        type: number
+                      starFwhmArcsec:
+                        type: number
+                        minimum: 0
+                      airTemperatureC:
+                        type: number
+                      humidityPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      dewPointC:
+                        type: number
+                      pressureHpa:
+                        type: number
+                        minimum: 0
+                      windSpeedMs:
+                        type: number
+                        minimum: 0
+                      windGustMs:
+                        type: number
+                        minimum: 0
+                      windDirectionDeg:
+                        type: number
+                        minimum: 0
+                        maximum: 360
                   frameType:
                     type: string
                     enum:
@@ -17549,6 +17866,12 @@ components:
                       guidingRmsArcsec:
                         type: number
                         minimum: 0
+                      rmsRaArcsec:
+                        type: number
+                        minimum: 0
+                      rmsDecArcsec:
+                        type: number
+                        minimum: 0
                       altitudeDeg:
                         type: number
                         minimum: -90
@@ -17559,6 +17882,43 @@ components:
                         maximum: 40
                       focusPosition:
                         type: number
+                      focuserTemperatureC:
+                        type: number
+                      cloudCoverPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      skyQualityMag:
+                        type: number
+                      skyBrightnessLux:
+                        type: number
+                        minimum: 0
+                      skyTemperatureC:
+                        type: number
+                      starFwhmArcsec:
+                        type: number
+                        minimum: 0
+                      airTemperatureC:
+                        type: number
+                      humidityPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      dewPointC:
+                        type: number
+                      pressureHpa:
+                        type: number
+                        minimum: 0
+                      windSpeedMs:
+                        type: number
+                        minimum: 0
+                      windGustMs:
+                        type: number
+                        minimum: 0
+                      windDirectionDeg:
+                        type: number
+                        minimum: 0
+                        maximum: 360
                   projectIds:
                     type: array
                     items:
@@ -17683,6 +18043,12 @@ components:
                       guidingRmsArcsec:
                         type: number
                         minimum: 0
+                      rmsRaArcsec:
+                        type: number
+                        minimum: 0
+                      rmsDecArcsec:
+                        type: number
+                        minimum: 0
                       altitudeDeg:
                         type: number
                         minimum: -90
@@ -17693,6 +18059,43 @@ components:
                         maximum: 40
                       focusPosition:
                         type: number
+                      focuserTemperatureC:
+                        type: number
+                      cloudCoverPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      skyQualityMag:
+                        type: number
+                      skyBrightnessLux:
+                        type: number
+                        minimum: 0
+                      skyTemperatureC:
+                        type: number
+                      starFwhmArcsec:
+                        type: number
+                        minimum: 0
+                      airTemperatureC:
+                        type: number
+                      humidityPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      dewPointC:
+                        type: number
+                      pressureHpa:
+                        type: number
+                        minimum: 0
+                      windSpeedMs:
+                        type: number
+                        minimum: 0
+                      windGustMs:
+                        type: number
+                        minimum: 0
+                      windDirectionDeg:
+                        type: number
+                        minimum: 0
+                        maximum: 360
                   projectIds:
                     type: array
                     items:
@@ -18121,6 +18524,8 @@ components:
             - "null"
           minimum: -360
           maximum: 360
+        devices:
+          $ref: "#/components/schemas/NinaDevices"
         filterWheel:
           type:
             - array

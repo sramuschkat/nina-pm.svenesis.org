@@ -27,10 +27,11 @@
   font-size: var(--npm-font-small);
   cursor: pointer;
 }
+/* Gedrückt wie die Segmentknöpfe der Auswertung (Knopffarbe, AA-Kontrast; vorher weiß auf Akzent, 3,15:1). */
 .rangeChip[aria-pressed='true'] {
-  background: var(--npm-accent);
-  border-color: var(--npm-accent);
-  color: var(--npm-white);
+  background: var(--npm-button);
+  border-color: var(--npm-button);
+  color: var(--npm-on-button);
 }
 .rangeChip:focus-visible,
 .plot:focus-visible {
@@ -101,6 +102,57 @@
 }
 .valueWarn dd {
   color: var(--npm-warning);
+}
+/* „Rig jetzt“ (AP-70): Zustand je Gerät als Text, darunter Wetter und verbundene Geräte als Chips. */
+.liveCard {
+  composes: panel from '../admin/admin.module.css';
+}
+.liveValues {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--npm-space-3);
+  margin: 0;
+}
+.liveValues > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
+}
+.liveValues dt {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.liveValues dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.liveSub {
+  margin: var(--npm-space-2) 0 0;
+  font-size: var(--npm-font-h3);
+}
+.devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.devices li {
+  padding: 2px var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.devices li[data-connected='true'] {
+  border-color: var(--npm-success);
+  background: var(--npm-success-bg);
+  color: var(--npm-text);
 }
 .section {
   display: flex;

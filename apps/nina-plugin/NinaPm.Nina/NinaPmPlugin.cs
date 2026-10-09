@@ -47,10 +47,13 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         NINA.WPF.Base.Interfaces.ViewModel.IFramingAssistantVM framingAssistant,
         NINA.WPF.Base.Interfaces.Mediator.IApplicationMediator applicationMediator,
         NINA.Equipment.Interfaces.Mediator.IFocuserMediator focuser,
-        [Import(AllowDefault = true)] NINA.WPF.Base.Interfaces.IAutoFocusVMFactory? autoFocusFactory = null)
+        [Import(AllowDefault = true)] NINA.WPF.Base.Interfaces.IAutoFocusVMFactory? autoFocusFactory = null,
+        [Import(AllowDefault = true)] NINA.Equipment.Interfaces.Mediator.IWeatherDataMediator? weather = null,
+        [Import(AllowDefault = true)] NINA.Equipment.Interfaces.Mediator.IFlatDeviceMediator? flatDevice = null,
+        [Import(AllowDefault = true)] NINA.Equipment.Interfaces.Mediator.ISwitchMediator? switchMediator = null)
         : this(profileService, new DpapiTokenProtector(), new NinaMediators(profileService, telescope, imaging, camera, filterWheel,
             rotator, guider, dome, domeFollower, plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor, focuser,
-            autoFocusFactory),
+            autoFocusFactory, weather, flatDevice, switchMediator),
             new FramingLoader(framingAssistant, applicationMediator, profileService))
     {
     }

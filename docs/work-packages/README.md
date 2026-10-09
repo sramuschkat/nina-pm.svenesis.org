@@ -153,3 +153,4 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-67](AP-67.md) | Rig-Telemetrie: PC und Powerbox dauerhaft speichern, Dashboards „Rig-Zustand“ (Migration 0015) | L | AP-14c | H-22, H-15 | ☑ 08.10.2026 |
 | [AP-68](AP-68.md) | Plugin 0.4.20: Zentrieren nach dem Flip, Autofokus im Plan, Vorziehen, Dock, keine Fahrt zu leeren Blöcken | M | AP-65 | H-15 | ☑ 09.10.2026 |
 | [AP-69](AP-69.md) | Himmelskarte und Zeitachse auf der Projektliste (Ansicht „Himmel“) | L | AP-21, AP-64 | H-16 | ☐ |
+| [AP-70](AP-70.md) | Plugin 0.4.21: Autofokus mit dem Filter der Belichtung, Fokusdaten je Autofokus, Gerätestatus und SkyAlert-Wetter live, Messwerte je Aufnahme (RMS RA/Dec, Höhe, Luftmasse, Fokus, Wetter) | M | AP-68, AP-67 | H-15 | ◐ |

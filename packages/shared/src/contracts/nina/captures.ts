@@ -9,6 +9,11 @@ import { Angle, NightKey, Text, UtcInstant, Uuid } from './common';
 
 export const NINA_CAPTURE_BATCH_MAX = 500;
 
+/**
+ * Messwerte je Aufnahme aus NINAs Bild-Metadaten (NIN5-10): fehlende Werte fehlen, nie 0. Seit AP-70 (Plugin 0.4.21) auch
+ * Guiding getrennt nach RA/Dec, Temperatur des Fokussierers und – flach, als Zahlen – die Werte des NINA-Wettergeräts
+ * (z. B. SkyAlert) während der Aufnahme.
+ */
 const Metrics = z.object({
   hfr: z.number().min(0).optional(),
   stars: z.number().int().min(0).optional(),
@@ -16,9 +21,24 @@ const Metrics = z.object({
   sensorTempC: z.number().optional(),
   setPointC: z.number().optional(),
   guidingRmsArcsec: z.number().min(0).optional(),
+  rmsRaArcsec: z.number().min(0).optional(),
+  rmsDecArcsec: z.number().min(0).optional(),
   altitudeDeg: z.number().min(-90).max(90).optional(),
   airmass: z.number().min(1).max(40).optional(),
   focusPosition: z.number().optional(),
+  focuserTemperatureC: z.number().optional(),
+  cloudCoverPct: z.number().min(0).max(100).optional(),
+  skyQualityMag: z.number().optional(),
+  skyBrightnessLux: z.number().min(0).optional(),
+  skyTemperatureC: z.number().optional(),
+  starFwhmArcsec: z.number().min(0).optional(),
+  airTemperatureC: z.number().optional(),
+  humidityPct: z.number().min(0).max(100).optional(),
+  dewPointC: z.number().optional(),
+  pressureHpa: z.number().min(0).optional(),
+  windSpeedMs: z.number().min(0).optional(),
+  windGustMs: z.number().min(0).optional(),
+  windDirectionDeg: z.number().min(0).max(360).optional(),
 });
 
 const common = {

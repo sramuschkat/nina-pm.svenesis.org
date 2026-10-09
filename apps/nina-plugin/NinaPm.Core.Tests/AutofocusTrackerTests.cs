@@ -37,6 +37,22 @@ public sealed class AutofocusTrackerTests
     }
 
     [Fact]
+    public void Erfolg_mit_Endposition_und_Temperatur_des_Fokussierers_nicht_endliche_Werte_fehlen()
+    {
+        // AP-70: Fokusdaten je Autofokus für Filter-Offsets (Rig-Nacht 08./09.10.2026: L/G ≈ 2020, R/B 40–50 Schritte höher).
+        var t = Tracker();
+        t.Starting("RED");
+        clock.Advance(TimeSpan.FromSeconds(110));
+        t.Completed("RED", 2075, 21.15);
+        Assert.Equal((2075d, 21.15d), (Assert.Single(runs).Position!.Value, runs[0].TemperatureC!.Value));
+
+        runs.Clear();
+        t.Starting("L");
+        t.Completed("L", 2023, double.NaN);
+        Assert.Equal((2023d, (double?)null), (runs[0].Position!.Value, runs[0].TemperatureC));
+    }
+
+    [Fact]
     public void Filter_der_Erfolgsmeldung_gilt_vor_dem_beim_Beginn()
     {
         var t = Tracker();

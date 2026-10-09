@@ -5,8 +5,9 @@
  * `nina.TELEMETRY_METRICS`.
  */
 import { z } from 'zod';
-import { telemetrySources } from '../generated/enums';
+import { heartbeatStates, telemetrySources } from '../generated/enums';
 import { UtcInstant, Uuid } from './common';
+import { NinaHeartbeat } from './nina/heartbeat';
 
 /** Rohwerte bleiben 90 Tage, danach nur Stundenwerte (Entscheidung Sven 08.10.2026). */
 export const TELEMETRY_RAW_RETENTION_DAYS = 90;
@@ -38,12 +39,32 @@ export const TelemetrySeries = z
   .meta({ id: 'TelemetrySeries' });
 export type TelemetrySeries = z.infer<typeof TelemetrySeries>;
 
+/**
+ * „Rig jetzt“ (AP-70, FA-RIG-19): jüngster Heartbeat-Zustand der NINA-Instanzen des Rigs – Zeitpunkt, Instanz, Zustand,
+ * Kamera, Filterrad (mit Fokus-Offsets) und Gerätestatus samt Wetter (`devices`, ab Plugin 0.4.21).
+ */
+export const RigLive = z
+  .object({
+    instanceId: Uuid,
+    instanceName: z.string(),
+    receivedAtUtc: UtcInstant,
+    state: z.enum(heartbeatStates).nullable(),
+    pluginVersion: z.string().nullable(),
+    camera: NinaHeartbeat.shape.camera.unwrap().unwrap().nullable(),
+    filterWheel: NinaHeartbeat.shape.filterWheel.unwrap().unwrap().nullable(),
+    devices: NinaHeartbeat.shape.devices.unwrap().unwrap().nullable(),
+  })
+  .meta({ id: 'RigLive' });
+export type RigLive = z.infer<typeof RigLive>;
+
 export const TelemetryView = z
   .object({
     rigId: Uuid,
     from: UtcInstant,
     to: UtcInstant,
     sources: z.array(TelemetrySeries),
+    /** `null`: keine NINA-Instanz am Rig bzw. noch kein Heartbeat. */
+    live: RigLive.nullable(),
   })
   .meta({ id: 'TelemetryView' });
 export type TelemetryView = z.infer<typeof TelemetryView>;

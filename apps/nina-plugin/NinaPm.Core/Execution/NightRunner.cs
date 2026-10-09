@@ -1329,6 +1329,9 @@ public sealed class NightRunner(
         log.Event("AF", ("block", run.BlockId), ("result", result), ("filter", run.Filter), ("durationS", run.DurationS), ("atUtc", run.EndUtc));
         var data = new Dictionary<string, object> { ["result"] = result };
         if (run.Filter is { } filter) data["filter"] = filter;
+        // Fokusdaten für Filter-Offsets (AP-70): Endposition und Temperatur des Fokussierers.
+        if (run.Position is { } position) data["position"] = Math.Round(position, 1);
+        if (run.TemperatureC is { } temperature) data["temperatureC"] = Math.Round(temperature, 2);
         ReportEvent(EventsKind.Af, run.Ok ? null : "failed", run.BlockId, data: data, durationS: run.DurationS, projectId: run.ProjectId,
             occurredAtUtc: run.EndUtc);
     }

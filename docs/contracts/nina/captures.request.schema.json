@@ -161,6 +161,14 @@
                         "type": "number",
                         "minimum": 0
                       },
+                      "rmsRaArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "rmsDecArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
                       "altitudeDeg": {
                         "type": "number",
                         "minimum": -90,
@@ -173,6 +181,56 @@
                       },
                       "focusPosition": {
                         "type": "number"
+                      },
+                      "focuserTemperatureC": {
+                        "type": "number"
+                      },
+                      "cloudCoverPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "skyQualityMag": {
+                        "type": "number"
+                      },
+                      "skyBrightnessLux": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "skyTemperatureC": {
+                        "type": "number"
+                      },
+                      "starFwhmArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "airTemperatureC": {
+                        "type": "number"
+                      },
+                      "humidityPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "dewPointC": {
+                        "type": "number"
+                      },
+                      "pressureHpa": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windSpeedMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windGustMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windDirectionDeg": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
                       }
                     }
                   },
@@ -461,6 +519,14 @@
                         "type": "number",
                         "minimum": 0
                       },
+                      "rmsRaArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "rmsDecArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
                       "altitudeDeg": {
                         "type": "number",
                         "minimum": -90,
@@ -473,6 +539,56 @@
                       },
                       "focusPosition": {
                         "type": "number"
+                      },
+                      "focuserTemperatureC": {
+                        "type": "number"
+                      },
+                      "cloudCoverPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "skyQualityMag": {
+                        "type": "number"
+                      },
+                      "skyBrightnessLux": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "skyTemperatureC": {
+                        "type": "number"
+                      },
+                      "starFwhmArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "airTemperatureC": {
+                        "type": "number"
+                      },
+                      "humidityPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "dewPointC": {
+                        "type": "number"
+                      },
+                      "pressureHpa": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windSpeedMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windGustMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windDirectionDeg": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
                       }
                     }
                   },
@@ -672,6 +788,14 @@
                         "type": "number",
                         "minimum": 0
                       },
+                      "rmsRaArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "rmsDecArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
                       "altitudeDeg": {
                         "type": "number",
                         "minimum": -90,
@@ -684,6 +808,56 @@
                       },
                       "focusPosition": {
                         "type": "number"
+                      },
+                      "focuserTemperatureC": {
+                        "type": "number"
+                      },
+                      "cloudCoverPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "skyQualityMag": {
+                        "type": "number"
+                      },
+                      "skyBrightnessLux": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "skyTemperatureC": {
+                        "type": "number"
+                      },
+                      "starFwhmArcsec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "airTemperatureC": {
+                        "type": "number"
+                      },
+                      "humidityPct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "dewPointC": {
+                        "type": "number"
+                      },
+                      "pressureHpa": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windSpeedMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windGustMs": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "windDirectionDeg": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360
                       }
                     }
                   },

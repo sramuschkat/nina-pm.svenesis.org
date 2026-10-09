@@ -20039,6 +20039,7 @@ export interface components {
              */
             to: string;
             sources: components["schemas"]["TelemetrySeries"][];
+            live: components["schemas"]["RigLive"];
         };
         TelemetrySeries: {
             /** @enum {string} */
@@ -20065,6 +20066,86 @@ export interface components {
                 };
             } | null;
         };
+        RigLive: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            instanceId: string;
+            instanceName: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            receivedAtUtc: string;
+            /** @enum {string|null} */
+            state: "running" | "idle" | "paused" | "flats" | "offline" | "blocked" | null;
+            pluginVersion: string | null;
+            camera: {
+                temperatureC: number | null;
+                setPointC: number | null;
+                coolerOn: boolean;
+                coolerPowerPct: number | null;
+            } | null;
+            filterWheel: {
+                position: number;
+                name: string;
+                focusOffset: number;
+            }[] | null;
+            devices: components["schemas"]["NinaDevices"];
+        } | null;
+        NinaDevices: {
+            connected: {
+                camera: boolean;
+                mount: boolean;
+                focuser: boolean;
+                filterWheel: boolean;
+                rotator: boolean;
+                guider: boolean;
+                safetyMonitor: boolean;
+                weather: boolean;
+                flatDevice: boolean;
+                switch: boolean;
+                dome: boolean;
+            };
+            focuser: {
+                position: number;
+                temperatureC: number | null;
+                moving: boolean;
+            } | null;
+            mountState: {
+                /** @enum {string|null} */
+                pierSide: "east" | "west" | null;
+                tracking: boolean;
+                atPark: boolean;
+                slewing: boolean;
+                altitudeDeg: number | null;
+                azimuthDeg: number | null;
+            } | null;
+            guider: {
+                rmsTotalArcsec: number | null;
+                rmsRaArcsec: number | null;
+                rmsDecArcsec: number | null;
+            } | null;
+            filter: string | null;
+            safe: boolean | null;
+            weather: components["schemas"]["NinaWeatherNow"];
+        } | null;
+        NinaWeatherNow: {
+            cloudCoverPct?: number;
+            skyQualityMag?: number;
+            skyBrightnessLux?: number;
+            skyTemperatureC?: number;
+            starFwhmArcsec?: number;
+            temperatureC?: number;
+            humidityPct?: number;
+            dewPointC?: number;
+            pressureHpa?: number;
+            windSpeedMs?: number;
+            windGustMs?: number;
+            windDirectionDeg?: number;
+            rainRateMmH?: number;
+        } | null;
         DsoList: {
             items: components["schemas"]["DsoView"][];
             total: number;
@@ -22365,9 +22446,24 @@ export interface components {
                     sensorTempC?: number;
                     setPointC?: number;
                     guidingRmsArcsec?: number;
+                    rmsRaArcsec?: number;
+                    rmsDecArcsec?: number;
                     altitudeDeg?: number;
                     airmass?: number;
                     focusPosition?: number;
+                    focuserTemperatureC?: number;
+                    cloudCoverPct?: number;
+                    skyQualityMag?: number;
+                    skyBrightnessLux?: number;
+                    skyTemperatureC?: number;
+                    starFwhmArcsec?: number;
+                    airTemperatureC?: number;
+                    humidityPct?: number;
+                    dewPointC?: number;
+                    pressureHpa?: number;
+                    windSpeedMs?: number;
+                    windGustMs?: number;
+                    windDirectionDeg?: number;
                 };
                 /** @enum {string} */
                 frameType: "light";
@@ -22457,9 +22553,24 @@ export interface components {
                     sensorTempC?: number;
                     setPointC?: number;
                     guidingRmsArcsec?: number;
+                    rmsRaArcsec?: number;
+                    rmsDecArcsec?: number;
                     altitudeDeg?: number;
                     airmass?: number;
                     focusPosition?: number;
+                    focuserTemperatureC?: number;
+                    cloudCoverPct?: number;
+                    skyQualityMag?: number;
+                    skyBrightnessLux?: number;
+                    skyTemperatureC?: number;
+                    starFwhmArcsec?: number;
+                    airTemperatureC?: number;
+                    humidityPct?: number;
+                    dewPointC?: number;
+                    pressureHpa?: number;
+                    windSpeedMs?: number;
+                    windGustMs?: number;
+                    windDirectionDeg?: number;
                 };
                 projectIds: string[];
                 flatsPlanned?: number;
@@ -22512,9 +22623,24 @@ export interface components {
                     sensorTempC?: number;
                     setPointC?: number;
                     guidingRmsArcsec?: number;
+                    rmsRaArcsec?: number;
+                    rmsDecArcsec?: number;
                     altitudeDeg?: number;
                     airmass?: number;
                     focusPosition?: number;
+                    focuserTemperatureC?: number;
+                    cloudCoverPct?: number;
+                    skyQualityMag?: number;
+                    skyBrightnessLux?: number;
+                    skyTemperatureC?: number;
+                    starFwhmArcsec?: number;
+                    airTemperatureC?: number;
+                    humidityPct?: number;
+                    dewPointC?: number;
+                    pressureHpa?: number;
+                    windSpeedMs?: number;
+                    windGustMs?: number;
+                    windDirectionDeg?: number;
                 };
                 projectIds: string[];
                 flatsPlanned?: number;
@@ -22654,6 +22780,7 @@ export interface components {
                 coolerPowerPct: number | null;
             } | null;
             lastMeasuredRotationDeg?: number | null;
+            devices?: components["schemas"]["NinaDevices"];
             filterWheel?: {
                 position: number;
                 name: string;

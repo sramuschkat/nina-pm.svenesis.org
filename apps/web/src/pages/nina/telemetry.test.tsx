@@ -5,7 +5,7 @@
  * empfangen“ und still); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
@@ -114,11 +114,63 @@ const boxView = series('power_box', {
   },
   latest: { atUtc: t2, values: { airC: 18.2, dewPointC: 15.6, humidityPct: 74 } },
 });
-const view = (sources: TelemetrySeries[]): TelemetryView => ({
+const view = (sources: TelemetrySeries[], live: TelemetryView['live'] = null): TelemetryView => ({
   rigId: ID(500),
   from: '2026-10-07T06:10:00Z',
   to: '2026-10-08T06:10:00Z',
   sources,
+  live,
+});
+
+/** Jüngster Heartbeat mit Gerätestatus und SkyAlert-Wetter (AP-70); Standortzeit CDT, „jetzt“ 06:10Z. */
+const live = (
+  over: Partial<NonNullable<TelemetryView['live']>> = {},
+): NonNullable<TelemetryView['live']> => ({
+  instanceId: ID(600),
+  instanceName: 'SFRO',
+  receivedAtUtc: '2026-10-08T06:09:00Z',
+  state: 'running',
+  pluginVersion: '0.4.21',
+  camera: { temperatureC: -10, setPointC: -10, coolerOn: true, coolerPowerPct: 38 },
+  filterWheel: [
+    { position: 1, name: 'LUMINOS', focusOffset: 0 },
+    { position: 2, name: 'RED', focusOffset: 0 },
+  ],
+  devices: {
+    connected: {
+      camera: true,
+      mount: true,
+      focuser: true,
+      filterWheel: true,
+      rotator: false,
+      guider: true,
+      safetyMonitor: true,
+      weather: true,
+      flatDevice: true,
+      switch: true,
+      dome: false,
+    },
+    focuser: { position: 2050, temperatureC: 17.4, moving: false },
+    mountState: {
+      pierSide: 'east',
+      tracking: true,
+      atPark: false,
+      slewing: false,
+      altitudeDeg: 42.5,
+      azimuthDeg: 359.4,
+    },
+    guider: { rmsTotalArcsec: 0.62, rmsRaArcsec: 0.41, rmsDecArcsec: 0.46 },
+    filter: 'LUMINOS',
+    safe: true,
+    weather: {
+      cloudCoverPct: 0,
+      skyQualityMag: 21.62,
+      temperatureC: 11.2,
+      dewPointC: 9.1,
+      windSpeedMs: 2.5,
+    },
+  },
+  ...over,
 });
 
 const renderAt = (path: string) =>
@@ -286,6 +338,48 @@ describe('S-43 Rig-Zustand', () => {
     state.view = view([series('pc'), series('power_box')]);
     renderAt('/rig-zustand');
     expect(await screen.findByText('Noch keine Telemetrie')).toBeTruthy();
+  });
+
+  it('„Rig jetzt“ (AP-70): Gerätestatus, Hinweis ohne Filter-Offsets, Taupunkt-Warnung, verbundene Geräte', async () => {
+    state.view = view([pcView, boxView], live());
+    renderAt('/rig-zustand');
+    const card = await screen.findByRole('region', { name: 'Rig jetzt' });
+    expect(within(card).getByText(/01:09 CDT · SFRO · läuft/)).toBeTruthy();
+    expect(within(card).getByText('-10 °C · Soll -10 °C · Kühlung 38 %')).toBeTruthy();
+    expect(within(card).getByText('Pier Ost · führt nach · Höhe 43°')).toBeTruthy();
+    expect(within(card).getByText('2050 · 17,4 °C')).toBeTruthy();
+    expect(within(card).getByText('LUMINOS · keine Filter-Offsets in NINA')).toBeTruthy();
+    expect(within(card).getByText('RMS 0,62″ (RA 0,41″ · Dec 0,46″)')).toBeTruthy();
+    // SkyAlert: nur gelieferte Werte; 11,2 − 9,1 = 2,1 K < 3 K → Taupunkt hervorgehoben.
+    expect(within(card).getByText('21,62 mag/″²')).toBeTruthy();
+    expect(within(card).getByText('9,1 °C').closest('div')?.className).toMatch(/valueWarn/);
+    expect(within(card).queryByText('Luftdruck')).toBeNull();
+    const devices = within(card).getByRole('list', { name: 'Verbundene Geräte' });
+    expect(within(devices).getByText('Rotator').closest('li')?.getAttribute('data-connected')).toBe(
+      'false',
+    );
+    expect(within(devices).getByText('Kamera').closest('li')?.getAttribute('data-connected')).toBe(
+      'true',
+    );
+  });
+
+  it('„Rig jetzt“: älteres Plugin ohne Gerätestatus, veraltet hervorgehoben; ohne Heartbeat ein Hinweis', async () => {
+    state.view = view(
+      [pcView, boxView],
+      live({ devices: null, receivedAtUtc: '2026-10-08T05:50:00Z' }),
+    );
+    renderAt('/rig-zustand');
+    const card = await screen.findByRole('region', { name: 'Rig jetzt' });
+    expect(within(card).getByText(/still seit 00:50 CDT \(vor 20 min\)/)).toBeTruthy();
+    expect(within(card).getByText('Gerätestatus und Wetter ab Plugin 0.4.21.')).toBeTruthy();
+    cleanup();
+    state.view = view([pcView, boxView]);
+    renderAt('/rig-zustand');
+    expect(
+      await within(await screen.findByRole('region', { name: 'Rig jetzt' })).findByText(
+        'Noch kein Heartbeat einer NINA-Instanz an diesem Rig.',
+      ),
+    ).toBeTruthy();
   });
 
   it('Fehler der API: Problemanzeige mit Wiederholen', async () => {

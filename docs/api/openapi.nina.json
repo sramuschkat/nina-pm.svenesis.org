@@ -2103,6 +2103,14 @@
                       "type": "number",
                       "minimum": 0
                     },
+                    "rmsRaArcsec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "rmsDecArcsec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
                     "altitudeDeg": {
                       "type": "number",
                       "minimum": -90,
@@ -2115,6 +2123,56 @@
                     },
                     "focusPosition": {
                       "type": "number"
+                    },
+                    "focuserTemperatureC": {
+                      "type": "number"
+                    },
+                    "cloudCoverPct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "skyQualityMag": {
+                      "type": "number"
+                    },
+                    "skyBrightnessLux": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "skyTemperatureC": {
+                      "type": "number"
+                    },
+                    "starFwhmArcsec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "airTemperatureC": {
+                      "type": "number"
+                    },
+                    "humidityPct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "dewPointC": {
+                      "type": "number"
+                    },
+                    "pressureHpa": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "windSpeedMs": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "windGustMs": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "windDirectionDeg": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 360
                     }
                   }
                 },
@@ -2275,6 +2333,175 @@
         },
         "required": [
           "results"
+        ]
+      },
+      "NinaDevices": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "connected": {
+            "type": "object",
+            "properties": {
+              "camera": {
+                "type": "boolean"
+              },
+              "mount": {
+                "type": "boolean"
+              },
+              "focuser": {
+                "type": "boolean"
+              },
+              "filterWheel": {
+                "type": "boolean"
+              },
+              "rotator": {
+                "type": "boolean"
+              },
+              "guider": {
+                "type": "boolean"
+              },
+              "safetyMonitor": {
+                "type": "boolean"
+              },
+              "weather": {
+                "type": "boolean"
+              },
+              "flatDevice": {
+                "type": "boolean"
+              },
+              "switch": {
+                "type": "boolean"
+              },
+              "dome": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "camera",
+              "mount",
+              "focuser",
+              "filterWheel",
+              "rotator",
+              "guider",
+              "safetyMonitor",
+              "weather",
+              "flatDevice",
+              "switch",
+              "dome"
+            ]
+          },
+          "focuser": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "position": {
+                "type": "number"
+              },
+              "temperatureC": {
+                "type": "number",
+                "nullable": true
+              },
+              "moving": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "position",
+              "temperatureC",
+              "moving"
+            ]
+          },
+          "mountState": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "pierSide": {
+                "type": "string",
+                "nullable": true,
+                "enum": [
+                  "east",
+                  "west",
+                  null
+                ]
+              },
+              "tracking": {
+                "type": "boolean"
+              },
+              "atPark": {
+                "type": "boolean"
+              },
+              "slewing": {
+                "type": "boolean"
+              },
+              "altitudeDeg": {
+                "type": "number",
+                "nullable": true,
+                "minimum": -90,
+                "maximum": 90
+              },
+              "azimuthDeg": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0,
+                "maximum": 360
+              }
+            },
+            "required": [
+              "pierSide",
+              "tracking",
+              "atPark",
+              "slewing",
+              "altitudeDeg",
+              "azimuthDeg"
+            ]
+          },
+          "guider": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "rmsTotalArcsec": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0
+              },
+              "rmsRaArcsec": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0
+              },
+              "rmsDecArcsec": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0
+              }
+            },
+            "required": [
+              "rmsTotalArcsec",
+              "rmsRaArcsec",
+              "rmsDecArcsec"
+            ]
+          },
+          "filter": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "safe": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "weather": {
+            "$ref": "#/components/schemas/NinaWeatherNow"
+          }
+        },
+        "required": [
+          "connected",
+          "focuser",
+          "mountState",
+          "guider",
+          "filter",
+          "safe",
+          "weather"
         ]
       },
       "NinaEventBatch": {
@@ -2678,6 +2905,9 @@
             "nullable": true,
             "minimum": -360,
             "maximum": 360
+          },
+          "devices": {
+            "$ref": "#/components/schemas/NinaDevices"
           },
           "filterWheel": {
             "type": "array",
@@ -5786,6 +6016,63 @@
           "duskUtc",
           "dawnUtc"
         ]
+      },
+      "NinaWeatherNow": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "cloudCoverPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "skyQualityMag": {
+            "type": "number"
+          },
+          "skyBrightnessLux": {
+            "type": "number",
+            "minimum": 0
+          },
+          "skyTemperatureC": {
+            "type": "number"
+          },
+          "starFwhmArcsec": {
+            "type": "number",
+            "minimum": 0
+          },
+          "temperatureC": {
+            "type": "number"
+          },
+          "humidityPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "dewPointC": {
+            "type": "number"
+          },
+          "pressureHpa": {
+            "type": "number",
+            "minimum": 0
+          },
+          "windSpeedMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "windGustMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "windDirectionDeg": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360
+          },
+          "rainRateMmH": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
       },
       "ProblemDetails": {
         "type": "object",
