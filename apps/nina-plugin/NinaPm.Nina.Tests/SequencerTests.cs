@@ -262,6 +262,61 @@ public sealed class SequencerTests
         Assert.Null(hb.Mount);
         Assert.Null(hb.Camera);
         Assert.False(hb.Rotator!.Connected);
+        // AP-70: Gerätestatus auch ohne verbundene Geräte (Mocks liefern keine Info) – nichts verbunden, keine Werte.
+        Assert.False(hb.Devices!.Connected.Camera);
+        Assert.False(hb.Devices.Connected.Weather);
+        Assert.Null(hb.Devices.MountState);
+        Assert.Null(hb.Devices.Weather);
+        Assert.Null(hb.Devices.Safe);
+    }
+
+    [Fact]
+    public void Wetter_jetzt_nur_mit_gelieferten_Werten()
+    {
+        // AP-70: SkyAlert liefert nicht jeden Wert – NaN bzw. außerhalb des Vertragsbereichs fehlt.
+        var w = NinaSettingsSource.WeatherNow(new NINA.Equipment.Equipment.MyWeatherData.WeatherDataInfo
+        {
+            Connected = true,
+            CloudCover = 12,
+            SkyQuality = 21.4,
+            Temperature = 17.1,
+            DewPoint = 8.3,
+            Humidity = 55,
+            WindSpeed = 2.5,
+            SkyBrightness = double.NaN,
+            Pressure = double.NaN,
+            WindDirection = 400,
+            RainRate = double.NaN,
+            StarFWHM = double.NaN,
+            SkyTemperature = -18.5,
+            WindGust = double.NaN,
+        });
+        Assert.Equal((12d, 21.4d, 17.1d, 8.3d, 55d, 2.5d, -18.5d), (w.CloudCoverPct!.Value, w.SkyQualityMag!.Value, w.TemperatureC!.Value,
+            w.DewPointC!.Value, w.HumidityPct!.Value, w.WindSpeedMs!.Value, w.SkyTemperatureC!.Value));
+        Assert.Null(w.SkyBrightnessLux);
+        Assert.Null(w.PressureHpa);
+        Assert.Null(w.WindDirectionDeg);
+        Assert.Null(w.RainRateMmH);
+    }
+
+    [Fact]
+    public void Messwerte_je_Aufnahme_aus_den_Bild_Metadaten()
+    {
+        // AP-70: RMS in Bogensekunden (Pixel × Bildmaßstab), Höhe, Luftmasse, Fokussierer, Wetter – NaN fehlt.
+        var md = new NINA.Image.ImageData.ImageMetaData();
+        md.Telescope.Altitude = 42.5;
+        md.Telescope.Airmass = 1.47;
+        md.Focuser.Position = 2050;
+        md.Focuser.Temperature = 17.4;
+        md.WeatherData.CloudCover = 0;
+        md.WeatherData.SkyQuality = 21.6;
+        md.WeatherData.Temperature = double.NaN;
+        var metrics = new Metrics();
+        NinaHost.AddMetaData(metrics, md);
+        Assert.Equal((42.5d, 1.47d, 2050d, 17.4d, 0d, 21.6d), (metrics.AltitudeDeg!.Value, metrics.Airmass!.Value,
+            metrics.FocusPosition!.Value, metrics.FocuserTemperatureC!.Value, metrics.CloudCoverPct!.Value, metrics.SkyQualityMag!.Value));
+        Assert.Null(metrics.AirTemperatureC);
+        Assert.Null(metrics.GuidingRmsArcsec); // ohne aufgezeichnetes Guiding
     }
 
     // ---- Bildpipeline: Plugin-Belichtung durch NINAs Sequenz und ImageSaved (execution.md §4.3, NT-10, NT-34) ----

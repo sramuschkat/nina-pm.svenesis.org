@@ -4,8 +4,79 @@
  * `serverTimeUtc`, `settingsVersion`, `targetsEtag` und `commands[]`.
  */
 import { z } from 'zod';
-import { blockedReasons, heartbeatStates, ninaCommands } from '../../generated/enums';
+import { blockedReasons, heartbeatStates, ninaCommands, pierSides } from '../../generated/enums';
 import { Angle, Lease, Text, UtcInstant, Uuid, Version } from './common';
+
+/** Aktuelle Werte des NINA-Wettergeräts (z. B. SkyAlert, AP-70); was das Gerät nicht liefert, fehlt. */
+export const NinaWeatherNow = z
+  .object({
+    cloudCoverPct: z.number().min(0).max(100).optional(),
+    skyQualityMag: z.number().optional(),
+    skyBrightnessLux: z.number().min(0).optional(),
+    skyTemperatureC: z.number().optional(),
+    starFwhmArcsec: z.number().min(0).optional(),
+    temperatureC: z.number().optional(),
+    humidityPct: z.number().min(0).max(100).optional(),
+    dewPointC: z.number().optional(),
+    pressureHpa: z.number().min(0).optional(),
+    windSpeedMs: z.number().min(0).optional(),
+    windGustMs: z.number().min(0).optional(),
+    windDirectionDeg: z.number().min(0).max(360).optional(),
+    rainRateMmH: z.number().min(0).optional(),
+  })
+  .meta({ id: 'NinaWeatherNow' });
+
+/**
+ * Gerätestatus jetzt (AP-70, Plugin 0.4.21) für die Karte „Rig jetzt“ (S-43): verbundene Geräte, Fokussierer, Montierung,
+ * Guider, eingelegter Filter, Safety und Wetter. Nur Anzeige; Kamera und Filterrad stehen in `camera` bzw. `filterWheel`.
+ */
+export const NinaDevices = z
+  .object({
+    connected: z.object({
+      camera: z.boolean(),
+      mount: z.boolean(),
+      focuser: z.boolean(),
+      filterWheel: z.boolean(),
+      rotator: z.boolean(),
+      guider: z.boolean(),
+      safetyMonitor: z.boolean(),
+      weather: z.boolean(),
+      flatDevice: z.boolean(),
+      switch: z.boolean(),
+      dome: z.boolean(),
+    }),
+    focuser: z
+      .object({
+        position: z.number(),
+        temperatureC: z.number().nullable(),
+        moving: z.boolean(),
+      })
+      .nullable(),
+    mountState: z
+      .object({
+        pierSide: z.enum(pierSides).nullable(),
+        tracking: z.boolean(),
+        atPark: z.boolean(),
+        slewing: z.boolean(),
+        altitudeDeg: z.number().min(-90).max(90).nullable(),
+        azimuthDeg: z.number().min(0).max(360).nullable(),
+      })
+      .nullable(),
+    /** Laufender RMS des Guiders (NINAs Fenster der letzten Korrekturen); einen Zustand „Guiding läuft“ kennt NINA nicht. */
+    guider: z
+      .object({
+        rmsTotalArcsec: z.number().min(0).nullable(),
+        rmsRaArcsec: z.number().min(0).nullable(),
+        rmsDecArcsec: z.number().min(0).nullable(),
+      })
+      .nullable(),
+    /** NINAs Name des eingelegten Filters; `null` ohne Filterrad bzw. unbekannt. */
+    filter: Text.nullable(),
+    /** Safety-Monitor sicher (`true`) bzw. unsicher; `null` = kein Monitor verbunden. */
+    safe: z.boolean().nullable(),
+    weather: NinaWeatherNow.nullable(),
+  })
+  .meta({ id: 'NinaDevices' });
 
 export const NinaHeartbeat = z
   .object({
@@ -77,6 +148,7 @@ export const NinaHeartbeat = z
       .nullable()
       .optional(),
     lastMeasuredRotationDeg: Angle.nullable().optional(),
+    devices: NinaDevices.nullable().optional(),
     filterWheel: z
       .array(z.object({ position: z.number().int().min(1), name: Text, focusOffset: z.number() }))
       .max(64)

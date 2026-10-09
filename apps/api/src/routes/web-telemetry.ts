@@ -19,7 +19,7 @@ import {
 } from '@nina-pm/shared';
 import { hourStats, type RigTelemetryRepository } from '@nina-pm/db';
 import type { ApiEnv } from '../lib/env';
-import { bucket, rawPoint, seriesOf, stepFor, type StatPoint } from '../telemetry/view';
+import { bucket, rawPoint, rigLive, seriesOf, stepFor, type StatPoint } from '../telemetry/view';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
@@ -111,11 +111,12 @@ export function webTelemetryRoutes(services: () => Promise<ApiServices>) {
     if (!(await repos.equipment().rig(id))) throw new ProblemError('resource.not_found');
     const repo = repos.telemetry();
     const now = svc.now();
-    const sources = await Promise.all(
-      telemetrySources.map((s) => sourceSeries(repo, id, s, from, to, now)),
-    );
+    const [sources, instances] = await Promise.all([
+      Promise.all(telemetrySources.map((s) => sourceSeries(repo, id, s, from, to, now))),
+      repos.ninaInstances().list(id),
+    ]);
     c.header('cache-control', 'no-store');
-    return c.json({ rigId: id, from: q.from, to: q.to, sources }, 200);
+    return c.json({ rigId: id, from: q.from, to: q.to, sources, live: rigLive(instances) }, 200);
   });
   return app;
 }

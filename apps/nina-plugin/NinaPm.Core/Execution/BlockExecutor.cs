@@ -387,7 +387,8 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         // Vor dem ersten Block der Nacht bzw. nach langem Warten: Fokus auffrischen (AP-68), auf dem Ziel und vor dem Guiding.
         // Die Zeit geht über den Startverzug in den Verzug ein.
         if (AutofocusRules.BeforeBlockDue(options.Autofocus, host.LastAutofocusUtc, clock.UtcNow) && TransitAllowsAutofocus(block))
-            await AutofocusAsync(run, "block_start", seq: null, token).ConfigureAwait(false);
+            await AutofocusAsync(run, "block_start", seq: null,
+                block.Entries.FirstOrDefault(e => e.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series), token).ConfigureAwait(false);
         // Startverzug: tatsächlicher minus geplanter Beginn der Einträge nach dem Zentrieren (§4.2, NT-21).
         var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
         if (plannedEntries is { } p && clock.UtcNow > p) run.Offset = clock.UtcNow - p;
@@ -491,13 +492,17 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// <summary>
     /// Autofokus des Plugins über NINAs <em>Run Autofocus</em> (AP-68). Scheitert er, läuft der Block weiter (Hinweis im
     /// Log); NINAs Fokussierer-Mediator meldet Beginn und Ergebnis wie bei jedem Autofokus (<c>AF</c>, AP-65).
+    /// Vorher legt das Plugin den Filter der Belichtung <paramref name="exposure"/> ein (AP-70): sonst fokussierte es mit dem
+    /// Filter, der noch im Rad lag (Rig-Nacht 08./09.10.2026: B für einen L-Block, SII für ein B-Bild), und ohne Filter-Offsets
+    /// in NINA war der Fokus bis zum nächsten Autofokus daneben.
     /// </summary>
-    private async Task<bool> AutofocusAsync(Run run, string reason, int? seq, CancellationToken token)
+    private async Task<bool> AutofocusAsync(Run run, string reason, int? seq, Entries? exposure, CancellationToken token)
     {
         log.Event("AF_START", ("block", run.Block.Id), ("reason", reason));
         Activity = new BlockActivity(BlockActivityKind.Autofocus, clock.UtcNow, Seq: seq);
         try
         {
+            if (exposure is { Filter: not null }) await host.ChangeFilterAsync(exposure, token).ConfigureAwait(false);
             if (await host.AutofocusAsync(token).ConfigureAwait(false)) return true;
             log.Note($"Block {run.Block.Id}: autofocus failed or not possible – the block continues");
             return false;
@@ -969,7 +974,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 // zurück – vorher wartete es den Slot ab (WAIT_PLAN ≈ 5 min) und NINA fokussierte zu anderer Zeit noch einmal.
                 if (AutofocusRules.HintDue(run.Options.Autofocus, host.LastAutofocusUtc, clock.UtcNow))
                 {
-                    await AutofocusAsync(run, "plan", e.Seq, token).ConfigureAwait(false);
+                    await AutofocusAsync(run, "plan", e.Seq, block.Entries[nextExpose], token).ConfigureAwait(false);
                     Settle(run, started, e.DurationS ?? 0);
                     outcomes[e.Seq] = EntryOutcome.Done;
                 }

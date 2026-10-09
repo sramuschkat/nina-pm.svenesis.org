@@ -12,6 +12,7 @@ namespace NinaPm.Nina.Adapters;
 /// NINAs Mediatoren, die der Container per MEF erhält und an Adapter und interne Elemente weitergibt. <c>Focuser</c> zuletzt
 /// und optional (AP-65: Autofokus-Läufe melden); ohne Fokussierer-Mediator (Adapter-Tests) keine <c>af</c>-Ereignisse.
 /// <c>AutoFocusFactory</c> (AP-68) für den eigenen Autofokus über NINAs <em>Run Autofocus</em>; ohne sie kein eigener Autofokus.
+/// Wetter, Flat-Panel und Schalter (AP-70) nur für den Gerätestatus im Heartbeat; ohne sie gelten sie als nicht verbunden.
 /// </summary>
 internal sealed record NinaMediators(
     IProfileService Profile,
@@ -29,4 +30,7 @@ internal sealed record NinaMediators(
     IImageHistoryVM ImageHistory,
     ISafetyMonitorMediator SafetyMonitor,
     IFocuserMediator? Focuser = null,
-    NINA.WPF.Base.Interfaces.IAutoFocusVMFactory? AutoFocusFactory = null);
+    NINA.WPF.Base.Interfaces.IAutoFocusVMFactory? AutoFocusFactory = null,
+    IWeatherDataMediator? Weather = null,
+    IFlatDeviceMediator? FlatDevice = null,
+    ISwitchMediator? Switch = null);

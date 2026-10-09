@@ -44,6 +44,9 @@ public sealed class AutofocusWatcherTests
         var af = store.OutboxPayloads(OutboxKinds.Event).Select(JObject.Parse).Single(e => (string?)e["kind"] == "af");
         Assert.Equal("ok", (string?)af["data"]!["result"]);
         Assert.Equal("Luminance", (string?)af["data"]!["filter"]);
+        // AP-70: Endposition und Temperatur aus NINAs Bericht (AutoFocusInfo(temperature, position, …)).
+        Assert.Equal(1000, (double)af["data"]!["position"]!);
+        Assert.Equal(-5, (double)af["data"]!["temperatureC"]!);
         Assert.Null((string?)af["code"]);
 
         // Filterrad wirft: NINAs Autofokus läuft ungestört weiter, der Lauf zählt ohne Filter.

@@ -5,7 +5,13 @@
  * Mehr als `TELEMETRY_MAX_POINTS` Punkte werden in Zeitfenster verdichtet (Fensterbeginn als Zeitpunkt, Mittel nach
  * Anzahl gewichtet, Minimum des Minimums, Maximum des Maximums).
  */
-import { nina, TELEMETRY_MAX_POINTS, type TelemetrySeries } from '@nina-pm/shared';
+import {
+  heartbeatStates,
+  nina,
+  RigLive,
+  TELEMETRY_MAX_POINTS,
+  type TelemetrySeries,
+} from '@nina-pm/shared';
 import type { TelemetryStat } from '@nina-pm/db';
 
 export interface StatPoint {
@@ -81,4 +87,50 @@ export function seriesOf(
     series,
     latest: latest ? { atUtc: isoUtc(latest.atUtc.getTime()), values: latest.metrics } : null,
   };
+}
+
+/** Eine NINA-Instanz mit ihrem zuletzt gespeicherten Heartbeat (`nina_instance.last_state`, jsonb – in PGlite als Text). */
+export interface InstanceState {
+  readonly id: string;
+  readonly name: string;
+  readonly lastState: unknown;
+}
+
+interface LastState {
+  receivedAtUtc?: string;
+  state?: string;
+  pluginVersion?: string;
+  camera?: unknown;
+  filterWheel?: unknown;
+  devices?: unknown;
+}
+
+/**
+ * „Rig jetzt“ (AP-70, FA-RIG-19): der jüngste Heartbeat unter den Instanzen des Rigs. Instanzen ohne Heartbeat (z. B. die
+ * Telemetrie-Instanz, die nur Messwerte hochlädt) zählen nicht; ohne Heartbeat `null`. Felder, die ein älteres Plugin nicht
+ * meldet, sind `null`.
+ */
+export function rigLive(instances: readonly InstanceState[]): RigLive | null {
+  let best: { inst: InstanceState; st: LastState; at: number } | null = null;
+  for (const inst of instances) {
+    const raw =
+      typeof inst.lastState === 'string' ? (JSON.parse(inst.lastState) as unknown) : inst.lastState;
+    if (!raw || typeof raw !== 'object') continue;
+    const st = raw as LastState;
+    const at = st.receivedAtUtc ? Date.parse(st.receivedAtUtc) : NaN;
+    if (!Number.isFinite(at)) continue;
+    if (!best || at > best.at) best = { inst, st, at };
+  }
+  if (!best) return null;
+  const { inst, st } = best;
+  return RigLive.parse({
+    instanceId: inst.id,
+    instanceName: inst.name,
+    receivedAtUtc: st.receivedAtUtc,
+    state: (heartbeatStates as readonly string[]).includes(st.state ?? '') ? st.state : null,
+    pluginVersion: st.pluginVersion ?? null,
+    camera: st.camera ?? null,
+    filterWheel: st.filterWheel ?? null,
+    devices: st.devices ?? null,
+  });
 }

@@ -592,9 +592,51 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
             SensorTempC = e.MetaData?.Camera is { } cam && double.IsFinite(cam.Temperature) ? cam.Temperature : null,
             SetPointC = e.MetaData?.Camera is { } cam2 && double.IsFinite(cam2.SetPoint) ? cam2.SetPoint : null,
         };
+        if (e.MetaData is { } md) AddMetaData(metrics, md);
         try { Rules.Saved(facts, metrics, file); }
         finally { Interlocked.Decrement(ref unsettled); }
         ReleaseIfDrained();
+    }
+
+    /// <summary>
+    /// Messwerte je Aufnahme aus NINAs Bild-Metadaten (AP-70, NIN5-10): Guiding während der Belichtung (gesamt, RA, Dec in
+    /// Bogensekunden = Pixel × Bildmaßstab; nur mit Messpunkten), Höhe und Luftmasse der Montierung, Position und Temperatur des
+    /// Fokussierers und die Werte des Wettergeräts (z. B. SkyAlert). Was NINA nicht kennt (NaN, außerhalb des Bereichs), fehlt.
+    /// </summary>
+    internal static void AddMetaData(Metrics metrics, NINA.Image.ImageData.ImageMetaData md)
+    {
+        if (md.Image?.RecordedRMS is { DataPoints: > 0 } rms && double.IsFinite(rms.Scale) && rms.Scale > 0)
+        {
+            double? Arcsec(double px) => NinaSettingsSource.NonNegative(Math.Round(px * rms.Scale, 3));
+            metrics.GuidingRmsArcsec = Arcsec(rms.Total);
+            metrics.RmsRaArcsec = Arcsec(rms.RA);
+            metrics.RmsDecArcsec = Arcsec(rms.Dec);
+        }
+        if (md.Telescope is { } scope)
+        {
+            metrics.AltitudeDeg = NinaSettingsSource.InRange(scope.Altitude, -90, 90);
+            metrics.Airmass = NinaSettingsSource.InRange(scope.Airmass, 1, 40);
+        }
+        if (md.Focuser is { } focuser)
+        {
+            metrics.FocusPosition = focuser.Position is { } p && p > 0 ? p : null;
+            metrics.FocuserTemperatureC = double.IsFinite(focuser.Temperature) ? focuser.Temperature : null;
+        }
+        if (md.WeatherData is { } w)
+        {
+            metrics.CloudCoverPct = NinaSettingsSource.InRange(w.CloudCover, 0, 100);
+            metrics.SkyQualityMag = double.IsFinite(w.SkyQuality) ? w.SkyQuality : null;
+            metrics.SkyBrightnessLux = NinaSettingsSource.NonNegative(w.SkyBrightness);
+            metrics.SkyTemperatureC = double.IsFinite(w.SkyTemperature) ? w.SkyTemperature : null;
+            metrics.StarFwhmArcsec = NinaSettingsSource.NonNegative(w.StarFWHM);
+            metrics.AirTemperatureC = double.IsFinite(w.Temperature) ? w.Temperature : null;
+            metrics.HumidityPct = NinaSettingsSource.InRange(w.Humidity, 0, 100);
+            metrics.DewPointC = double.IsFinite(w.DewPoint) ? w.DewPoint : null;
+            metrics.PressureHpa = NinaSettingsSource.NonNegative(w.Pressure);
+            metrics.WindSpeedMs = NinaSettingsSource.NonNegative(w.WindSpeed);
+            metrics.WindGustMs = NinaSettingsSource.NonNegative(w.WindGust);
+            metrics.WindDirectionDeg = NinaSettingsSource.InRange(w.WindDirection, 0, 360);
+        }
     }
 
     private void ReleaseIfDrained()

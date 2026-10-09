@@ -30,6 +30,7 @@ import {
   type TelemetryRange,
 } from './telemetry-model';
 import ninaStyles from './nina.module.css';
+import { RigLiveCard } from './RigLiveCard';
 import styles from './telemetry.module.css';
 
 /** Kennzahlen je Quelle oben auf der Seite. */
@@ -194,12 +195,20 @@ export function TelemetryPage() {
           {t('common.loading')}
         </p>
       ) : noData ? (
-        <div className={styles.emptyCard}>
-          <h2>{t('telemetry.emptyTitle')}</h2>
-          <p>{t('telemetry.emptyText')}</p>
-        </div>
+        <>
+          {data.data ? (
+            <RigLiveCard live={data.data.live} nowMs={nowMs} timeZone={timeZone} />
+          ) : null}
+          <div className={styles.emptyCard}>
+            <h2>{t('telemetry.emptyTitle')}</h2>
+            <p>{t('telemetry.emptyText')}</p>
+          </div>
+        </>
       ) : (
         <>
+          {data.data ? (
+            <RigLiveCard live={data.data.live} nowMs={nowMs} timeZone={timeZone} />
+          ) : null}
           <div className={styles.tiles}>
             {CARD_GROUPS.map((g) => {
               const main = bySource.get(g.key);

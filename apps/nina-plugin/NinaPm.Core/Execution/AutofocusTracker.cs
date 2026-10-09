@@ -6,7 +6,8 @@ namespace NinaPm.Core.Execution;
 /// Ein abgeschlossener Autofokus-Lauf (execution.md §10.2, AP-65): Beginn und Ende, verwendeter Filter (falls bekannt),
 /// Ergebnis und der Block, der beim Beginn lief (außerhalb eines Blocks <c>null</c>).
 /// </summary>
-public sealed record AutofocusRun(DateTimeOffset StartUtc, DateTimeOffset EndUtc, string? Filter, bool Ok, Guid? BlockId, Guid? ProjectId)
+public sealed record AutofocusRun(DateTimeOffset StartUtc, DateTimeOffset EndUtc, string? Filter, bool Ok, Guid? BlockId, Guid? ProjectId,
+    double? Position = null, double? TemperatureC = null)
 {
     /// <summary>Dauer vom Beginn bis zum Ende in ganzen Sekunden (wie beim Flip), nie negativ.</summary>
     public double DurationS => Math.Max(0, Math.Round((EndUtc - StartUtc).TotalSeconds));
@@ -65,15 +66,17 @@ public sealed class AutofocusTracker(IClock clock, Func<(Guid BlockId, Guid Proj
     /// <summary>
     /// Autofokus erfolgreich (NINA <c>UpdateEndAutoFocusRun</c>): Ende = jetzt; Filter aus der Meldung, sonst der beim Beginn.
     /// Ohne offenen Lauf (Beginn nicht gesehen, z. B. Laufzeit erst währenddessen aufgebaut) keine Meldung – die Dauer ist unbekannt.
+    /// Seit AP-70 mit Endposition und Temperatur des Fokussierers aus NINAs Bericht (für Filter-Offsets); nicht endlich → weg.
     /// </summary>
-    public void Completed(string? filter)
+    public void Completed(string? filter, double? position = null, double? temperatureC = null)
     {
         AutofocusRun? run = null;
         lock (gate)
         {
             if (open is { } o)
             {
-                run = new AutofocusRun(o.StartUtc, clock.UtcNow, Blank(filter) ?? o.Filter, true, o.BlockId, o.ProjectId);
+                run = new AutofocusRun(o.StartUtc, clock.UtcNow, Blank(filter) ?? o.Filter, true, o.BlockId, o.ProjectId,
+                    Finite(position), Finite(temperatureC));
                 open = null;
             }
         }
@@ -90,6 +93,8 @@ public sealed class AutofocusTracker(IClock clock, Func<(Guid BlockId, Guid Proj
         lock (gate) run = CloseFailed(exact);
         if (run is not null) report(run);
     }
+
+    private static double? Finite(double? v) => v is { } x && double.IsFinite(x) ? x : null;
 
     private AutofocusRun? CloseFailed(bool exact)
     {

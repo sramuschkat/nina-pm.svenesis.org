@@ -368,6 +368,16 @@
             }
           ]
         },
+        "devices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NinaDevices"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "filterWheel": {
           "anyOf": [
             {
@@ -445,6 +455,300 @@
         "pluginVersion",
         "engineVersion"
       ]
+    },
+    "NinaDevices": {
+      "type": "object",
+      "properties": {
+        "connected": {
+          "type": "object",
+          "properties": {
+            "camera": {
+              "type": "boolean"
+            },
+            "mount": {
+              "type": "boolean"
+            },
+            "focuser": {
+              "type": "boolean"
+            },
+            "filterWheel": {
+              "type": "boolean"
+            },
+            "rotator": {
+              "type": "boolean"
+            },
+            "guider": {
+              "type": "boolean"
+            },
+            "safetyMonitor": {
+              "type": "boolean"
+            },
+            "weather": {
+              "type": "boolean"
+            },
+            "flatDevice": {
+              "type": "boolean"
+            },
+            "switch": {
+              "type": "boolean"
+            },
+            "dome": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "camera",
+            "mount",
+            "focuser",
+            "filterWheel",
+            "rotator",
+            "guider",
+            "safetyMonitor",
+            "weather",
+            "flatDevice",
+            "switch",
+            "dome"
+          ]
+        },
+        "focuser": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "number"
+                },
+                "temperatureC": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "moving": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "position",
+                "temperatureC",
+                "moving"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mountState": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "pierSide": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "east",
+                        "west"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tracking": {
+                  "type": "boolean"
+                },
+                "atPark": {
+                  "type": "boolean"
+                },
+                "slewing": {
+                  "type": "boolean"
+                },
+                "altitudeDeg": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "azimuthDeg": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 360
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "pierSide",
+                "tracking",
+                "atPark",
+                "slewing",
+                "altitudeDeg",
+                "azimuthDeg"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guider": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "rmsTotalArcsec": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rmsRaArcsec": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rmsDecArcsec": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "rmsTotalArcsec",
+                "rmsRaArcsec",
+                "rmsDecArcsec"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "safe": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "weather": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NinaWeatherNow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "connected",
+        "focuser",
+        "mountState",
+        "guider",
+        "filter",
+        "safe",
+        "weather"
+      ]
+    },
+    "NinaWeatherNow": {
+      "type": "object",
+      "properties": {
+        "cloudCoverPct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "skyQualityMag": {
+          "type": "number"
+        },
+        "skyBrightnessLux": {
+          "type": "number",
+          "minimum": 0
+        },
+        "skyTemperatureC": {
+          "type": "number"
+        },
+        "starFwhmArcsec": {
+          "type": "number",
+          "minimum": 0
+        },
+        "temperatureC": {
+          "type": "number"
+        },
+        "humidityPct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "dewPointC": {
+          "type": "number"
+        },
+        "pressureHpa": {
+          "type": "number",
+          "minimum": 0
+        },
+        "windSpeedMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "windGustMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "windDirectionDeg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360
+        },
+        "rainRateMmH": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
     }
   },
   "title": "Svenesis NINA-PM – NINA-API POST /heartbeat (TK 7.6)"

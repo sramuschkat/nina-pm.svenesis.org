@@ -1585,7 +1585,7 @@ public sealed class NightRunnerTests : IDisposable
                 // z. B. AutofocusAfterTimeTrigger vor der ersten Belichtung
                 runner.Autofocus.Starting("L");
                 clock.Advance(TimeSpan.FromSeconds(180));
-                runner.Autofocus.Completed("L");
+                runner.Autofocus.Completed("L", 2023.4, 20.157);
                 okEnd = clock.UtcNow;
             }
             if (n == 2)
@@ -1607,6 +1607,10 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Equal(180, (double)af[0]["durationS"]!);
         Assert.Equal("ok", (string?)af[0]["data"]!["result"]);
         Assert.Equal("L", (string?)af[0]["data"]!["filter"]);
+        // AP-70: Fokusdaten für Filter-Offsets; der gescheiterte Lauf hat keine.
+        Assert.Equal(2023.4, (double)af[0]["data"]!["position"]!);
+        Assert.Equal(20.16, (double)af[0]["data"]!["temperatureC"]!);
+        Assert.Null(af[1]["data"]!["position"]);
         Assert.Equal(block.Id.ToString(), (string?)af[0]["blockId"]);
         Assert.Equal(block.ProjectId.ToString(), (string?)af[0]["projectId"]);
         Assert.Equal(okEnd, af[0]["occurredAtUtc"]!.ToObject<DateTimeOffset>());

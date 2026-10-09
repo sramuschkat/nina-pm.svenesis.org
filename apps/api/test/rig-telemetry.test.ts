@@ -193,6 +193,54 @@ describe('GET /web/v1/rigs/{id}/telemetry', () => {
     });
     const box = sourceOf(r.body, 'power_box');
     expect(box).toMatchObject({ t: [], series: {}, latest: null });
+    // Die Telemetrie-Instanz schickt keinen Heartbeat: kein „Rig jetzt“ (AP-70).
+    expect(r.body.live).toBeNull();
+  });
+
+  it('„Rig jetzt“ (AP-70): jüngster Heartbeat der Instanz mit Gerätestatus und Wetter', async () => {
+    const t = await setup();
+    const now = s.clock.now().getTime();
+    const hb = await s.request('/api/nina/v1/heartbeat', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${t.token}` },
+      body: {
+        state: 'idle',
+        pluginVersion: '0.4.21',
+        engineVersion: '0.6.0',
+        camera: { temperatureC: -10, setPointC: -10, coolerOn: true, coolerPowerPct: 38 },
+        devices: {
+          connected: {
+            camera: true,
+            mount: true,
+            focuser: true,
+            filterWheel: true,
+            rotator: false,
+            guider: true,
+            safetyMonitor: true,
+            weather: true,
+            flatDevice: true,
+            switch: true,
+            dome: false,
+          },
+          focuser: { position: 2050, temperatureC: 17.4, moving: false },
+          mountState: null,
+          guider: null,
+          filter: 'LUMINOS',
+          safe: true,
+          weather: { cloudCoverPct: 0, skyQualityMag: 21.6 },
+        },
+      },
+    });
+    expect(hb.status).toBe(200);
+    const r = await t.view(now - HOUR, now + MIN);
+    expect(r.body.live).toMatchObject({
+      instanceId: t.instanceId,
+      instanceName: 'Telemetrie',
+      state: 'idle',
+      pluginVersion: '0.4.21',
+      camera: { coolerPowerPct: 38 },
+      devices: { filter: 'LUMINOS', focuser: { position: 2050 }, weather: { skyQualityMag: 21.6 } },
+    });
   });
 
   it('mehr als 1.500 Rohwerte → Minutenfenster mit Mittel, Minimum und Maximum', async () => {
