@@ -169,6 +169,55 @@
   font-size: var(--npm-font-small);
   font-variant-numeric: tabular-nums;
 }
+.kpiValueNote {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-weight: 400;
+}
+
+/* Kachel „Dunkel“: Sonne und Dämmerungen je Abend und Morgen (Sven 09.10.2026). */
+.twilight {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--npm-space-1);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.twilight th,
+.twilight td {
+  padding: 1px var(--npm-space-1) 1px 0;
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+/* Schmale Kachel (768 px, breitere Linux-Schrift in der CI): die Stufe darf mit Silbentrennung umbrechen, die Zeiten nie. */
+.twilight tbody th {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+.twilight thead th {
+  font-size: var(--npm-font-label);
+}
+.twilight tbody tr[data-kind='astronomical'] th,
+.twilight tbody tr[data-kind='astronomical'] td {
+  color: var(--npm-text);
+  font-weight: 600;
+}
+.twilightTime {
+  white-space: nowrap;
+}
+.twilightDevice {
+  display: block;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  font-weight: 400;
+}
+.twilight tfoot td {
+  padding-top: 2px;
+  font-size: var(--npm-font-label);
+}
 
 /* Zwei Spalten: links der Plan, rechts Ereignisse und Mond & Planeten kurz (unter 1.280 px untereinander). */
 .split {

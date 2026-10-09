@@ -19,6 +19,7 @@ import { ratingColour } from '../../components/WeatherChart';
 import { daylightFade } from '../../components/WeatherChart/model';
 import type { NightPlanState } from '../simulator/use-night-plan';
 import type { NightSky } from './night-sky';
+import { TwilightTable } from './TwilightTable';
 import styles from './tonight.module.css';
 
 const unix = (s: string) => Date.parse(s) / 1000;
@@ -75,10 +76,13 @@ export function KpiTiles({
   rig,
   sky,
   plan,
+  deviceTimeZone,
 }: {
   rig: TonightRig;
   sky: NightSky;
   plan: NightPlanState;
+  /** Zeitzone des Geräts für die Dämmerungstabelle; ohne Angabe die des Browsers (Tests setzen sie fest). */
+  deviceTimeZone?: string;
 }) {
   const { t, i18n } = useTranslation();
   const n = (x: number, d = 0) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
@@ -123,12 +127,12 @@ export function KpiTiles({
         <span className={styles.kpiLabel}>{t('tonight.kpi.dark')}</span>
         <span className={styles.kpiValue}>
           {rig.dark ? t('tonight.kpi.hours', { h: n(rig.darkHours, 1) }) : '–'}
+          {rig.dark ? (
+            <span className={styles.kpiValueNote}>{t('tonight.kpi.astronomical')}</span>
+          ) : null}
         </span>
-        <span className={styles.kpiSub}>
-          {rig.dark
-            ? `${hm(rig.dark.fromUtc)}–${hm(rig.dark.toUtc)} ${abbr(rig.dark.toUtc)}`
-            : t('tonight.kpi.noDark')}
-        </span>
+        {rig.dark ? null : <span className={styles.kpiSub}>{t('tonight.kpi.noDark')}</span>}
+        <TwilightTable twilight={rig.twilight} timeZone={zone} deviceTimeZone={deviceTimeZone} />
       </li>
       <li className={styles.kpi}>
         <span className={styles.kpiLabel}>{t('tonight.kpi.moon')}</span>

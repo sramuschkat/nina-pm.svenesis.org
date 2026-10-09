@@ -9756,6 +9756,8 @@ components:
         darkHours:
           type: number
           minimum: 0
+        twilight:
+          $ref: "#/components/schemas/TonightTwilight"
         moon:
           type: object
           properties:
@@ -9823,6 +9825,7 @@ components:
         - nightWindow
         - dark
         - darkHours
+        - twilight
         - moon
         - weather
         - forecast
@@ -9868,6 +9871,40 @@ components:
         - waxing
         - ratingIndex
         - nightMean
+    TonightTwilight:
+      type: object
+      properties:
+        sun:
+          $ref: "#/components/schemas/TonightCrossing"
+        civil:
+          $ref: "#/components/schemas/TonightCrossing"
+        nautical:
+          $ref: "#/components/schemas/TonightCrossing"
+        astronomical:
+          $ref: "#/components/schemas/TonightCrossing"
+      required:
+        - sun
+        - civil
+        - nautical
+        - astronomical
+    TonightCrossing:
+      type: object
+      properties:
+        duskUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        dawnUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - duskUtc
+        - dawnUtc
     TonightWeather:
       type:
         - object

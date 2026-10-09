@@ -36,6 +36,11 @@ interface Rig {
     waxing: boolean;
   }[];
   darkHours: number;
+  dark: { fromUtc: string; toUtc: string } | null;
+  twilight: Record<
+    'sun' | 'civil' | 'nautical' | 'astronomical',
+    { duskUtc: string | null; dawnUtc: string | null }
+  >;
   nightWindow: { startUtc: string; endUtc: string } | null;
   moon: { illumPct: number };
   forecast: { covered: boolean };
@@ -167,6 +172,14 @@ describe('Heute Nacht (S-02, AP-35)', () => {
       endUtc: '2026-09-19T13:00:00Z',
     });
     expect(r.darkHours).toBeGreaterThan(8);
+    // Kachel „Dunkel“ (09.10.2026): Sonne → bürgerlich → nautisch → astronomisch am Abend, umgekehrt am Morgen;
+    // astronomisch = Dunkelheit.
+    const order = ['sun', 'civil', 'nautical', 'astronomical'] as const;
+    const dusk = order.map((k) => Date.parse(r.twilight[k].duskUtc ?? ''));
+    const dawn = order.map((k) => Date.parse(r.twilight[k].dawnUtc ?? ''));
+    expect(dusk).toEqual([...dusk].sort((a, b) => a - b));
+    expect(dawn).toEqual([...dawn].sort((a, b) => b - a));
+    expect(r.twilight.astronomical).toEqual({ duskUtc: r.dark?.fromUtc, dawnUtc: r.dark?.toUtc });
     expect(r.moon.illumPct).toBeGreaterThan(0);
     expect(r.instances.map((i) => i.name)).toEqual(['PC']);
     expect(r.forecast.covered).toBe(false);

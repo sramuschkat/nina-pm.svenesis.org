@@ -149,11 +149,15 @@ export interface NightTableRow {
     nautical: TwilightCrossingRow;
     astronomical: TwilightCrossingRow;
   };
+  /** Nur mit `{ sun: true }` („Heute Nacht“): Sonnenunter- und -aufgang (−0,833°, AST-N9). */
+  sun?: TwilightCrossingRow;
 }
 
 export interface NightTableOptions {
   /** Dämmerungen je Nacht mitliefern (*NINA-PM Warten auf Zeit*, AP-52). */
   readonly twilight?: boolean;
+  /** Sonnenunter- und -aufgang mitliefern (Kachel „Dunkel“ auf „Heute Nacht“). */
+  readonly sun?: boolean;
 }
 
 export interface NightTable {
@@ -209,6 +213,7 @@ export function buildNightTable(
             },
           }
         : {}),
+      ...(options.sun ? { sun: crossing(t.sunset) } : {}),
     });
   }
   return {

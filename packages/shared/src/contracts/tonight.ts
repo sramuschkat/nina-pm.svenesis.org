@@ -20,6 +20,24 @@ export const TonightQuery = z
   .meta({ id: 'TonightQuery' });
 
 /** Nacht im Mondkalender der Auswahlleiste: Mond, mondfreie Dunkelheit, Wetterbewertung (falls vorhanden). */
+/** Abend- und Morgendurchgang einer Sonnenhöhe; `null` = in dieser Nacht kein Durchgang (Polartag bzw. Polarnacht). */
+export const TonightCrossing = z
+  .object({ duskUtc: UtcInstant.nullable(), dawnUtc: UtcInstant.nullable() })
+  .meta({ id: 'TonightCrossing' });
+
+/**
+ * Sonnenunter- und -aufgang (−0,833°) und die drei Dämmerungen (−6°, −12°, −18°) der gewählten Nacht – Kachel „Dunkel“
+ * (Sven 09.10.2026); vom Server mit derselben Engine gerechnet wie Nachtfenster und Dunkelheit.
+ */
+export const TonightTwilight = z
+  .object({
+    sun: TonightCrossing,
+    civil: TonightCrossing,
+    nautical: TonightCrossing,
+    astronomical: TonightCrossing,
+  })
+  .meta({ id: 'TonightTwilight' });
+
 export const TonightCalendarNight = z
   .object({
     night: NightKey,
@@ -107,6 +125,7 @@ export const TonightRig = z
     /** Astronomische Dunkelheit; `null` = Polartag. */
     dark: z.object({ fromUtc: UtcInstant, toUtc: UtcInstant }).nullable(),
     darkHours: z.number().min(0),
+    twilight: TonightTwilight,
     moon: z.object({
       illumPct: z.number().min(0).max(100),
       events: z.array(z.object({ type: z.enum(['rise', 'set']), atUtc: UtcInstant })),

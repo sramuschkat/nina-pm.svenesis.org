@@ -212,7 +212,7 @@ describe('S-43 Rig-Zustand', () => {
     const { container } = renderAt('/rig-zustand');
     expect(await screen.findByRole('heading', { name: 'Rig-Zustand', level: 1 })).toBeTruthy();
     expect(await screen.findByText('Mini-PC', { selector: 'h2' })).toBeTruthy();
-    expect(state.get).toHaveBeenCalledWith(ID(500), '2026-10-07T06:10:00Z', '2026-10-08T06:10:00Z');
+    expect(state.get).toHaveBeenCalledWith(ID(500), '2026-10-07T18:10:00Z', '2026-10-08T06:10:00Z');
     // Taupunktabstand 18,2 − 15,6 = 2,6 K < 3 K → Warnung
     expect(screen.getByText('2,6 K')).toBeTruthy();
     expect(screen.getAllByText(/zuletzt 01:01 CDT \(vor 9 min\)/)).toHaveLength(2);
@@ -243,6 +243,17 @@ describe('S-43 Rig-Zustand', () => {
       .filter((x) => x?.startsWith('Verlauf'));
     expect(titles).toEqual(['Verlauf Powerbox', 'Verlauf Mini-PC']);
     expect(screen.getByRole('img', { name: /Freier Speicherplatz/ })).toBeTruthy();
+  });
+
+  it('öffnet mit den letzten 12 h; der Standard steht nicht in der Adresse', async () => {
+    renderAt('/rig-zustand');
+    await screen.findByText('Mini-PC', { selector: 'h2' });
+    expect(screen.getByRole('button', { name: '12 h' }).getAttribute('aria-pressed')).toBe('true');
+    expect(state.get).toHaveBeenLastCalledWith(
+      ID(500),
+      '2026-10-07T18:10:00Z',
+      '2026-10-08T06:10:00Z',
+    );
   });
 
   it('Zeitraum wählen lädt neu und steht in der Adresse', async () => {

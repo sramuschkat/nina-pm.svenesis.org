@@ -47,6 +47,8 @@ const errors = {
   422: problemContent('validation.failed'),
 };
 const iso = (unix: number) => isoUtc(new Date(unix * 1000));
+/** Ohne Zeile der Nacht-Tabelle bzw. ohne Durchgang: beide Zeiten offen. */
+const NO_CROSSING = { duskUtc: null, dawnUtc: null } as const;
 
 /** Astronomisch dunkle Stunden mit Mond unter −0,833° (10-min-Raster, Konvention der Wetter-Nächte). */
 function moonlessHours(fromUtc: number, toUtc: number, geo: { latDeg: number; lonDeg: number }) {
@@ -130,7 +132,7 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
         ).some((x) => x.status === 'running')
       )
         current = ended;
-      const table = buildNightTable(site, current, TONIGHT_NIGHTS);
+      const table = buildNightTable(site, current, TONIGHT_NIGHTS, { twilight: true, sun: true });
       const row = wantedNight
         ? table.nights.find((n) => n.night === wantedNight)
         : table.nights.find((n) => n.night === current);
@@ -214,6 +216,13 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
           : null,
         dark: dark ? { fromUtc: iso(dark.fromUtc), toUtc: iso(dark.toUtc) } : null,
         darkHours: dark ? Math.round(((dark.toUtc - dark.fromUtc) / 3600) * 10) / 10 : 0,
+        // Kachel „Dunkel“ (Sven 09.10.2026): Sonne und alle drei Dämmerungen der gewählten Nacht.
+        twilight: {
+          sun: row.sun ?? NO_CROSSING,
+          civil: row.twilight?.civil ?? NO_CROSSING,
+          nautical: row.twilight?.nautical ?? NO_CROSSING,
+          astronomical: row.twilight?.astronomical ?? NO_CROSSING,
+        },
         moon: {
           illumPct: quantize(moonAt(mid, geo).illumPct, 10),
           events: moonEvents(geo, noonStart, noonEnd).map((e) => ({

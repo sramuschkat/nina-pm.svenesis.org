@@ -105,9 +105,19 @@ test('S-02: Rig zuerst wählen, dann Kennzahlen, Zeitleiste, Plan, Ereignisse; D
   await page.getByRole('option', { name: new RegExp(rigName) }).click();
   await expect(page).toHaveURL(new RegExp(`rig=${rigId}`));
   await expect(context).toContainText(`E2E-Heute`);
-  await expect(
-    page.getByRole('list', { name: 'Kennzahlen der Nacht' }).getByRole('listitem'),
-  ).toHaveCount(4);
+  const tiles = page.getByRole('list', { name: 'Kennzahlen der Nacht' }).getByRole('listitem');
+  await expect(tiles).toHaveCount(4);
+  // Kachel „Dunkel“ (09.10.2026): Dämmerungstabelle in Standortzeit (CDT), darunter die eigene Zeit (Browser MESZ).
+  const twilight = tiles.first().getByRole('table', { name: 'Sonne und Dämmerungen der Nacht' });
+  await expect(twilight.getByRole('row')).toHaveCount(6);
+  await expect(twilight).toContainText('darunter deine Zeit');
+  // Lage gemessen: Tabelle innerhalb der Kachel, alle Kacheln gleich hoch in einer Reihe.
+  const tile = await tiles.first().boundingBox();
+  const table = await twilight.boundingBox();
+  expect(tile && table && table.x + table.width <= tile.x + tile.width + 0.5).toBe(true);
+  const boxes = await Promise.all((await tiles.all()).map((x) => x.boundingBox()));
+  expect(new Set(boxes.map((b) => Math.round(b?.height ?? 0))).size).toBe(1);
+  expect(new Set(boxes.map((b) => Math.round(b?.y ?? 0))).size).toBe(1);
   const timeline = page.getByRole('group', { name: 'Zeitleiste der Nacht' });
   for (const lane of ['Himmel', 'Wetter', 'Mond', 'Plan', 'Ereignisse'])
     await expect(timeline.getByText(lane, { exact: true })).toBeVisible();
