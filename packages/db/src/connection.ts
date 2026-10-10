@@ -33,7 +33,10 @@ export function createPool(
           host: config.endpoint,
           user: config.role,
           database: 'postgres',
-          max: 2,
+          // 6 statt 2 (Performance-Analyse 10.10.2026): Mit 2 liefen die `Promise.all` der Routen (rigData 7, Projektdetail
+          // 6, „Heute Nacht“ 4 Abfragen) praktisch nacheinander. Eine Lambda bearbeitet eine Anfrage zur Zeit;
+          // Verbindungen kosten bei DSQL nichts (Abrechnung nach DPU), das Limit je Cluster liegt weit darüber.
+          max: 6,
           idleTimeoutMillis: 60_000,
           maxLifetimeSeconds: 50 * 60, // < 1 h Verbindungslimit von DSQL
         }) as unknown as pg.Pool)

@@ -1014,6 +1014,7 @@ CREATE TABLE night_plan (
 );
 CREATE INDEX ASYNC ix_night_plan_rig_night ON night_plan (tenant_id, rig_id, night, created_at);
 CREATE INDEX ASYNC ix_night_plan_session ON night_plan (tenant_id, session_id, revision);  -- Session-Detail: Revisionen (TK 6.3)
+CREATE INDEX ASYNC ix_night_plan_rig_origin ON night_plan (tenant_id, rig_id, origin, night);  -- Prognose je Rig (forecastNights, Migration 0016)
 
 CREATE TABLE session (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1108,7 +1109,7 @@ CREATE TABLE capture (                             -- eine Zeile je Belichtung (
     received_at     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ASYNC ix_capture_line_night ON capture (tenant_id, exposure_line_id, night);
-CREATE INDEX ASYNC ix_capture_session    ON capture (tenant_id, session_id, captured_at);
+CREATE INDEX ASYNC ix_capture_session    ON capture (tenant_id, session_id, captured_at);          -- seit Migration 0016 (10.10.2026)
 CREATE INDEX ASYNC ix_capture_project    ON capture (tenant_id, project_id, captured_at);          -- Aufnahmeliste/CSV je Projekt (FA-AUS-12)
 CREATE INDEX ASYNC ix_capture_transit    ON capture (tenant_id, transit_observation_id, captured_at);  -- captures.csv je Beobachtung
 
