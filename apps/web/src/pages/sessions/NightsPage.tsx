@@ -1,17 +1,16 @@
 /**
- * S-60 Nächte (AP-64; FA-AUS-01, FA-AUS-05, FA-AUS-07, FA-AUS-17): Reiter „Nächte“ der Auswertung – „Was ist passiert?“.
- * Kennzahlen für Rig und Zeitraum (Nächte mit Session und davon nutzbar, Integration, Effizienz Ø, Ungeprüft als Link
- * auf die neueste ungeprüfte Nacht) und eine Karte je Session-Nacht: Datum mit Wetterpunkt, Effizienzbalken
- * („8,2 von 9,6 h · 85 %“), Projekt-Chips mit Ersteller und Frames je Filter (Transit als Serie), Plakette
- * geprüft/ungeprüft, „Öffnen“. Nächte ohne Session erscheinen grau, wenn die Standort-Statistik sie als bewölkt führt.
- * Schalter „Nur ungeprüfte“ über der Liste; die Liste lädt seitenweise.
+ * S-60 Nächte (AP-64, AP-77; FA-AUS-01, FA-AUS-05, FA-AUS-17, FA-AUS-22): Reiter „Nächte“ der Auswertung – „Was ist
+ * passiert?“. Kennzahlen für Rig und Zeitraum (Nächte mit Session und davon nutzbar, Integration, Effizienz Ø) und eine
+ * Karte je Session-Nacht: Datum mit Wetterpunkt, Effizienzbalken („8,2 von 9,6 h · 85 %“), Projekt-Chips mit Ersteller
+ * und Frames je Filter (Transit als Serie), Hinweis auf nicht zugeordnete Aufnahmen, „Öffnen“. Nächte ohne Session
+ * erscheinen grau, wenn die Standort-Statistik sie als bewölkt führt. Die Liste lädt seitenweise. Prüfen (Kennzahl
+ * „Ungeprüft“, Schalter „Nur ungeprüfte“, Plakette) entfällt seit AP-77; `?ungeprueft=1` wird ignoriert.
  */
 import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import { sessionLogApi, sessionsApi, type NightSessionListItem } from '../../api/client';
-import { FilterToggle } from '../../components/FilterBar';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Person } from '../../lib/member';
@@ -29,14 +28,15 @@ import {
 } from './night-model';
 import styles from './evaluation.module.css';
 
+/** Nicht zugeordnete Lights der Nacht (alle Sessions); sie zählen erst nach dem Zuordnen (FA-AUS-22). */
+const unassignedOf = (g: NightGroup) => g.sessions.reduce((n, x) => n + x.unassigned, 0);
+
 /** Nächte je Seite der Liste. */
 export const NIGHTS_PAGE_SIZE = 30;
 
 export function NightsPage() {
   const { t } = useTranslation();
   const { filter, range, search, ready } = useEvaluationFilter();
-  const [params, setParams] = useSearchParams();
-  const unreviewed = params.get('ungeprueft') === '1';
   const rigId = filter.rigId;
   const query = { ...(rigId ? { rigId } : {}), from: range.from, to: range.to };
   const summary = useQuery({
@@ -45,11 +45,10 @@ export function NightsPage() {
     enabled: ready,
   });
   const list = useInfiniteQuery({
-    queryKey: ['sessions', 'nights', query, unreviewed],
+    queryKey: ['sessions', 'nights', query],
     queryFn: ({ pageParam }) =>
       sessionsApi.list({
         ...query,
-        unreviewed,
         limit: NIGHTS_PAGE_SIZE,
         ...(pageParam ? { cursor: pageParam } : {}),
       }),
@@ -61,19 +60,9 @@ export function NightsPage() {
   return (
     <div className={styles.page}>
       <EvaluationHeader />
-      <SummaryTiles summary={summary} search={search} />
+      <SummaryTiles summary={summary} />
       <section className={styles.listHead} aria-label={t('evaluation.nights.listLabel')}>
         <h2 className={styles.sectionTitle}>{t('evaluation.nights.listTitle')}</h2>
-        <FilterToggle
-          pressed={unreviewed}
-          label={t('sessions.onlyUnreviewed')}
-          onChange={(on) => {
-            const next = new URLSearchParams(params);
-            if (on) next.set('ungeprueft', '1');
-            else next.delete('ungeprueft');
-            setParams(next, { replace: true });
-          }}
-        />
       </section>
       {list.isError ? (
         <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
@@ -82,13 +71,7 @@ export function NightsPage() {
           {t('common.loading')}
         </p>
       ) : (
-        <NightList
-          items={items}
-          search={search}
-          range={range}
-          complete={!list.hasNextPage}
-          showGrey={!unreviewed}
-        />
+        <NightList items={items} search={search} range={range} complete={!list.hasNextPage} />
       )}
       {list.hasNextPage ? (
         <button
@@ -106,10 +89,8 @@ export function NightsPage() {
 
 function SummaryTiles({
   summary,
-  search,
 }: {
   summary: ReturnType<typeof useQuery<Awaited<ReturnType<typeof sessionsApi.summary>>>>;
-  search: string;
 }) {
   const { t, i18n } = useTranslation();
   const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
@@ -149,24 +130,6 @@ function SummaryTiles({
         </span>
         <span className={styles.tileSub}>{t('evaluation.nights.efficiencyHint')}</span>
       </div>
-      {s && s.unreviewed > 0 && s.firstUnreviewed ? (
-        <Link
-          className={styles.tileWarn}
-          to={nightPath(s.firstUnreviewed.rigId, s.firstUnreviewed.night, search)}
-        >
-          <span className={styles.tileLabel}>{t('evaluation.nights.unreviewed')}</span>
-          <span className={styles.tileValue}>
-            {t('evaluation.nights.unreviewedCount', { count: s.unreviewed })}
-          </span>
-          <span className={styles.tileSub}>{t('evaluation.nights.reviewNow')}</span>
-        </Link>
-      ) : (
-        <div className={styles.tile}>
-          <span className={styles.tileLabel}>{t('evaluation.nights.unreviewed')}</span>
-          <span className={styles.tileValue}>{s ? 0 : dash}</span>
-          <span className={styles.tileSub}>{s ? t('evaluation.nights.allReviewed') : ' '}</span>
-        </div>
-      )}
     </section>
   );
 }
@@ -180,13 +143,11 @@ function NightList({
   search,
   range,
   complete,
-  showGrey,
 }: {
   items: readonly NightSessionListItem[];
   search: string;
   range: { from: string; to: string };
   complete: boolean;
-  showGrey: boolean;
 }) {
   const { t } = useTranslation();
   const { filter } = useEvaluationFilter();
@@ -200,7 +161,7 @@ function NightList({
   const clear = useQuery({
     queryKey: ['clear-nights', siteId, range.from, range.to],
     queryFn: () => sessionLogApi.clearNights(siteId, range.from, range.to),
-    enabled: showGrey && siteId !== '',
+    enabled: siteId !== '',
   });
   const oldest = items.at(-1)?.night ?? range.to;
   const withSession = new Set(items.map((s) => s.night));
@@ -324,9 +285,11 @@ function NightCard({
         {s.status !== 'completed' ? (
           <StatusBadge kind="session" value={s.status} size="sm" />
         ) : null}
-        <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
-          {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-        </span>
+        {unassignedOf(s) > 0 ? (
+          <span className={styles.badgeWarn}>
+            {t('evaluation.nights.unassigned', { count: unassignedOf(s) })}
+          </span>
+        ) : null}
         <Link
           className={styles.open}
           to={nightPath(s.rigId, s.night, search)}

@@ -1,20 +1,14 @@
 /**
- * Sitzungsprotokoll und Klarnacht-Statistik (AP-30, FA-AUS-15…17): Schnappschuss als Mittel der dunklen
- * Stunden, NINA-Werte und Einheiten, Vorbelegung (NINA vor Vorhersage) mit Quellen, Quellen beim Speichern,
- * Schwelle „nutzbar“, Monatszeilen und Treffsicherheit.
+ * Wetter-Schnappschuss und Klarnacht-Statistik (AP-30, FA-AUS-16/17): Schnappschuss als Mittel der dunklen
+ * Stunden, Schwelle „nutzbar“, Monatszeilen und Treffsicherheit.
  */
 import { describe, expect, it } from 'vitest';
 import type { ClearNightNight } from '../src/contracts/session-log';
 import {
   clearNightMonths,
-  EMPTY_SESSION_LOG,
   forecastAccuracy,
   forecastSnapshot,
   isUsableNight,
-  logSuggestions,
-  ninaStats,
-  prefillSessionLog,
-  sourcesOnSave,
   type ForecastHour,
 } from '../src/session-log';
 
@@ -70,148 +64,6 @@ describe('forecastSnapshot', () => {
       forecastSnapshot({ ...base, darkFromUtc: null, hours: [hour(base.darkToUtc)] }),
     ).toBeNull();
     expect(forecastSnapshot({ ...base, hours: [hour('2026-09-17T22:00:00Z')] })).toBeNull();
-  });
-});
-
-describe('ninaStats', () => {
-  it('rechnet Wind m/s in km/h und nimmt Ersatzschlüssel', () => {
-    const s = ninaStats({
-      sqm: { avg: 21.345, min: 21, max: 21.6 },
-      temperatureC: { avg: 5, min: 4, max: 6 },
-      windMs: { avg: 2, min: null, max: 5 },
-      starFwhmArcsec: { avg: 2.26 },
-      unknownKey: { avg: 1 },
-    });
-    expect(s).toEqual({
-      sqm: { avg: 21.3, min: 21, max: 21.6 },
-      temperatureC: { avg: 5, min: 4, max: 6 },
-      humidityPct: null,
-      windKmh: { avg: 7.2, min: null, max: 18 },
-      seeingArcsec: { avg: 2.3, min: null, max: null },
-    });
-  });
-
-  it('ist tolerant gegenüber fehlenden und kaputten Werten', () => {
-    expect(ninaStats(null)).toEqual({
-      sqm: null,
-      temperatureC: null,
-      humidityPct: null,
-      windKmh: null,
-      seeingArcsec: null,
-    });
-    expect(ninaStats({ sqm: 'x', humidityPct: { avg: 'y' } }).humidityPct).toBeNull();
-  });
-});
-
-describe('prefillSessionLog / sourcesOnSave', () => {
-  const forecast = forecastSnapshot({
-    night: '2026-09-18',
-    darkFromUtc: '2026-09-18T21:00:00Z',
-    darkToUtc: '2026-09-18T23:00:00Z',
-    hours: [hour('2026-09-18T21:00:00Z'), hour('2026-09-18T22:00:00Z', { cloudTotalPct: 30 })],
-    ratingIndex: 2,
-    nightMean: 0.5,
-    moonIllumPct: 12.34,
-    fetchedAtUtc: null,
-  });
-  const nina = ninaStats({ sqm: { avg: 20.8 }, ambientTempC: { avg: 6.5 } });
-
-  it('NINA vor Vorhersage, Beginn/Ende und Mond automatisch, Seeing ohne NINA leer', () => {
-    const p = prefillSessionLog({
-      startedAt: '2026-09-18T20:00:00Z',
-      endedAt: null,
-      forecast,
-      nina,
-    });
-    expect(p.values).toMatchObject({
-      startTime: '2026-09-18T20:00:00Z',
-      endTime: null,
-      sqm: 20.8,
-      temperatureC: 6.5,
-      humidityPct: 80,
-      windKmh: 12,
-      transparencyPct: 70,
-      cloudsNote: '20 %',
-      moonIlluminationPct: 12.3,
-      seeingArcsec: null,
-    });
-    expect(p.sources).toMatchObject({
-      startTime: 'auto',
-      endTime: null,
-      sqm: 'nina',
-      temperatureC: 'nina',
-      humidityPct: 'forecast',
-      cloudsNote: 'forecast',
-      moonIlluminationPct: 'auto',
-      seeingArcsec: null,
-    });
-  });
-
-  it('ohne Schnappschuss und NINA nur Beginn', () => {
-    const p = prefillSessionLog({
-      startedAt: '2026-09-18T20:00:00Z',
-      endedAt: '2026-09-19T03:00:00Z',
-      forecast: null,
-      nina: ninaStats(undefined),
-    });
-    expect(p.values).toEqual({
-      ...EMPTY_SESSION_LOG,
-      startTime: '2026-09-18T20:00:00Z',
-      endTime: '2026-09-19T03:00:00Z',
-    });
-  });
-
-  it('Vorhersage übernommen, obwohl NINA vorbelegt: Quelle Vorhersage', () => {
-    const p = prefillSessionLog({
-      startedAt: '2026-09-18T20:00:00Z',
-      endedAt: null,
-      forecast,
-      nina,
-    });
-    const suggestions = logSuggestions(forecast, nina);
-    expect(suggestions.temperatureC).toEqual([
-      { value: 6.5, source: 'nina' },
-      { value: 10, source: 'forecast' },
-    ]);
-    const sources = sourcesOnSave({ ...p.values, temperatureC: 10, sqm: 19 }, p, suggestions);
-    expect(sources).toMatchObject({ temperatureC: 'forecast', sqm: 'manual' });
-    // Gespeichert als manuell und unverändert: bleibt manuell.
-    const again = sourcesOnSave(
-      { ...p.values, sqm: 19 },
-      { values: { ...p.values, sqm: 19 }, sources: { ...p.sources, sqm: 'manual' } },
-      suggestions,
-    );
-    expect(again.sqm).toBe('manual');
-  });
-
-  it('übernommene Werte behalten die Quelle, geänderte werden manuell, leere null', () => {
-    const p = prefillSessionLog({
-      startedAt: '2026-09-18T20:00:00Z',
-      endedAt: null,
-      forecast,
-      nina,
-    });
-    const sources = sourcesOnSave(
-      {
-        ...p.values,
-        sqm: 20.84, // innerhalb der Rundung
-        temperatureC: 4,
-        humidityPct: null,
-        seeingArcsec: 2.1,
-        cloudsNote: 'Zirren ab 1 Uhr',
-      },
-      p,
-    );
-    expect(sources).toMatchObject({
-      startTime: 'auto',
-      sqm: 'nina',
-      temperatureC: 'manual',
-      humidityPct: null,
-      seeingArcsec: 'manual',
-      cloudsNote: 'manual',
-      transparencyPct: 'forecast',
-      moonIlluminationPct: 'auto',
-    });
   });
 });
 

@@ -126,6 +126,15 @@ export type ImageGrade = (typeof imageGrades)[number];
 export const imageGradeMetrics = ["hfr","stars","rms","cloud"] as const;
 export type ImageGradeMetric = (typeof imageGradeMetrics)[number];
 
+export const sessionQualityGrades = ["very_good","good","fair","poor"] as const;
+export type SessionQualityGrade = (typeof sessionQualityGrades)[number];
+
+export const conditionMetrics = ["cloudPct","sqm","temperatureC","humidityPct","dewPointC","windMs","seeingScore","transparencyPct"] as const;
+export type ConditionMetric = (typeof conditionMetrics)[number];
+
+export const conditionSources = ["captures","telemetry","forecast"] as const;
+export type ConditionSource = (typeof conditionSources)[number];
+
 export const deviationReasons = ["center_failed","block_skipped","safety_pause","transit","autofocus","meridian_flip","exposure_aborted","exposure_failed","skipped_timeaware","device_error","lease_lost"] as const;
 export type DeviationReason = (typeof deviationReasons)[number];
 

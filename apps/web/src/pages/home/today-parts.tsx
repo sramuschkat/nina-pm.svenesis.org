@@ -3,7 +3,14 @@
  * „Aktive Projekte“ mit Restzeit (FA-FOL-10). Gleiche Abfrage-Schlüssel wie Warteschlange, Projektliste, Sessions und
  * Prognose: ein Cache, keine Doppelabrufe.
  */
-import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
+import {
+  formatNightKey,
+  formatTzAbbr,
+  formatZonedTime,
+  qualityCounts,
+  sessionGrade,
+  shareLabelPct,
+} from '@nina-pm/shared';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,16 +79,14 @@ export function LastCapture({
         {at} · {facts.join(' · ')}
       </span>
       {c.grade === 'flagged' ? (
+        // Nur Hinweis (AP-77): einzelne Bilder werden nicht mehr markiert oder bearbeitet.
         <>
           {' · '}
-          <Link
-            className={styles.flagged}
-            to={`/projekte/${c.projectId}?reiter=bilder&bild=${c.captureId}`}
-          >
+          <span className={styles.flagged}>
             {t('today.lastCapture.flagged', {
-              reasons: c.flags.map((f) => t(`images.metric.${f.metric}`)).join(', '),
+              reasons: c.flags.map((f) => t(`sessionQuality.metric.${f.metric}`)).join(', '),
             })}
-          </Link>
+          </span>
         </>
       ) : null}
     </p>
@@ -110,13 +115,13 @@ export function TodoCard({ rig }: { rig: TonightRig }) {
   const headingId = useId();
   const sessions = useQuery({
     queryKey: SESSIONS_KEY,
-    queryFn: async () => (await sessionsApi.list({ unreviewed: false })).items,
+    queryFn: async () => (await sessionsApi.list()).items,
     enabled: canSessions,
   });
-  // Nur „ungeprüft“ – die Zusammenfassung ohne Zeitraum las alle Aufnahmen des Mandanten (Performance 10.10.2026).
-  const summary = useQuery({
-    queryKey: ['sessions', 'unreviewed'],
-    queryFn: () => sessionsApi.unreviewed(),
+  // Nicht zugeordnete Aufnahmen (AP-77): sie zählen erst nach dem Zuordnen – die einzige Aufgabe aus den Nächten.
+  const unassigned = useQuery({
+    queryKey: ['sessions', 'unassigned'],
+    queryFn: () => sessionsApi.unassigned(),
     enabled: canSessions,
   });
   const queue = useQuery({
@@ -126,17 +131,16 @@ export function TodoCard({ rig }: { rig: TonightRig }) {
   });
   const meId = me?.member?.id ?? '';
   const todos: Todo[] = [];
-  const s = summary.data;
-  if (s && s.unreviewed > 0)
+  const u = unassigned.data;
+  const firstUnassigned = u?.nights[0];
+  if (u && u.count > 0 && firstUnassigned)
     todos.push({
-      key: 'unreviewed',
-      count: String(s.unreviewed),
+      key: 'unassigned',
+      count: String(u.count),
       tone: 'warn',
-      text: t('today.todo.unreviewed', { count: s.unreviewed }),
-      to: s.firstUnreviewed
-        ? nightPath(s.firstUnreviewed.rigId, s.firstUnreviewed.night)
-        : '/auswertung/naechte?ungeprueft=1',
-      action: t('today.todo.review'),
+      text: t('today.todo.unassigned', { count: u.count, nights: u.nights.length }),
+      to: nightPath(firstUnassigned.rigId, firstUnassigned.night),
+      action: t('today.todo.assign'),
     });
   const items = queue.data ?? [];
   const votable = items.filter((q) => q.kind !== 'transit');
@@ -248,12 +252,27 @@ function LastNight({
       <ProblemMessage code={problemCode(sessions.error)} onRetry={() => void sessions.refetch()} />
     );
   if (!last) return null;
-  const flagged = details.every((d) => d.data)
-    ? details.reduce(
-        (n, d) => n + (d.data?.captures ?? []).filter((c) => c.grade === 'flagged').length,
-        0,
+  // Qualität der Nacht (AP-77): Anteil guter Lights über alle Sessions der Nacht.
+  const quality = details.every((d) => d.data)
+    ? qualityCounts(
+        details.flatMap((d) =>
+          (d.data?.captures ?? []).flatMap((c) =>
+            c.grade
+              ? [
+                  {
+                    grade: c.grade,
+                    flags: c.flags ?? [],
+                    hfr: c.hfr,
+                    stars: c.stars,
+                    rmsArcsec: null,
+                  },
+                ]
+              : [],
+          ),
+        ),
       )
     : null;
+  const grade = sessionGrade(quality?.sharePct ?? null);
   const bar = efficiencyBar(last.efficiency);
   return (
     <div className={styles.lastNight}>
@@ -263,9 +282,18 @@ function LastNight({
             night: `${nightWeekday(last.night, i18n.language)} ${formatNightKey(last.night)}`,
           })}
         </Link>
-        <span className={last.reviewed ? styles.badgeOk : styles.badgeWarn}>
-          {last.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-        </span>
+        {grade && quality?.sharePct != null ? (
+          <span
+            className={
+              grade === 'very_good' || grade === 'good' ? styles.badgeOk : styles.badgeWarn
+            }
+          >
+            {t('today.lastNight.quality', {
+              grade: t(`evaluation.quality.grade.${grade}`),
+              pct: shareLabelPct(quality.sharePct),
+            })}
+          </span>
+        ) : null}
       </div>
       <div className={styles.nightEff}>
         <span className={styles.nightTrack} aria-hidden="true">
@@ -279,9 +307,9 @@ function LastNight({
           {t('today.lastNight.projects', { count: last.projects.length })}
         </span>
       </div>
-      {flagged !== null && flagged > 0 ? (
+      {quality && quality.flagged > 0 ? (
         <Link className={styles.flagged} to={nightPath(last.rigId, last.night)}>
-          {t('today.lastNight.flagged', { count: flagged })}
+          {t('today.lastNight.flagged', { count: quality.flagged })}
         </Link>
       ) : null}
     </div>
@@ -316,7 +344,7 @@ export function ActiveProjects() {
   });
   const sessions = useQuery({
     queryKey: SESSIONS_KEY,
-    queryFn: async () => (await sessionsApi.list({ unreviewed: false })).items,
+    queryFn: async () => (await sessionsApi.list()).items,
     enabled: canSessions,
   });
   const rigs = useEquipmentList('rigs');

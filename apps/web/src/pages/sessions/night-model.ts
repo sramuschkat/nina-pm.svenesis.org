@@ -54,7 +54,7 @@ export function weatherTone(w: NightSessionListItem['weather']): 'good' | 'fair'
   return w.ratingIndex >= 3 ? 'good' : w.ratingIndex === 2 ? 'fair' : 'poor';
 }
 
-// ---- Prüf-Banner (S-61 Übersicht) ----
+// ---- Lücken und Hinweise (S-61 Übersicht) ----
 
 /** Lücke im Ist der Nacht (aus `actualView`, Sekunden UTC). */
 export interface NightGap {
@@ -65,69 +65,43 @@ export interface NightGap {
   readonly count?: number;
 }
 
-export type ReviewItem =
-  | { readonly kind: 'assigned'; readonly ok: true; readonly count: number }
-  | { readonly kind: 'unassigned'; readonly ok: false; readonly count: number }
-  | {
-      readonly kind: 'short';
-      readonly ok: false;
-      readonly lineId: string;
-      readonly projectName: string;
-      readonly filter: string;
-      readonly acquired: number;
-      readonly planned: number;
-    }
-  | {
-      readonly kind: 'gap';
-      readonly ok: false;
-      readonly gapKind: string;
-      readonly reason: string | null;
-      readonly count: number;
-      readonly fromUtc: number;
-      readonly toUtc: number;
-    };
-
-/** Lücken ab dieser Dauer kommen in die Prüfliste („Lücken > 10 min mit Grund“). */
-export const REVIEW_GAP_MIN_S = 600;
-
 /**
- * Prüfliste aus den Daten der Nacht: (1) Aufnahmen ohne Zuordnung → „zuordnen“ (sind alle zugeordnet, ein erledigter
- * Punkt), (2) Zeilen mit Ist < Soll → „Grund erfassen“, (3) Lücken über 10 min mit Grund → „ansehen“. Der Meridian-Flip
- * ist eine erwartete Lücke und kein Prüfpunkt. Keine Punkte (keine Lights, nichts offen) → leere Liste, kein Banner.
+ * Ereignisse, die als Hinweis über der Übersicht stehen (AP-77): Fehler und Warnungen des Plugins, verlorene Lease,
+ * fehlgeschlagenes Zentrieren und Abweichungen bei Filter, Auslesemodus, Rotation und Flip. Fehler zuerst.
  */
-export function reviewChecklist(
-  detail: Pick<NightSessionDetail, 'captures' | 'rows'>,
-  gaps: readonly NightGap[],
-): ReviewItem[] {
-  const items: ReviewItem[] = [];
-  const lights = detail.captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
-  const unassigned = lights.filter((c) => c.assignment === 'unassigned').length;
-  if (unassigned > 0) items.push({ kind: 'unassigned', ok: false, count: unassigned });
-  else if (lights.length > 0) items.push({ kind: 'assigned', ok: true, count: lights.length });
-  for (const r of detail.rows)
-    if (r.planned !== null && r.plannedSeries === null && r.planned > 0 && r.acquired < r.planned)
-      items.push({
-        kind: 'short',
-        ok: false,
-        lineId: r.exposureLineId,
-        projectName: r.projectName,
-        filter: r.filterShortName,
-        acquired: r.acquired,
-        planned: r.planned,
-      });
-  for (const g of gaps)
-    if (g.kind !== 'flip' && g.toUtc - g.fromUtc > REVIEW_GAP_MIN_S)
-      items.push({
-        kind: 'gap',
-        ok: false,
-        gapKind: g.kind,
-        reason: g.reason ?? null,
-        count: g.count ?? 1,
-        fromUtc: g.fromUtc,
-        toUtc: g.toUtc,
-      });
-  // Nur ein erledigter Punkt und sonst nichts: trotzdem ein Banner (die Nacht ist ungeprüft).
-  return items;
+export const NIGHT_WARNING_KINDS = [
+  'error',
+  'warning',
+  'lease_lost',
+  'lease_conflict',
+  'center_failed',
+  'filter_not_found',
+  'readout_mode_not_found',
+  'rotation_mismatch',
+  'rotation_unknown',
+  'flip_settings_mismatch',
+  'flip_undetected',
+  'past_mismatch',
+] as const;
+
+export function nightWarnings(events: NightSessionDetail['events']): {
+  errors: number;
+  warnings: number;
+  kinds: { kind: string; count: number }[];
+} {
+  const kinds = new Map<string, number>();
+  for (const e of events)
+    if ((NIGHT_WARNING_KINDS as readonly string[]).includes(e.kind))
+      kinds.set(e.kind, (kinds.get(e.kind) ?? 0) + 1);
+  const list = NIGHT_WARNING_KINDS.flatMap((kind) => {
+    const count = kinds.get(kind);
+    return count ? [{ kind, count }] : [];
+  });
+  return {
+    errors: kinds.get('error') ?? 0,
+    warnings: list.filter((k) => k.kind !== 'error').reduce((n, k) => n + k.count, 0),
+    kinds: list,
+  };
 }
 
 // ---- Ergebnis je Projekt (S-61 Übersicht) ----
@@ -229,46 +203,6 @@ export function nightFacts(
   };
 }
 
-// ---- Aufnahmen (S-61 Reiter Aufnahmen) ----
-
-export const CAPTURE_TYPES = [
-  'all',
-  'lights',
-  'flats',
-  'deviations',
-  'unassigned',
-  'flagged',
-  'rejected',
-] as const;
-export type CaptureType = (typeof CAPTURE_TYPES)[number];
-
-export function captureMatches(c: NightSessionCapture, type: CaptureType): boolean {
-  switch (type) {
-    case 'lights':
-      return c.frameType === 'light';
-    case 'flats':
-      return c.frameType === 'flat' || c.frameType === 'dark_flat';
-    case 'deviations':
-      return c.temperatureDeviation || c.settingsDeviation;
-    case 'unassigned':
-      return c.assignment === 'unassigned';
-    case 'flagged':
-      return c.grade === 'flagged';
-    case 'rejected':
-      return c.rejected;
-    default:
-      return true;
-  }
-}
-
-export function captureCounts(
-  captures: readonly NightSessionCapture[],
-): Record<CaptureType, number> {
-  return Object.fromEntries(
-    CAPTURE_TYPES.map((t) => [t, captures.filter((c) => captureMatches(c, t)).length]),
-  ) as Record<CaptureType, number>;
-}
-
 /** Punkt der HFR-/Sterne-Reihe (FA-AUS-08): gespeicherte Lights mit Messwert, Zeit in Sekunden UTC. */
 export interface MetricPoint {
   readonly atS: number;
@@ -352,8 +286,6 @@ export interface NightGroup {
   readonly startedAt: string;
   /** `null`, solange eine Session läuft. */
   readonly endedAt: string | null;
-  /** Ungeprüft, solange eine Session ungeprüft ist. */
-  readonly reviewed: boolean;
   /** Laufend vor verwaist vor abgebrochen vor abgeschlossen. */
   readonly status: NightSessionListItem['status'];
   readonly integrationS: number;
@@ -431,7 +363,6 @@ export function groupNights(items: readonly NightSessionListItem[]): NightGroup[
       sessions,
       startedAt: first.startedAt,
       endedAt: latest(sessions.map((s) => s.endedAt)),
-      reviewed: sessions.every((s) => s.reviewed),
       status: sessions.reduce<NightSessionListItem['status']>(
         (w, s) => ((STATUS_RANK[s.status] ?? 0) > (STATUS_RANK[w] ?? 0) ? s.status : w),
         'completed',
@@ -447,7 +378,7 @@ export function groupNights(items: readonly NightSessionListItem[]): NightGroup[
 /**
  * Daten der ganzen Nacht aus mehreren Session-Details (Nacht-Seite, Auswahl „Ganze Nacht“): Aufnahmen, Ereignisse
  * und Flats zusammen in zeitlicher Reihenfolge, Zeilen je Belichtungszeile einmal (für Zuordnen und Rechte), Kennzahlen
- * summiert (Effizienz gewichtet). Soll/Ist und „geprüft“ bleiben je Session.
+ * summiert (Effizienz gewichtet), Bedingungen über alle Sessions. Soll/Ist und die Qualität je Zeile bleiben je Session.
  */
 export function mergeDetails(details: readonly NightSessionDetail[]): NightSessionDetail {
   const first = details[0] as NightSessionDetail;
@@ -463,7 +394,6 @@ export function mergeDetails(details: readonly NightSessionDetail[]): NightSessi
     session: {
       ...first.session,
       endedAt: latest(details.map((d) => d.session.endedAt)),
-      reviewed: details.every((d) => d.session.reviewed),
     },
     rows: [...rows.values()],
     captures: details
@@ -482,7 +412,29 @@ export function mergeDetails(details: readonly NightSessionDetail[]): NightSessi
       efficiencyPct: dark > 0 ? Math.round((exposureS / dark) * 1000) / 10 : null,
     },
     reasons: details.flatMap((d) => d.reasons),
+    conditions: mergeConditions(details.map((d) => d.conditions ?? [])),
   };
+}
+
+type Condition = NonNullable<NightSessionDetail['conditions']>[number];
+
+/**
+ * Bedingungen mehrerer Sessions: je Größe die Quelle der ersten Session, Spanne über alle, als Mittelwert der Median der
+ * Mediane (genug für die seltenen Nächte mit mehreren Sessions).
+ */
+export function mergeConditions(lists: readonly (readonly Condition[])[]): Condition[] {
+  const byMetric = new Map<Condition['metric'], Condition[]>();
+  for (const list of lists)
+    for (const c of list) byMetric.set(c.metric, [...(byMetric.get(c.metric) ?? []), c]);
+  return [...byMetric.values()].map((list) => {
+    const first = list[0] as Condition;
+    return {
+      ...first,
+      median: median(list.map((c) => c.median)) ?? first.median,
+      min: Math.min(...list.map((c) => c.min)),
+      max: Math.max(...list.map((c) => c.max)),
+    };
+  });
 }
 
 /** Lücken im Zeitraum einer Session (Prüfliste je Session). */

@@ -1,0 +1,81 @@
+.bar {
+  display: flex;
+  width: 100%;
+  min-width: 48px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--npm-neutral-bg);
+}
+.sm {
+  height: 6px;
+}
+.md {
+  height: 10px;
+}
+.empty {
+  background: transparent;
+  border: 1px dashed var(--npm-border-strong);
+  box-sizing: border-box;
+}
+.good {
+  background: var(--npm-quality-good);
+}
+.flagged {
+  background: var(--npm-quality-flagged);
+}
+.rejected {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--npm-quality-rejected),
+    var(--npm-quality-rejected) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+}
+.text {
+  font-size: var(--npm-font-small);
+}
+.goodText {
+  color: var(--npm-success);
+}
+.count {
+  color: var(--npm-text-light);
+}
+.flaggedText {
+  color: var(--npm-warning);
+}
+.rejectedText {
+  color: var(--npm-danger);
+}
+.none {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.spark {
+  display: block;
+  overflow: visible;
+}
+.sparkEmpty {
+  color: var(--npm-text-light);
+}
+.limit {
+  stroke: var(--npm-warning);
+  stroke-width: 1;
+}
+.hfrLine,
+.rmsLine {
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.hfrLine {
+  stroke: var(--npm-plot-1);
+}
+.rmsLine {
+  stroke: var(--npm-violet);
+}
+.flagDot {
+  fill: var(--npm-quality-flagged);
+  stroke: var(--npm-text);
+  stroke-width: 0.6;
+}

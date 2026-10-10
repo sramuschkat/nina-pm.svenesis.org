@@ -3,7 +3,7 @@
  * AP-73: S-02 Startseite „Heute“ (vorher „Heute Nacht“, AP-35) – zuerst das Rig wählen (Standort), Nacht vom Server
  * (nicht aus dem Browserdatum), fünf Kennzahlen (Dämmerung nautisch/astronomisch, Safety-Link beim Wetter, Rig jetzt),
  * Zeitleiste mit Aufklappern darunter (Ereignisse offen, Zustand gemerkt), Plan mit „nur heute aus“, „Rig jetzt“ mit
- * letzter Aufnahme, „Zu tun“ (letzte Nacht, ungeprüft, Warteschlange, Exo-Transit, NINA-Abweichungen), aktive Projekte
+ * letzter Aufnahme, „Zu tun“ (letzte Nacht, nicht zugeordnet, Warteschlange, Exo-Transit, NINA-Abweichungen), aktive Projekte
  * mit Restzeit; künftige Nacht, Nacht ohne Prognose, „An NINA ausliefern“ aus; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -114,7 +114,6 @@ vi.mock('../../api/client', () => ({
             status: 'completed',
             startedAt: '2026-09-18T01:00:00Z',
             endedAt: '2026-09-18T11:00:00Z',
-            reviewed: false,
             integrationS: 18_000,
             efficiency: null,
             weather: null,
@@ -122,10 +121,22 @@ vi.mock('../../api/client', () => ({
           },
         ],
       }),
-    unreviewed: () =>
-      Promise.resolve({ unreviewed: 2, firstUnreviewed: { rigId: ID(1), night: '2026-09-16' } }),
+    unassigned: () =>
+      Promise.resolve({
+        count: 3,
+        nights: [
+          { rigId: ID(1), night: '2026-09-16', count: 2 },
+          { rigId: ID(1), night: '2026-09-12', count: 1 },
+        ],
+      }),
     get: () =>
-      Promise.resolve({ captures: [{ grade: 'flagged' }, { grade: 'ok' }, { grade: 'flagged' }] }),
+      Promise.resolve({
+        captures: [
+          { grade: 'flagged', flags: [{ metric: 'stars' }] },
+          { grade: 'ok' },
+          { grade: 'flagged', flags: [{ metric: 'hfr' }] },
+        ],
+      }),
   },
   tonightApi: {
     get: (_rigId?: string, night?: string) => {
@@ -514,17 +525,15 @@ describe('S-02 Startseite „Heute“', () => {
     await waitFor(() => expect(state.run).toHaveBeenCalledWith(ID(1)));
   });
 
-  it('Rig jetzt: letzte Aufnahme mit ⚠-Link aufs Bild; Zu tun: letzte Nacht, ungeprüft, Warteschlange, Exo, NINA', async () => {
+  it('Rig jetzt: letzte Aufnahme mit ⚠-Hinweis; Zu tun: letzte Nacht mit Qualität, nicht zugeordnet, Warteschlange, Exo, NINA', async () => {
     wrap();
     const live = await screen.findByRole('region', { name: 'Rig jetzt' });
     expect(live.textContent).toContain('Letzte Aufnahme');
     expect(live.textContent).toContain('06:09 CDT');
     expect(live.textContent).toContain('NGC 281 · Ha 300 s');
     expect(live.textContent).toContain('HFR 2,4');
-    expect(within(live).getByRole('link', { name: /markiert: Sterne/ })).toHaveAttribute(
-      'href',
-      `/projekte/${ID(10)}?reiter=bilder&bild=${ID(60)}`,
-    );
+    expect(within(live).getByText('⚠ auffällig: Sterne')).toBeTruthy();
+    expect(within(live).queryByRole('link', { name: /auffällig/ })).toBeNull();
     expect(within(live).getByRole('link', { name: 'Rig-Zustand' })).toHaveAttribute(
       'href',
       `/rig-zustand?rig=${ID(1)}`,
@@ -535,11 +544,13 @@ describe('S-02 Startseite „Heute“', () => {
     expect(
       await within(todo).findByRole('link', { name: /Letzte Nacht · Do 17\.\/18\.09\./ }),
     ).toBeTruthy();
-    expect(await within(todo).findByRole('link', { name: '⚠ Bilder markiert: 2' })).toBeTruthy();
-    expect(within(todo).getByRole('link', { name: /Ungeprüfte Nächte: 2/ })).toHaveAttribute(
-      'href',
-      `/auswertung/naechte/${ID(1)}/2026-09-16`,
-    );
+    // Qualität der letzten Nacht (1 von 3 gut → schlecht) und Hinweis auf auffällige Lights.
+    expect(await within(todo).findByText('Qualität schlecht · 33 % gut')).toBeTruthy();
+    expect(within(todo).getByRole('link', { name: '⚠ auffällig: 2' })).toBeTruthy();
+    expect(
+      within(todo).getByRole('link', { name: /Aufnahmen nicht zugeordnet: 3 \(Nächte: 2\)/ }),
+    ).toHaveAttribute('href', `/auswertung/naechte/${ID(1)}/2026-09-16`);
+    expect(within(todo).queryByText(/Ungeprüft/)).toBeNull();
     expect(
       within(todo).getByRole('link', { name: /Warteschlange: 1 offen, 1 ohne deine Stimme/ }),
     ).toBeTruthy();

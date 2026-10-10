@@ -11462,8 +11462,6 @@ components:
           example: 2026-09-18T13:00:00Z
         createdOffline:
           type: boolean
-        reviewed:
-          type: boolean
         ninaInstanceName:
           type:
             - string
@@ -11517,7 +11515,6 @@ components:
         - endedAt
         - sessionEndUtc
         - createdOffline
-        - reviewed
         - ninaInstanceName
         - frames
         - bonusFrames
@@ -11609,25 +11606,6 @@ components:
             - number
             - "null"
           minimum: 0
-        unreviewed:
-          type: integer
-          minimum: 0
-        firstUnreviewed:
-          type:
-            - object
-            - "null"
-          properties:
-            rigId:
-              type: string
-              format: uuid
-              description: UUID
-            night:
-              type: string
-              format: date
-              example: 2026-09-18
-          required:
-            - rigId
-            - night
       required:
         - nights
         - usableNights
@@ -11635,33 +11613,6 @@ components:
         - lights
         - projects
         - efficiencyPct
-        - unreviewed
-        - firstUnreviewed
-    NightSessionUnreviewed:
-      type: object
-      properties:
-        unreviewed:
-          type: integer
-          minimum: 0
-        firstUnreviewed:
-          type:
-            - object
-            - "null"
-          properties:
-            rigId:
-              type: string
-              format: uuid
-              description: UUID
-            night:
-              type: string
-              format: date
-              example: 2026-09-18
-          required:
-            - rigId
-            - night
-      required:
-        - unreviewed
-        - firstUnreviewed
     NightSessionUnassigned:
       type: object
       properties:
@@ -11738,8 +11689,6 @@ components:
               example: 2026-09-18T13:00:00Z
             createdOffline:
               type: boolean
-            reviewed:
-              type: boolean
             ninaInstanceName:
               type:
                 - string
@@ -11756,12 +11705,6 @@ components:
             unassigned:
               type: integer
               minimum: 0
-            reviewedBy:
-              type:
-                - string
-                - "null"
-              format: uuid
-              description: UUID
             planRevision:
               type:
                 - integer
@@ -11784,13 +11727,11 @@ components:
             - endedAt
             - sessionEndUtc
             - createdOffline
-            - reviewed
             - ninaInstanceName
             - frames
             - bonusFrames
             - integrationS
             - unassigned
-            - reviewedBy
             - planRevision
             - darknessEndUtc
         rows:
@@ -11859,9 +11800,78 @@ components:
                   - hfr
                   - medianAdu
                   - n
+            lines:
+              type: array
+              items:
+                $ref: "#/components/schemas/NightLineQuality"
+            session:
+              type: object
+              properties:
+                good:
+                  type: integer
+                  minimum: 0
+                flagged:
+                  type: integer
+                  minimum: 0
+                rejected:
+                  type: integer
+                  minimum: 0
+                none:
+                  type: integer
+                  minimum: 0
+                sharePct:
+                  type:
+                    - number
+                    - "null"
+                  minimum: 0
+                  maximum: 100
+                reasons:
+                  type: object
+                  properties:
+                    hfr:
+                      type: integer
+                      minimum: 0
+                    stars:
+                      type: integer
+                      minimum: 0
+                    rms:
+                      type: integer
+                      minimum: 0
+                    cloud:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - hfr
+                    - stars
+                    - rms
+                    - cloud
+                grade:
+                  type:
+                    - string
+                    - "null"
+                  enum:
+                    - very_good
+                    - good
+                    - fair
+                    - poor
+                    - null
+              required:
+                - good
+                - flagged
+                - rejected
+                - none
+                - sharePct
+                - reasons
+                - grade
           required:
             - scaleArcsecPx
             - refs
+            - lines
+            - session
+        conditions:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightCondition"
       required:
         - session
         - rows
@@ -12390,6 +12400,160 @@ components:
         - reason
         - count
         - durationS
+    NightLineQuality:
+      type: object
+      properties:
+        good:
+          type: integer
+          minimum: 0
+        flagged:
+          type: integer
+          minimum: 0
+        rejected:
+          type: integer
+          minimum: 0
+        none:
+          type: integer
+          minimum: 0
+        sharePct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        reasons:
+          type: object
+          properties:
+            hfr:
+              type: integer
+              minimum: 0
+            stars:
+              type: integer
+              minimum: 0
+            rms:
+              type: integer
+              minimum: 0
+            cloud:
+              type: integer
+              minimum: 0
+          required:
+            - hfr
+            - stars
+            - rms
+            - cloud
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        exposureLineId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        filter:
+          type: string
+        hfr:
+          $ref: "#/components/schemas/QualitySpread"
+        stars:
+          $ref: "#/components/schemas/QualitySpread"
+        rmsArcsec:
+          $ref: "#/components/schemas/QualitySpread"
+        hfrLimit:
+          type:
+            - number
+            - "null"
+        rmsLimit:
+          type:
+            - number
+            - "null"
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              hfr:
+                type:
+                  - number
+                  - "null"
+              rmsArcsec:
+                type:
+                  - number
+                  - "null"
+              flagged:
+                type: boolean
+            required:
+              - atUtc
+              - hfr
+              - rmsArcsec
+              - flagged
+      required:
+        - good
+        - flagged
+        - rejected
+        - none
+        - sharePct
+        - reasons
+        - projectId
+        - exposureLineId
+        - filter
+        - hfr
+        - stars
+        - rmsArcsec
+        - hfrLimit
+        - rmsLimit
+        - series
+    QualitySpread:
+      type:
+        - object
+        - "null"
+      properties:
+        median:
+          type: number
+        min:
+          type: number
+        max:
+          type: number
+      required:
+        - median
+        - min
+        - max
+    NightCondition:
+      type: object
+      properties:
+        metric:
+          type: string
+          enum:
+            - cloudPct
+            - sqm
+            - temperatureC
+            - humidityPct
+            - dewPointC
+            - windMs
+            - seeingScore
+            - transparencyPct
+        source:
+          type: string
+          enum:
+            - captures
+            - telemetry
+            - forecast
+        median:
+          type: number
+        min:
+          type: number
+        max:
+          type: number
+      required:
+        - metric
+        - source
+        - median
+        - min
+        - max
     NightSessionCorrection:
       type: object
       properties:
@@ -12470,14 +12634,6 @@ components:
           default: null
       required:
         - rejected
-      additionalProperties: false
-    NightSessionReviewed:
-      type: object
-      properties:
-        reviewed:
-          type: boolean
-      required:
-        - reviewed
       additionalProperties: false
     ReportResendResult:
       type: object
@@ -12786,242 +12942,6 @@ components:
       required:
         - kept
       additionalProperties: false
-    SessionLogView:
-      type: object
-      properties:
-        sessionId:
-          type: string
-          format: uuid
-          description: UUID
-        version:
-          type: string
-        saved:
-          type: boolean
-        values:
-          $ref: "#/components/schemas/SessionLogValues"
-        sources:
-          type: object
-          properties:
-            startTime: &a1
-              type:
-                - string
-                - "null"
-              enum:
-                - forecast
-                - nina
-                - manual
-                - auto
-                - null
-            endTime: *a1
-            seeingArcsec: *a1
-            transparencyPct: *a1
-            sqm: *a1
-            temperatureC: *a1
-            humidityPct: *a1
-            windKmh: *a1
-            cloudsNote: *a1
-            moonIlluminationPct: *a1
-        forecast:
-          type:
-            - object
-            - "null"
-          properties:
-            transparencyPct:
-              type:
-                - number
-                - "null"
-            temperatureC:
-              type:
-                - number
-                - "null"
-            humidityPct:
-              type:
-                - number
-                - "null"
-            windKmh:
-              type:
-                - number
-                - "null"
-            cloudPct:
-              type:
-                - number
-                - "null"
-            ratingIndex:
-              type:
-                - integer
-                - "null"
-              minimum: 0
-              maximum: 4
-            nightMean:
-              type:
-                - number
-                - "null"
-              minimum: 0
-              maximum: 1
-            seeingScore:
-              type:
-                - number
-                - "null"
-              minimum: 0
-              maximum: 1
-          required:
-            - transparencyPct
-            - temperatureC
-            - humidityPct
-            - windKmh
-            - cloudPct
-            - ratingIndex
-            - nightMean
-            - seeingScore
-        nina:
-          type: object
-          properties:
-            sqm:
-              $ref: "#/components/schemas/SessionLogStat"
-            temperatureC:
-              $ref: "#/components/schemas/SessionLogStat"
-            humidityPct:
-              $ref: "#/components/schemas/SessionLogStat"
-            windKmh:
-              $ref: "#/components/schemas/SessionLogStat"
-            seeingArcsec:
-              $ref: "#/components/schemas/SessionLogStat"
-          required:
-            - sqm
-            - temperatureC
-            - humidityPct
-            - windKmh
-            - seeingArcsec
-        updatedAt:
-          type:
-            - string
-            - "null"
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        updatedBy:
-          type:
-            - string
-            - "null"
-          format: uuid
-          description: UUID
-        updatedByName:
-          type:
-            - string
-            - "null"
-      required:
-        - sessionId
-        - version
-        - saved
-        - values
-        - sources
-        - forecast
-        - nina
-        - updatedAt
-        - updatedBy
-        - updatedByName
-    SessionLogValues:
-      type: object
-      properties:
-        startTime:
-          type:
-            - string
-            - "null"
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        endTime:
-          type:
-            - string
-            - "null"
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        seeingArcsec:
-          type:
-            - number
-            - "null"
-          minimum: 0
-          maximum: 20
-        transparencyPct:
-          type:
-            - number
-            - "null"
-          minimum: 0
-          maximum: 100
-        sqm:
-          type:
-            - number
-            - "null"
-          minimum: 14
-          maximum: 23
-        temperatureC:
-          type:
-            - number
-            - "null"
-          minimum: -60
-          maximum: 60
-        humidityPct:
-          type:
-            - number
-            - "null"
-          minimum: 0
-          maximum: 100
-        windKmh:
-          type:
-            - number
-            - "null"
-          minimum: 0
-          maximum: 300
-        cloudsNote:
-          type:
-            - string
-            - "null"
-          maxLength: 200
-        moonIlluminationPct:
-          type:
-            - number
-            - "null"
-          minimum: 0
-          maximum: 100
-        weatherNotes:
-          type: string
-          maxLength: 2000
-        notesMd:
-          type: string
-          maxLength: 20000
-      required:
-        - startTime
-        - endTime
-        - seeingArcsec
-        - transparencyPct
-        - sqm
-        - temperatureC
-        - humidityPct
-        - windKmh
-        - cloudsNote
-        - moonIlluminationPct
-        - weatherNotes
-        - notesMd
-      additionalProperties: false
-    SessionLogStat:
-      type:
-        - object
-        - "null"
-      properties:
-        avg:
-          type:
-            - number
-            - "null"
-        min:
-          type:
-            - number
-            - "null"
-        max:
-          type:
-            - number
-            - "null"
-      required:
-        - avg
-        - min
-        - max
     ClearNightView:
       type: object
       properties:
@@ -28096,12 +28016,11 @@ paths:
       summary: Sessions je Rig und Nacht (neueste zuerst, seitenweise) mit Effizienz, Wetterbewertung und Projekt-Chips
       tags:
         - sessions
-      description: "Aktion: `session.read` · FA-AUS-01, FA-AUS-05, FA-AUS-07, S-60, AP-64"
+      description: "Aktion: `session.read` · FA-AUS-01, FA-AUS-05, S-60, AP-64"
       x-npm-action: session.read
       x-npm-requirements:
         - FA-AUS-01
         - FA-AUS-05
-        - FA-AUS-07
         - S-60
         - AP-64
       parameters:
@@ -28112,14 +28031,6 @@ paths:
           required: false
           description: UUID
           name: rigId
-          in: query
-        - schema:
-            type: string
-            enum:
-              - "true"
-              - "false"
-          required: false
-          name: unreviewed
           in: query
         - schema:
             type: string
@@ -28170,14 +28081,13 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/sessions/summary:
     get:
-      summary: Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz, ungeprüft)
+      summary: Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz)
       tags:
         - sessions
-      description: "Aktion: `session.read` · FA-AUS-05, FA-AUS-07, FA-AUS-17, S-60, AP-64"
+      description: "Aktion: `session.read` · FA-AUS-05, FA-AUS-17, S-60, AP-64"
       x-npm-action: session.read
       x-npm-requirements:
         - FA-AUS-05
-        - FA-AUS-07
         - FA-AUS-17
         - S-60
         - AP-64
@@ -28211,36 +28121,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NightSessionSummary"
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/sessions/unreviewed:
-    get:
-      summary: Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite
-      tags:
-        - sessions
-      description: "Aktion: `session.read` · FA-AUS-07, S-02, AP-73"
-      x-npm-action: session.read
-      x-npm-requirements:
-        - FA-AUS-07
-        - S-02
-        - AP-73
-      responses:
-        "200":
-          description: Ungeprüft
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NightSessionUnreviewed"
         "401":
           description: Nicht angemeldet
           content:
@@ -28466,52 +28346,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/sessions/{id}/review:
-    put:
-      summary: Session als geprüft markieren bzw. zurücknehmen
-      tags:
-        - sessions
-      description: "Aktion: `session.review` · FA-AUS-07, S-61"
-      x-npm-action: session.review
-      x-npm-requirements:
-        - FA-AUS-07
-        - S-61
-      parameters:
-        - schema:
-            type: string
-            format: uuid
-            description: UUID
-          required: true
-          description: UUID
-          name: id
-          in: path
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/NightSessionReviewed"
-      responses:
-        "204":
-          description: Gespeichert
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: resource.not_found
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/sessions/{id}/report/resend:
     post:
       summary: Nachtbericht erneut nach Discord senden
@@ -28710,120 +28544,6 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: capture.not_rejectable
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/sessions/{id}/log:
-    get:
-      summary: Sitzungsprotokoll bzw. Vorbelegung (Vorhersage, NINA) mit Quelle je Feld
-      tags:
-        - sessions
-      description: "Aktion: `session.read` · FA-AUS-14, FA-AUS-15, S-61"
-      x-npm-action: session.read
-      x-npm-requirements:
-        - FA-AUS-14
-        - FA-AUS-15
-        - S-61
-      parameters:
-        - schema:
-            type: string
-            format: uuid
-            description: UUID
-          required: true
-          description: UUID
-          name: id
-          in: path
-      responses:
-        "200":
-          description: Protokoll
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SessionLogView"
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: resource.not_found
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-    put:
-      summary: Sitzungsprotokoll speichern
-      tags:
-        - sessions
-      description: "Aktion: `sessionlog.write` · FA-AUS-14, FA-AUS-15, S-61"
-      x-npm-action: sessionlog.write
-      x-npm-requirements:
-        - FA-AUS-14
-        - FA-AUS-15
-        - S-61
-      parameters:
-        - schema:
-            type: string
-            format: uuid
-            description: UUID
-          required: true
-          description: UUID
-          name: id
-          in: path
-        - schema:
-            type: string
-            description: '`ETag` des Protokolls (`"0"` = noch keins); abweichend → 412'
-          required: false
-          description: '`ETag` des Protokolls (`"0"` = noch keins); abweichend → 412'
-          name: if-match
-          in: header
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SessionLogValues"
-      responses:
-        "200":
-          description: Gespeichert
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SessionLogView"
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: resource.not_found
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "412":
-          description: resource.version_conflict
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "422":
-          description: validation.failed
           content:
             application/problem+json:
               schema:

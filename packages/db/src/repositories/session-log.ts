@@ -1,14 +1,13 @@
 /**
- * Sitzungsprotokoll und Klarnacht-Statistik (AP-30; FA-AUS-14…17; S-61 *Protokoll*, S-64; TK 7.2):
- * - Protokoll je Session lesen (mit NINA-Bedingungen und Wetter-Schnappschuss) und mit `If-Match`
- *   (Version = `updated_at`) speichern.
+ * Klarnacht-Statistik (AP-30; FA-AUS-16/17; S-64; TK 7.2) – das Sitzungsprotokoll zum Pflegen entfällt seit AP-77, die Tabelle
+ * `session_log` bleibt mit ihren Altwerten stehen (Seeing/SQM/Transparenz der Klarnacht-Daten):
  * - Klarnacht-Daten je Standort und Zeitraum: `site_night_stat`, Sessions der Rigs des Standorts mit
  *   Schnappschuss, Protokoll und Verworfen-Quote; Nächte ohne Session manuell als „nicht genutzt“ erfassen.
  * - Außerhalb des Mandanten-Repos: Schnappschuss zum Sessionbeginn speichern, Statistik am Sessionende
  *   schreiben (Jobs bzw. NINA-API), Vorhersage je Standort und Nacht aus dem Wetter-Cache festhalten
  *   (`site_night_forecast`, AP-64b, worker im `tick-5min`).
  */
-import { ProblemError, isUsableNight, type SessionLogView } from '@nina-pm/shared';
+import { ProblemError, isUsableNight } from '@nina-pm/shared';
 import { sql, type Kysely } from 'kysely';
 import { withTx, retryOcc } from '../tx';
 import type { Database } from '../types';
@@ -18,30 +17,6 @@ const iso = (v: Date | string | null | undefined): string | null =>
   v === null || v === undefined ? null : new Date(v).toISOString().replace(/\.\d{3}Z$/, 'Z');
 const parseJson = <T>(v: unknown): T => (typeof v === 'string' ? JSON.parse(v) : v) as T;
 const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
-
-/** Version des Protokolls für `ETag`/`If-Match`: Millisekunden von `updated_at`, `0` ohne Protokoll. */
-export const sessionLogVersion = (updatedAt: Date | string | null | undefined) =>
-  updatedAt === null || updatedAt === undefined ? '0' : String(new Date(updatedAt).getTime());
-
-export interface SessionLogContext {
-  readonly session: {
-    readonly id: string;
-    readonly night: string;
-    readonly startedAt: string;
-    readonly endedAt: string | null;
-    readonly siteId: string;
-    readonly ninaConditions: unknown;
-    readonly forecastSnapshot: unknown;
-  };
-  readonly log: {
-    readonly values: SessionLogView['values'];
-    readonly sources: Record<string, string | null>;
-    readonly updatedAt: string;
-    readonly updatedBy: string | null;
-    readonly updatedByName: string | null;
-  } | null;
-  readonly version: string;
-}
 
 export interface ClearNightRawSession {
   readonly id: string;
@@ -63,158 +38,6 @@ export interface ClearNightForecast {
 }
 
 export class SessionLogRepository extends TenantRepo {
-  /** Session (Rig des Mandanten), Standort und gespeichertes Protokoll. */
-  async context(sessionId: string): Promise<SessionLogContext> {
-    const row = await this.db
-      .selectFrom('session as s')
-      .innerJoin('rig as r', (j) =>
-        j.onRef('r.id', '=', 's.rigId').onRef('r.tenantId', '=', 's.tenantId'),
-      )
-      .leftJoin('sessionLog as l', (j) =>
-        j.onRef('l.sessionId', '=', 's.id').onRef('l.tenantId', '=', 's.tenantId'),
-      )
-      .leftJoin('appUser as u', (j) =>
-        j.onRef('u.id', '=', 'l.updatedBy').onRef('u.tenantId', '=', 'l.tenantId'),
-      )
-      .select([
-        's.id',
-        's.night',
-        's.startedAt',
-        's.endedAt',
-        's.ninaConditions',
-        's.forecastSnapshot',
-        'r.siteId',
-        'l.sessionId as logSessionId',
-        'l.startTime',
-        'l.endTime',
-        'l.seeingArcsec',
-        'l.transparencyPct',
-        'l.sqm',
-        'l.temperatureC',
-        'l.humidityPct',
-        'l.windKmh',
-        'l.cloudsNote',
-        'l.weatherNotes',
-        'l.notesMd',
-        'l.moonIlluminationPct',
-        'l.valueSources',
-        'l.updatedAt',
-        'l.updatedBy',
-        'u.displayName as updatedByName',
-      ])
-      .where('s.tenantId', '=', this.ctx.tenantId)
-      .where('s.id', '=', sessionId)
-      .executeTakeFirst();
-    if (!row) throw new ProblemError('resource.not_found');
-    const log =
-      row.logSessionId === null
-        ? null
-        : {
-            values: {
-              startTime: iso(row.startTime),
-              endTime: iso(row.endTime),
-              seeingArcsec: numOrNull(row.seeingArcsec),
-              transparencyPct: numOrNull(row.transparencyPct),
-              sqm: numOrNull(row.sqm),
-              temperatureC: numOrNull(row.temperatureC),
-              humidityPct: numOrNull(row.humidityPct),
-              windKmh: numOrNull(row.windKmh),
-              cloudsNote: row.cloudsNote,
-              moonIlluminationPct: numOrNull(row.moonIlluminationPct),
-              weatherNotes: row.weatherNotes ?? '',
-              notesMd: row.notesMd ?? '',
-            },
-            sources: parseJson<Record<string, string | null>>(row.valueSources ?? {}) ?? {},
-            updatedAt: iso(row.updatedAt) as string,
-            updatedBy: row.updatedBy ?? null,
-            updatedByName: row.updatedByName ?? null,
-          };
-    return {
-      session: {
-        id: row.id,
-        night: String(row.night).slice(0, 10),
-        startedAt: iso(row.startedAt) as string,
-        endedAt: iso(row.endedAt),
-        siteId: row.siteId,
-        ninaConditions: parseJson<unknown>(row.ninaConditions),
-        forecastSnapshot: parseJson<unknown>(row.forecastSnapshot),
-      },
-      log,
-      version: sessionLogVersion(row.updatedAt),
-    };
-  }
-
-  /**
-   * Protokoll speichern (FA-AUS-14/15): `expected` = Version aus `If-Match` (`0` = noch keins), sonst
-   * `412 resource.version_conflict`. Sperrt die Session (`guard`), damit zwei Speicherungen nicht beide
-   * gegen dieselbe Version gewinnen.
-   */
-  async save(
-    sessionId: string,
-    values: SessionLogView['values'],
-    sources: SessionLogView['sources'],
-    expected: string | undefined,
-    userId: string | undefined,
-    now: Date,
-  ): Promise<string> {
-    const tenantId = this.ctx.tenantId;
-    return withTx(
-      this.db,
-      async (trx) => {
-        const session = await trx
-          .selectFrom('session')
-          .select('id')
-          .where('tenantId', '=', tenantId)
-          .where('id', '=', sessionId)
-          .executeTakeFirst();
-        if (!session) throw new ProblemError('resource.not_found');
-        const current = await trx
-          .selectFrom('sessionLog')
-          .select('updatedAt')
-          .where('tenantId', '=', tenantId)
-          .where('sessionId', '=', sessionId)
-          .executeTakeFirst();
-        const version = sessionLogVersion(current?.updatedAt);
-        if (expected !== undefined && expected !== version)
-          throw new ProblemError('resource.version_conflict');
-        // Monotone Version auch bei zwei Speicherungen in derselben Millisekunde.
-        const prev = current ? new Date(current.updatedAt).getTime() : 0;
-        const at = new Date(Math.max(now.getTime(), prev + 1));
-        const row = {
-          startTime: values.startTime,
-          endTime: values.endTime,
-          seeingArcsec: values.seeingArcsec,
-          transparencyPct: values.transparencyPct,
-          sqm: values.sqm,
-          temperatureC: values.temperatureC,
-          humidityPct: values.humidityPct,
-          windKmh: values.windKmh,
-          cloudsNote: values.cloudsNote,
-          weatherNotes: values.weatherNotes,
-          notesMd: values.notesMd,
-          moonIlluminationPct: values.moonIlluminationPct,
-          valueSources: JSON.stringify(sources),
-          updatedBy: userId ?? null,
-          updatedAt: at,
-        };
-        if (current)
-          await trx
-            .updateTable('sessionLog')
-            .set(row)
-            .where('tenantId', '=', tenantId)
-            .where('sessionId', '=', sessionId)
-            .execute();
-        else
-          await trx
-            .insertInto('sessionLog')
-            .values({ ...row, sessionId, tenantId })
-            .execute();
-        return sessionLogVersion(at);
-      },
-      { guard: [{ table: 'session', id: sessionId, tenantId }] },
-    );
-  }
-
   /** Standort des Mandanten (Name, Zone) – `404`, wenn fremd. */
   async site(siteId: string) {
     const site = await this.db

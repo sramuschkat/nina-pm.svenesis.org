@@ -1,5 +1,5 @@
 /**
- * Sessions im Web (AP-15; S-60, S-61; FA-AUS-01…03, FA-AUS-06, FA-AUS-07; TK 7.2):
+ * Sessions im Web (AP-15; S-60, S-61; FA-AUS-01…03, FA-AUS-06; TK 7.2):
  * - `GET /web/v1/sessions` und `GET /web/v1/sessions/{id}` (`session.read`); die Liste seit AP-64 seitenweise
  *   (`cursor`/`nextCursor`) mit Effizienz, Wetterbewertung und Projekt-Chips je Session.
  * - `GET /web/v1/sessions/summary` (`session.read`, AP-64): Kennzahlen der Nächte für Rig und Zeitraum.
@@ -7,7 +7,6 @@
  *   User nur für eigene Projekte bei Mandanteneinstellung `userCorrections`): Verworfen je Zeile und
  *   Nacht = max(Korrektur, einzeln verworfene) – darunter `409 correction.conflict`; Verbleibend steigt,
  *   ein fertiges Projekt geht zurück nach *Aktiv* (FA-PRJ-12).
- * - `PUT /web/v1/sessions/{id}/review` (`session.review`): *Als geprüft markieren* (FA-AUS-07).
  * - `PATCH /web/v1/captures/{id}` (`session.correct`, Objekt = Projekt der Aufnahme wie bei der Korrektur):
  *   einzelne Aufnahme verwerfen bzw. zurücknehmen (AP-31, FA-AUS-20); Regel max ohne Doppelabzug.
  * Das Detail trägt Kennzahlen und Abweichungsgründe (AP-31, FA-AUS-04/05/09).
@@ -26,9 +25,7 @@ import {
   NightSessionDetail,
   NightSessionList,
   NightSessionQuery,
-  NightSessionReviewed,
   NightSessionSummary,
-  NightSessionUnreviewed,
   NightSessionUnassigned,
   NightSessionSummaryQuery,
   gradeFlags,
@@ -40,6 +37,8 @@ import {
   Uuid,
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
+import { parseSnapshot } from '../sessions/log';
+import { lineQualities, nightConditions, sessionQuality } from '../sessions/night-quality';
 import { refsByProject } from '../sessions/project-images';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
@@ -57,7 +56,7 @@ const denied = {
 export const listSessionsRoute = defineRoute(
   {
     action: 'session.read',
-    requirements: ['FA-AUS-01', 'FA-AUS-05', 'FA-AUS-07', 'S-60', 'AP-64'],
+    requirements: ['FA-AUS-01', 'FA-AUS-05', 'S-60', 'AP-64'],
   },
   {
     method: 'get',
@@ -73,27 +72,15 @@ export const listSessionsRoute = defineRoute(
 export const sessionSummaryRoute = defineRoute(
   {
     action: 'session.read',
-    requirements: ['FA-AUS-05', 'FA-AUS-07', 'FA-AUS-17', 'S-60', 'AP-64'],
+    requirements: ['FA-AUS-05', 'FA-AUS-17', 'S-60', 'AP-64'],
   },
   {
     method: 'get',
     path: `${BASE}/summary`,
-    summary:
-      'Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz, ungeprüft)',
+    summary: 'Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz)',
     tags: ['sessions'],
     request: { query: NightSessionSummaryQuery },
     responses: { 200: { description: 'Kennzahlen', ...json(NightSessionSummary) }, ...denied },
-  },
-);
-
-export const sessionUnreviewedRoute = defineRoute(
-  { action: 'session.read', requirements: ['FA-AUS-07', 'S-02', 'AP-73'] },
-  {
-    method: 'get',
-    path: `${BASE}/unreviewed`,
-    summary: 'Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite',
-    tags: ['sessions'],
-    responses: { 200: { description: 'Ungeprüft', ...json(NightSessionUnreviewed) }, ...denied },
   },
 );
 
@@ -156,25 +143,6 @@ export const sessionCorrectionRoute = defineRoute(
   },
 );
 
-export const sessionReviewRoute = defineRoute(
-  { action: 'session.review', requirements: ['FA-AUS-07', 'S-61'] },
-  {
-    method: 'put',
-    path: `${BASE}/{id}/review`,
-    summary: 'Session als geprüft markieren bzw. zurücknehmen',
-    tags: ['sessions'],
-    request: {
-      params: z.object({ id: Uuid }),
-      body: { ...json(NightSessionReviewed), required: true },
-    },
-    responses: {
-      204: { description: 'Gespeichert' },
-      ...denied,
-      404: problemContent('resource.not_found'),
-    },
-  },
-);
-
 export const captureRejectRoute = defineRoute(
   { action: 'session.correct', requirements: ['FA-AUS-20', 'FA-AUS-06', 'FK 8.4'] },
   {
@@ -215,11 +183,9 @@ export const reportResendRoute = defineRoute(
 export const SESSION_ROUTES = [
   listSessionsRoute,
   sessionSummaryRoute,
-  sessionUnreviewedRoute,
   sessionUnassignedRoute,
   sessionDetailRoute,
   sessionCorrectionRoute,
-  sessionReviewRoute,
   captureRejectRoute,
   reportResendRoute,
 ] as const;
@@ -230,17 +196,13 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
   app.openapi(listSessionsRoute, async (c) => {
     const svc = await services();
     const q = c.req.valid('query');
-    const page = await svc
-      .repositories(requireTenant(c).tenant)
-      .sessionReview()
-      .page({
-        rigId: q.rigId,
-        unreviewed: q.unreviewed === 'true',
-        from: q.from,
-        to: q.to,
-        limit: q.limit,
-        cursor: q.cursor,
-      });
+    const page = await svc.repositories(requireTenant(c).tenant).sessionReview().page({
+      rigId: q.rigId,
+      from: q.from,
+      to: q.to,
+      limit: q.limit,
+      cursor: q.cursor,
+    });
     c.header('cache-control', 'no-store');
     return c.json(page, 200);
   });
@@ -255,14 +217,6 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
       .summary({ rigId: q.rigId, from: q.from, to: q.to });
     c.header('cache-control', 'no-store');
     return c.json(summary, 200);
-  });
-
-  // Ebenfalls vor `/{id}` registriert.
-  app.openapi(sessionUnreviewedRoute, async (c) => {
-    const svc = await services();
-    const result = await svc.repositories(requireTenant(c).tenant).sessionReview().unreviewed();
-    c.header('cache-control', 'no-store');
-    return c.json(result, 200);
   });
 
   // Vor `/{id}` registriert.
@@ -286,17 +240,39 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
     const projectIds = [
       ...new Set(detail.captures.flatMap((x) => (x.projectId ? [x.projectId] : []))),
     ];
-    const [tenantSettings, rigOptics, qualityRefs, basis] = await Promise.all([
-      repos.tenant().settings(),
-      eq.rig(detail.session.rigId).then(async (rig) => ({
-        rig,
-        optics: rig
-          ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
-          : ([undefined, undefined] as const),
-      })),
-      repos.imageQuality().refs(detail.session.rigId, detail.session.night),
-      repos.imageQuality().gradeBasis(projectIds),
-    ]);
+    // Bedingungen (AP-77): Powerbox und Wettergerät über die Laufzeit der Session – Rohwerte, älter als deren Aufbewahrung
+    // die Stundenwerte –, dazu der Wetter-Schnappschuss zum Sessionbeginn.
+    const rigId = detail.session.rigId;
+    const from = new Date(detail.session.startedAt);
+    const to = detail.session.endedAt ? new Date(detail.session.endedAt) : svc.now();
+    const telemetry = repos.telemetry();
+    const samples = async (source: 'power_box' | 'weather') => {
+      const raw = await telemetry.raw(rigId, source, from, to);
+      if (raw.length > 0) return raw;
+      // Stundenwerte beginnen zur vollen Stunde: die angebrochene erste Stunde gehört dazu.
+      const hours = await telemetry.hourly(
+        rigId,
+        source,
+        new Date(Math.floor(from.getTime() / 3_600_000) * 3_600_000),
+        to,
+      );
+      return hours.map((h) => ({ metrics: h.stats }));
+    };
+    const [tenantSettings, rigOptics, qualityRefs, basis, powerBox, weather, snapshot] =
+      await Promise.all([
+        repos.tenant().settings(),
+        eq.rig(detail.session.rigId).then(async (rig) => ({
+          rig,
+          optics: rig
+            ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
+            : ([undefined, undefined] as const),
+        })),
+        repos.imageQuality().refs(detail.session.rigId, detail.session.night),
+        repos.imageQuality().gradeBasis(projectIds),
+        samples('power_box'),
+        samples('weather'),
+        repos.sessionReview().forecastSnapshot(detail.session.id),
+      ]);
     // Je Zeile, ob der Aufrufer korrigieren darf – dieselbe Prüfung wie bei Korrektur und Verwerfen unten.
     const { userCorrections } = tenantSettings.settings;
     const rows = detail.rows.map((r) => ({
@@ -310,11 +286,6 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
     // Bildqualität (AP-72): Pixelmaßstab des Rigs und Bezugswerte der letzten 30 Nächte.
     const { rig } = rigOptics;
     const [telescope, camera] = rigOptics.optics;
-    const quality = {
-      scaleArcsecPx:
-        telescope && camera ? imageScale({ ...telescope, ...camera }).scaleArcsecPx : null,
-      refs: qualityRefs,
-    };
     // Bildbewertung (AP-72b): je gespeichertem, zugeordnetem Light mit dem Bezug seines Projekts und den Grenzwerten des Rigs.
     const settings = rig?.imageQuality ?? IMAGE_QUALITY_DEFAULTS;
     const refs = refsByProject(basis);
@@ -343,8 +314,19 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
         grade: imageGrade(input, flags, { rejected: x.rejected, kept: x.kept ?? false }),
       };
     });
+    // Sessionqualität (AP-77): Anteile je Zeile und Summe der Session aus den bewerteten Lights.
+    const lines = lineQualities(captures, refs, settings);
+    const quality = {
+      scaleArcsecPx:
+        telescope && camera ? imageScale({ ...telescope, ...camera }).scaleArcsecPx : null,
+      refs: qualityRefs,
+      lines,
+      session: sessionQuality(lines),
+    };
+    const forecast = parseSnapshot(snapshot);
+    const conditions = nightConditions({ captures, powerBox, weather, forecast });
     c.header('cache-control', 'no-store');
-    return c.json({ ...detail, captures, rows, quality }, 200);
+    return c.json({ ...detail, captures, rows, quality, conditions }, 200);
   });
 
   app.openapi(sessionCorrectionRoute, async (c) => {
@@ -408,15 +390,6 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
       svc.now(),
     );
     return c.json(r, 200);
-  });
-
-  app.openapi(sessionReviewRoute, async (c) => {
-    const svc = await services();
-    await svc
-      .repositories(requireTenant(c).tenant)
-      .sessionReview()
-      .setReviewed(c.req.valid('param').id, c.req.valid('json').reviewed);
-    return c.body(null, 204);
   });
 
   app.openapi(reportResendRoute, async (c) => {

@@ -213,13 +213,11 @@ export {
   SessionLogRepository,
   recordSiteNightForecast,
   saveForecastSnapshot,
-  sessionLogVersion,
   upsertSiteNightStatForSession,
   type ClearNightForecast,
   type ClearNightRawSession,
   type SiteNightForecastInput,
   type SiteNightForecastOutcome,
-  type SessionLogContext,
 } from './repositories/session-log';
 export {
   LATE_REPORT_MS,

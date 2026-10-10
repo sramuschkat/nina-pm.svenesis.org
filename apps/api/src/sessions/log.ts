@@ -1,8 +1,7 @@
 /**
- * Sitzungsprotokoll und Klarnacht-Statistik in der API (AP-30; FA-AUS-14…17):
+ * Wetter-Schnappschuss und Klarnacht-Statistik in der API (AP-30; FA-AUS-16/17; das Sitzungsprotokoll entfällt seit AP-77):
  * - `captureForecastSnapshot`: Wetter-Schnappschuss zum Sessionbeginn (Mittel der astronomisch dunklen
  *   Stunden der Nacht aus dem aktuellen Wetter-Cache des Standorts) – best effort, nie ein Fehler für NINA.
- * - `sessionLogView`: gespeichertes Protokoll bzw. Vorbelegung mit Quellen, NINA-Werten und Vorhersage.
  * - `clearNightView`: Monatszeilen, Nächte und Treffsicherheit je Standort und Zeitraum. Die Vorhersage einer
  *   Nacht kommt aus dem Schnappschuss der ersten Session mit Schnappschuss, sonst aus `site_night_forecast`
  *   (AP-64b: letzte Vorhersage vor Beginn der Dunkelheit, auch für Nächte ohne Session; erst nach Ende der Nacht).
@@ -12,22 +11,15 @@ import {
   saveForecastSnapshot,
   type ClearNightForecast,
   type ClearNightRawSession,
-  type SessionLogContext,
 } from '@nina-pm/db';
 import {
   clearNightMonths,
   forecastAccuracy,
   imagesForecastAccuracy,
   forecastSnapshot,
-  ninaStats,
-  prefillSessionLog,
-  SESSION_LOG_FIELDS,
-  sessionLogSources,
   type ClearNightNight,
   type ClearNightView,
   type ForecastSnapshot,
-  type SessionLogSource,
-  type SessionLogView,
 } from '@nina-pm/shared';
 import { logger } from '../lib/logger';
 import type { ApiServices } from '../routes/services';
@@ -87,68 +79,6 @@ export function parseSnapshot(raw: unknown): ForecastSnapshot | null {
     ratingIndex: num(o.ratingIndex),
     nightMean: num(o.nightMean),
     moonIllumPct: num(o.moonIllumPct),
-  };
-}
-
-const SOURCES = new Set<string>(sessionLogSources);
-
-/** Vorbelegung (Werte + Quellen) aus Session, NINA-Werten und Schnappschuss. */
-export function sessionLogPrefill(ctx: SessionLogContext) {
-  return prefillSessionLog({
-    startedAt: ctx.session.startedAt,
-    endedAt: ctx.session.endedAt,
-    forecast: parseSnapshot(ctx.session.forecastSnapshot),
-    nina: ninaStats(ctx.session.ninaConditions),
-  });
-}
-
-export function sessionLogView(ctx: SessionLogContext): SessionLogView {
-  const forecast = parseSnapshot(ctx.session.forecastSnapshot);
-  const nina = ninaStats(ctx.session.ninaConditions);
-  const common = {
-    sessionId: ctx.session.id,
-    version: ctx.version,
-    nina,
-    forecast: forecast
-      ? {
-          transparencyPct: forecast.transparencyPct,
-          temperatureC: forecast.temperatureC,
-          humidityPct: forecast.humidityPct,
-          windKmh: forecast.windKmh,
-          cloudPct: forecast.cloudPct,
-          ratingIndex: forecast.ratingIndex,
-          nightMean: forecast.nightMean,
-          seeingScore: forecast.seeingScore,
-        }
-      : null,
-  };
-  if (!ctx.log) {
-    const prefill = sessionLogPrefill(ctx);
-    return {
-      ...common,
-      saved: false,
-      values: prefill.values,
-      sources: prefill.sources,
-      updatedAt: null,
-      updatedBy: null,
-      updatedByName: null,
-    };
-  }
-  const log = ctx.log;
-  const sources = Object.fromEntries(
-    SESSION_LOG_FIELDS.map((f) => {
-      const v = log.sources[f];
-      return [f, typeof v === 'string' && SOURCES.has(v) ? (v as SessionLogSource) : null];
-    }),
-  ) as SessionLogView['sources'];
-  return {
-    ...common,
-    saved: true,
-    values: log.values,
-    sources,
-    updatedAt: log.updatedAt,
-    updatedBy: log.updatedBy,
-    updatedByName: log.updatedByName,
   };
 }
 

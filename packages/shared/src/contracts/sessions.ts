@@ -1,5 +1,5 @@
 /**
- * Sessions und Auswertung R1 (AP-15; FA-AUS-01…03, FA-AUS-06, FA-AUS-07, FA-AUS-22; S-60, S-61; TK 7.2):
+ * Sessions und Auswertung R1 (AP-15; FA-AUS-01…03, FA-AUS-06, FA-AUS-22; S-60, S-61; TK 7.2):
  * Liste je Rig und Nacht, Detail mit Soll/Ist je Projekt und Filter, Aufnahmen mit den Kennzeichen
  * *Temperaturabweichung* (NT-E2) und *Einstellungen abweichend* (NT-E3), Ereignisse und Flats.
  * R3 (AP-31; FA-AUS-04, FA-AUS-05, FA-AUS-09, FA-AUS-20): Kennzahlen, Abweichungsgründe, einzelne
@@ -15,14 +15,15 @@ import {
   imageGrades,
   imageGradeMetrics,
   sessionStatuses,
+  sessionQualityGrades,
+  conditionMetrics,
+  conditionSources,
 } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 import { ImageQualitySettings } from './equipment';
 
 export const NightSessionQuery = z.object({
   rigId: Uuid.optional(),
-  /** Nur ungeprüfte Sessions (FA-AUS-07). */
-  unreviewed: z.enum(['true', 'false']).optional(),
   from: NightKey.optional(),
   to: NightKey.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
@@ -50,7 +51,6 @@ export const NightSession = z
     /** Sessionende der letzten Planrevision (= Nachtende, NT-09). */
     sessionEndUtc: UtcInstant.nullable(),
     createdOffline: z.boolean(),
-    reviewed: z.boolean(),
     ninaInstanceName: z.string().nullable(),
     /** Gespeicherte, zugeordnete Lights ohne Bonus bzw. Bonus (FK 8.4). */
     frames: z.number().int().min(0),
@@ -132,28 +132,13 @@ export const NightSessionSummary = z
     projects: z.number().int().min(0),
     /** Summe Belichtung / Summe nutzbare Dunkelzeit über beendete Sessions mit Plan; `null` ohne solche. */
     efficiencyPct: z.number().min(0).nullable(),
-    /** Ungeprüfte Nächte (je Rig): mindestens eine Session der Nacht ist ungeprüft. */
-    unreviewed: z.number().int().min(0),
-    /** Neueste ungeprüfte Nacht (Link „Jetzt prüfen“). */
-    firstUnreviewed: z.object({ rigId: Uuid, night: NightKey }).nullable(),
   })
   .meta({ id: 'NightSessionSummary' });
 export type NightSessionSummary = z.infer<typeof NightSessionSummary>;
 
 /**
- * Nur „ungeprüft“ für die Startseite (Zu tun, AP-73): dieselbe Zählung wie in `NightSessionSummary`, aber ohne die
- * Kennzahlen über alle Aufnahmen (Performance 10.10.2026 – die Startseite fragte bisher die Zusammenfassung ohne
- * Zeitraum ab).
- */
-export const NightSessionUnreviewed = NightSessionSummary.pick({
-  unreviewed: true,
-  firstUnreviewed: true,
-}).meta({ id: 'NightSessionUnreviewed' });
-export type NightSessionUnreviewed = z.infer<typeof NightSessionUnreviewed>;
-
-/**
  * Nicht zugeordnete Lights (FA-AUS-22, AP-77): sie zählen erst nach dem Zuordnen – die einzige Aufgabe der Startseite aus den
- * Nächten. Anzahl gesamt und je Nacht und Rig, neueste Nacht zuerst.
+ * Nächten (das Prüfen von Sessions, FA-AUS-07, entfällt seit AP-77). Anzahl gesamt und je Nacht und Rig, neueste Nacht zuerst.
  */
 export const NightSessionUnassigned = z
   .object({
@@ -380,13 +365,75 @@ export const NightSessionReason = z
   .meta({ id: 'NightSessionReason' });
 export type NightSessionReason = z.infer<typeof NightSessionReason>;
 
+/** Median und Spanne einer Messgröße (AP-77). */
+export const QualitySpread = z
+  .object({ median: z.number(), min: z.number(), max: z.number() })
+  .meta({ id: 'QualitySpread' });
+export type QualitySpread = z.infer<typeof QualitySpread>;
+
+/**
+ * Anteile der Bewertung (AP-77, FA-AUS-25): gut (in Ordnung), auffällig (Grenzwert überschritten, Gründe je Kennzahl),
+ * verworfen (Korrekturen); ohne Messwert zählt nicht. `sharePct` = gut / (gut + auffällig + verworfen).
+ */
+export const QualityCounts = z
+  .object({
+    good: z.number().int().min(0),
+    flagged: z.number().int().min(0),
+    rejected: z.number().int().min(0),
+    none: z.number().int().min(0),
+    sharePct: z.number().min(0).max(100).nullable(),
+    reasons: z.object({
+      hfr: z.number().int().min(0),
+      stars: z.number().int().min(0),
+      rms: z.number().int().min(0),
+      cloud: z.number().int().min(0),
+    }),
+  })
+  .meta({ id: 'QualityCounts' });
+export type QualityCounts = z.infer<typeof QualityCounts>;
+
+/** Qualität einer Zeile der Session (AP-77): Anteile, Median/Spanne und Verlauf über die Nacht mit Grenzwerten. */
+export const NightLineQuality = QualityCounts.extend({
+  projectId: Uuid,
+  exposureLineId: Uuid.nullable(),
+  filter: z.string(),
+  hfr: QualitySpread.nullable(),
+  stars: QualitySpread.nullable(),
+  rmsArcsec: QualitySpread.nullable(),
+  /** Grenze HFR (px) = Bezug + Grenzwert des Rigs; `null`, solange der Bezug zu klein ist oder die Prüfung aus. */
+  hfrLimit: z.number().nullable(),
+  /** Grenze Guiding-RMS (″) des Rigs; `null` = aus. */
+  rmsLimit: z.number().nullable(),
+  /** Gespeicherte, zugeordnete Lights der Zeile in Aufnahmereihenfolge (nicht verworfen). */
+  series: z.array(
+    z.object({
+      atUtc: UtcInstant,
+      hfr: z.number().nullable(),
+      rmsArcsec: z.number().nullable(),
+      flagged: z.boolean(),
+    }),
+  ),
+}).meta({ id: 'NightLineQuality' });
+export type NightLineQuality = z.infer<typeof NightLineQuality>;
+
+/** Eine Größe der Bedingungen (AP-77) mit Quelle; bei der Vorhersage ein Wert (Median = Min = Max). */
+export const NightCondition = z
+  .object({
+    metric: z.enum(conditionMetrics),
+    source: z.enum(conditionSources),
+    median: z.number(),
+    min: z.number(),
+    max: z.number(),
+  })
+  .meta({ id: 'NightCondition' });
+export type NightCondition = z.infer<typeof NightCondition>;
+
 /** Höchstzahl Aufnahmen im Detail (eine Nacht hat ~ 100…600). */
 export const NIGHT_SESSION_CAPTURE_LIMIT = 2000;
 
 export const NightSessionDetail = z
   .object({
     session: NightSession.extend({
-      reviewedBy: Uuid.nullable(),
       planRevision: z.number().int().min(1).nullable(),
       darknessEndUtc: UtcInstant.nullable(),
     }),
@@ -414,8 +461,18 @@ export const NightSessionDetail = z
             n: z.number().int().min(0),
           }),
         ),
+        /** Sessionqualität (AP-77): je Zeile (Projekt und Filter) Anteile, Gründe, Spannen und Verlauf. */
+        lines: z.array(NightLineQuality),
+        /** Summe der Session mit Urteil (sehr gut ≥ 95 %, gut ≥ 85 %, mäßig ≥ 70 %, sonst schlecht). */
+        session: QualityCounts.extend({ grade: z.enum(sessionQualityGrades).nullable() }),
       })
       .optional(),
+    /**
+     * Bedingungen der Session (AP-77) automatisch, ohne Bearbeiten: Wolken und SQM aus den Lights (Wettergerät zum
+     * Zeitpunkt der Aufnahme, sonst aus dem Wetter-Verlauf), Temperatur, Feuchte und Taupunkt aus der Powerbox (sonst
+     * Wettergerät), Wind aus dem Wettergerät, Seeing und Transparenz aus der Vorhersage. Fehlende Größen fehlen.
+     */
+    conditions: z.array(NightCondition).optional(),
   })
   .meta({ id: 'NightSessionDetail' });
 export type NightSessionDetail = z.infer<typeof NightSessionDetail>;
@@ -429,10 +486,6 @@ export const NightSessionCorrection = z
     comment: z.string().trim().max(500).nullable().default(null),
   })
   .meta({ id: 'NightSessionCorrection' });
-
-export const NightSessionReviewed = z
-  .strictObject({ reviewed: z.boolean() })
-  .meta({ id: 'NightSessionReviewed' });
 
 /** Einzelne Aufnahme verwerfen bzw. zurücknehmen (FA-AUS-20; `PATCH /web/v1/captures/{id}`). */
 export const CaptureReject = z

@@ -7,7 +7,6 @@
 import {
   can,
   COOKIE_NAMES,
-  EMPTY_SESSION_LOG,
   ProjectConditions,
   type Action,
   type ResourceMeta,
@@ -1036,7 +1035,6 @@ async function projectExamples(): Promise<Record<string, Example>> {
     return {
       'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
       'GET /api/web/v1/sessions/summary': { url: '/api/web/v1/sessions/summary' },
-      'GET /api/web/v1/sessions/unreviewed': { url: '/api/web/v1/sessions/unreviewed' },
       'GET /api/web/v1/sessions/unassigned': { url: '/api/web/v1/sessions/unassigned' },
       'GET /api/web/v1/dso': { url: '/api/web/v1/dso?q=M%2031' },
       'GET /api/web/v1/dso/region': { url: '/api/web/v1/dso/region?ra=10&dec=41&radius=2' },
@@ -1063,16 +1061,6 @@ async function projectExamples(): Promise<Record<string, Example>> {
           createdBy: submitter,
           settings: { userCorrections: false },
         },
-        expect: { 'fremder Mandant (Admin)': 404 },
-      },
-      'GET /api/web/v1/sessions/{id}/log': {
-        url: `/api/web/v1/sessions/${sessionId}/log`,
-        expect: { 'fremder Mandant (Admin)': 404 },
-      },
-      'PUT /api/web/v1/sessions/{id}/log': {
-        url: `/api/web/v1/sessions/${sessionId}/log`,
-        method: 'PUT',
-        body: { ...EMPTY_SESSION_LOG, sqm: 21.2 },
         expect: { 'fremder Mandant (Admin)': 404 },
       },
       'GET /api/web/v1/sites/{id}/clear-nights': {
@@ -1127,13 +1115,6 @@ async function projectExamples(): Promise<Record<string, Example>> {
           createdBy: submitter,
           settings: { userCorrections: false },
         },
-        expect: { 'fremder Mandant (Admin)': 404 },
-      },
-      'PUT /api/web/v1/sessions/{id}/review': {
-        url: `/api/web/v1/sessions/${sessionId}/review`,
-        method: 'PUT',
-        body: { reviewed: false },
-        okStatus: 204,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
       [`POST ${P}/{id}/submit`]: {
