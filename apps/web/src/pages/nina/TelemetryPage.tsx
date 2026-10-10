@@ -53,6 +53,14 @@ const TILES: Record<TelemetrySeries['source'], readonly { metric: string; unit: 
     { metric: 'freePct', unit: '%' },
     { metric: 'totalGb', unit: 'GB' },
   ],
+  weather: [
+    { metric: 'cloudCoverPct', unit: '%' },
+    { metric: 'skyQualityMag', unit: 'mag/″²' },
+    { metric: 'temperatureC', unit: '°C' },
+    { metric: 'humidityPct', unit: '%' },
+    { metric: 'windSpeedMs', unit: 'm/s' },
+    { metric: 'rainRateMmH', unit: 'mm/h' },
+  ],
 };
 
 type Source = TelemetrySeries['source'];
@@ -63,9 +71,12 @@ type Source = TelemetrySeries['source'];
 const CARD_GROUPS: readonly { key: Source; sources: readonly Source[] }[] = [
   { key: 'pc', sources: ['pc', 'storage'] },
   { key: 'power_box', sources: ['power_box'] },
+  // Wettergerät in NINA (AP-77): schreibt der Server aus dem Heartbeat.
+  { key: 'weather', sources: ['weather'] },
 ];
 const CHART_GROUPS: readonly { key: Source; sources: readonly Source[] }[] = [
   { key: 'power_box', sources: ['power_box'] },
+  { key: 'weather', sources: ['weather'] },
   { key: 'pc', sources: ['pc', 'storage'] },
 ];
 

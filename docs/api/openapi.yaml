@@ -11662,6 +11662,35 @@ components:
       required:
         - unreviewed
         - firstUnreviewed
+    NightSessionUnassigned:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        nights:
+          type: array
+          items:
+            type: object
+            properties:
+              rigId:
+                type: string
+                format: uuid
+                description: UUID
+              night:
+                type: string
+                format: date
+                example: 2026-09-18
+              count:
+                type: integer
+                minimum: 1
+            required:
+              - rigId
+              - night
+              - count
+      required:
+        - count
+        - nights
     NightSessionDetail:
       type: object
       properties:
@@ -13175,6 +13204,40 @@ components:
             - "null"
           minimum: 0
           maximum: 100
+        qualityPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        cloudPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        cloudSource:
+          type:
+            - string
+            - "null"
+          enum:
+            - images
+            - device
+            - null
+        sqmMeasured:
+          type:
+            - number
+            - "null"
+        moonIllumPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        forecastSeeingScore:
+          type:
+            - number
+            - "null"
       required:
         - night
         - source
@@ -13234,6 +13297,7 @@ components:
             - pc
             - power_box
             - storage
+            - weather
         resolution:
           type: string
           enum:
@@ -19685,6 +19749,7 @@ components:
             - pc
             - power_box
             - storage
+            - weather
         samples:
           type: array
           items:
@@ -28176,6 +28241,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NightSessionUnreviewed"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions/unassigned:
+    get:
+      summary: Nicht zugeordnete Aufnahmen je Nacht und Rig („Zu tun“ auf der Startseite)
+      tags:
+        - sessions
+      description: "Aktion: `session.read` · FA-AUS-22, S-02, AP-77"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-AUS-22
+        - S-02
+        - AP-77
+      responses:
+        "200":
+          description: Nicht zugeordnet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NightSessionUnassigned"
         "401":
           description: Nicht angemeldet
           content:

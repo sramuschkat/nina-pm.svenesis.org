@@ -161,6 +161,21 @@ export function nightKeys(from: string, to: string): string[] {
   return out;
 }
 
+/** Lights vor Wettergerät: Bewölkung und SQM mit Quelle (AP-77). */
+function measuredFields(
+  m: { qualityPct: number | null; cloudPct: number | null; sqm: number | null } | undefined,
+  d: { cloudPct: number | null; sqm: number | null } | undefined,
+) {
+  const fromImages = m?.cloudPct !== null && m?.cloudPct !== undefined;
+  const cloudPct = fromImages ? (m?.cloudPct ?? null) : (d?.cloudPct ?? null);
+  return {
+    qualityPct: m?.qualityPct ?? null,
+    cloudPct,
+    cloudSource: cloudPct === null ? null : fromImages ? ('images' as const) : ('device' as const),
+    sqmMeasured: m?.sqm ?? d?.sqm ?? null,
+  };
+}
+
 export function clearNightView(input: {
   readonly site: { id: string; name: string; timeZone: string };
   readonly from: string;
@@ -184,6 +199,15 @@ export function clearNightView(input: {
     string,
     { verdict: 'clear' | 'thin' | 'cloudy'; clearPct: number }
   >;
+  /** AP-77: Qualität, Bewölkung und SQM aus den Lights je Nacht. */
+  readonly measured?: ReadonlyMap<
+    string,
+    { qualityPct: number | null; cloudPct: number | null; sqm: number | null }
+  >;
+  /** AP-77: Bewölkung und SQM des Wettergeräts je Nacht (für Nächte ohne Lights). */
+  readonly device?: ReadonlyMap<string, { cloudPct: number | null; sqm: number | null }>;
+  /** AP-77: gerechnete Mondbeleuchtung je Nacht (ohne Schnappschuss). */
+  readonly moon?: ReadonlyMap<string, number>;
 }): ClearNightView {
   const statOf = new Map(input.stats.map((s) => [s.night, s]));
   const forecastOf = new Map(
@@ -227,6 +251,9 @@ export function clearNightView(input: {
       rejectedPct: lights === 0 ? null : Math.round((rejected / lights) * 1000) / 10,
       imagesClarity: input.imagesClarity?.get(night)?.verdict ?? null,
       imagesClearPct: input.imagesClarity?.get(night)?.clearPct ?? null,
+      ...measuredFields(input.measured?.get(night), input.device?.get(night)),
+      moonIllumPct: snap?.moonIllumPct ?? input.moon?.get(night) ?? null,
+      forecastSeeingScore: snap?.seeingScore ?? null,
     };
   });
   return {

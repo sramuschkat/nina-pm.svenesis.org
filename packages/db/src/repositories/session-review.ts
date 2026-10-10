@@ -711,6 +711,32 @@ export class SessionReviewRepository extends TenantRepo {
     };
   }
 
+  /** Nicht zugeordnete Lights des Mandanten je Nacht und Rig (FA-AUS-22, AP-77), neueste Nacht zuerst. */
+  async unassigned(): Promise<{
+    count: number;
+    nights: { rigId: string; night: string; count: number }[];
+  }> {
+    const rows = await this.db
+      .selectFrom('capture as c')
+      .innerJoin('session as s', (j) =>
+        j.onRef('s.id', '=', 'c.sessionId').onRef('s.tenantId', '=', 'c.tenantId'),
+      )
+      .select(['s.rigId', 's.night', sql<number>`count(*)`.as('n')])
+      .where('c.tenantId', '=', this.ctx.tenantId)
+      .where('c.frameType', '=', 'light')
+      .where('c.assignment', '=', 'unassigned')
+      .groupBy(['s.rigId', 's.night'])
+      .orderBy('s.night', 'desc')
+      .orderBy('s.rigId')
+      .execute();
+    const nights = rows.map((r) => ({
+      rigId: r.rigId,
+      night: String(r.night).slice(0, 10),
+      count: Number(r.n),
+    }));
+    return { count: nights.reduce((n, x) => n + x.count, 0), nights };
+  }
+
   async byId(id: string): Promise<NightSessionRow | undefined> {
     const r = await this.base().where('s.id', '=', id).executeTakeFirst();
     if (!r) return undefined;

@@ -84,6 +84,12 @@ ergänzt du in der Aufgabe `-Disk D:`; mit `-Disk ''` ist die Messung aus. Im Lo
 Nach einer neuen Version des Skripts genügt es, die Datei in `C:\tools` zu ersetzen (Abschnitt 3); die Aufgaben
 bleiben unverändert.
 
+## Wettergerät (ohne Skript, AP-77)
+Die Werte des Wettergeräts in NINA (z. B. SkyAlert) schickt das Plugin ohnehin mit jedem Heartbeat. Der Server speichert sie
+seit AP-77 als Quelle `weather` – höchstens ein Messpunkt je 5 Minuten und Rig, mit denselben Regeln wie die übrigen Quellen
+(Rohwerte 90 Tage, Stundenwerte dauerhaft). Dafür ist am Rig nichts einzurichten; Werte gibt es, solange NINA mit verbundenem
+Wettergerät läuft. „Rig-Zustand“ zeigt Bewölkung, SQM, Temperatur/Taupunkt/Himmel, Wind/Böen und Regen.
+
 ## Messgrößen
 
 | Quelle | CSV-Spalte → Messgröße |

@@ -91,6 +91,33 @@ export class RigTelemetryRepository extends TenantRepo {
     });
   }
 
+  /**
+   * Ein Messpunkt aus dem Heartbeat (Wettergerät, AP-77): ein Einfügen ohne Transaktion und ohne Rig-Prüfung (das Token
+   * gehört zum Rig), idempotent über (Rig, Quelle, Zeitpunkt) – derselbe 5-min-Zeitpunkt aus zwei Containern schreibt einmal.
+   */
+  async recordSample(
+    rigId: string,
+    source: string,
+    atUtc: Date,
+    metrics: Readonly<Record<string, number>>,
+    now: Date,
+  ): Promise<boolean> {
+    const inserted = await this.db
+      .insertInto('rigTelemetrySample')
+      .values({
+        tenantId: this.tenantId,
+        rigId,
+        source,
+        atUtc,
+        metrics: JSON.stringify(metrics) as unknown as Record<string, number>,
+        receivedAt: now,
+      })
+      .onConflict((oc) => oc.columns(['rigId', 'source', 'atUtc']).doNothing())
+      .returning('atUtc')
+      .execute();
+    return inserted.length > 0;
+  }
+
   /** Rohwerte im Zeitraum `[from, to)`, aufsteigend. */
   async raw(rigId: string, source: string, from: Date, to: Date): Promise<TelemetryRawRow[]> {
     const rows = await this.db

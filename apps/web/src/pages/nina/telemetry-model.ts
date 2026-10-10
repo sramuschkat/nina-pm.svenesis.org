@@ -39,7 +39,20 @@ export const DISK_FREE_WARN_PCT = 10;
 export const STALE_MIN = 15;
 
 export type ChartKey =
-  'temps' | 'load' | 'air' | 'dewGap' | 'humidity' | 'voltage' | 'current' | 'heaters' | 'diskFree';
+  | 'temps'
+  | 'load'
+  | 'air'
+  | 'dewGap'
+  | 'humidity'
+  | 'voltage'
+  | 'current'
+  | 'heaters'
+  | 'diskFree'
+  | 'clouds'
+  | 'sqm'
+  | 'weatherTemp'
+  | 'wind'
+  | 'rain';
 
 export interface ChartSpec {
   readonly key: ChartKey;
@@ -88,6 +101,17 @@ export const CHARTS: readonly ChartSpec[] = [
     yMin: 0,
     yMax: 100,
   },
+  // Wettergerät (AP-77): aus dem Heartbeat, alle 5 min.
+  { key: 'clouds', source: 'weather', unit: '%', metrics: ['cloudCoverPct'], yMin: 0, yMax: 100 },
+  { key: 'sqm', source: 'weather', unit: 'mag/″²', metrics: ['skyQualityMag'] },
+  {
+    key: 'weatherTemp',
+    source: 'weather',
+    unit: '°C',
+    metrics: ['temperatureC', 'dewPointC', 'skyTemperatureC'],
+  },
+  { key: 'wind', source: 'weather', unit: 'm/s', metrics: ['windSpeedMs', 'windGustMs'], yMin: 0 },
+  { key: 'rain', source: 'weather', unit: 'mm/h', metrics: ['rainRateMmH'], yMin: 0 },
   {
     key: 'diskFree',
     source: 'storage',

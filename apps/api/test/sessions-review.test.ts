@@ -300,6 +300,11 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       firstUnreviewed: { rigId: t.rig.id, night: NIGHT },
     });
     expect(summary.body.integrationS).toBeGreaterThan(1230);
+    // Nicht zugeordnete Lights (AP-77): die Fake-Nacht meldet eine unzugeordnete Aufnahme.
+    expect((await t.web('/sessions/unassigned')).body).toEqual({
+      count: 1,
+      nights: [{ rigId: t.rig.id, night: NIGHT, count: 1 }],
+    });
     // Startseite (Performance 10.10.2026): dieselbe Zählung „ungeprüft“ ohne Kennzahlen über alle Aufnahmen.
     expect((await t.web('/sessions/unreviewed')).body).toEqual({
       unreviewed: 1,
@@ -330,6 +335,8 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
     const cookies = { [COOKIE_NAMES.session]: await s.seed.session(identity.id, other, 'tenant') };
     const foreign = await s.request('/api/web/v1/sessions/summary', { cookies });
     expect(await foreign.json()).toEqual(empty);
+    const foreignUnassigned = await s.request('/api/web/v1/sessions/unassigned', { cookies });
+    expect(await foreignUnassigned.json()).toEqual({ count: 0, nights: [] });
     const foreignUnreviewed = await s.request('/api/web/v1/sessions/unreviewed', { cookies });
     expect(await foreignUnreviewed.json()).toEqual({ unreviewed: 0, firstUnreviewed: null });
     const foreignList = await s.request('/api/web/v1/sessions', { cookies });

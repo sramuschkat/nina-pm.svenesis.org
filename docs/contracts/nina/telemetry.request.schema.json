@@ -10,7 +10,8 @@
           "enum": [
             "pc",
             "power_box",
-            "storage"
+            "storage",
+            "weather"
           ]
         },
         "samples": {

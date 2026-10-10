@@ -127,13 +127,17 @@ test('S-43: „Rig jetzt“ mit Gerätestatus und Wetter über der Telemetrie, v
   await expect(
     card.getByRole('list', { name: 'Verbundene Geräte' }).getByRole('listitem'),
   ).toHaveCount(11);
-  // Lage gemessen: Karte über dem Telemetrie-Bereich (hier ohne Messwerte der Leerzustand), gleich breit wie die Leiste.
+  // AP-77: Das Wetter aus dem Heartbeat steht als Telemetrie-Quelle „Wettergerät“ (Verlauf) unter der Karte.
+  const weather = page.getByRole('heading', { name: 'Verlauf Wettergerät' });
+  await expect(weather).toBeVisible();
+  // Lage gemessen: Karte über dem Telemetrie-Bereich, gleich breit wie die Leiste.
   const toolbar = await page.getByRole('group', { name: 'Zeitraum' }).locator('..').boundingBox();
   const box = await card.boundingBox();
-  const empty = await page.getByRole('heading', { name: 'Noch keine Telemetrie' }).boundingBox();
-  if (!toolbar || !box || !empty) throw new Error('Leiste, Karte oder Leerzustand nicht sichtbar');
+  const below = await weather.boundingBox();
+  if (!toolbar || !box || !below)
+    throw new Error('Leiste, Karte oder Wetter-Verlauf nicht sichtbar');
   expect(box.y).toBeGreaterThan(toolbar.y);
-  expect(box.y + box.height).toBeLessThanOrEqual(empty.y);
+  expect(box.y + box.height).toBeLessThanOrEqual(below.y);
   expect(Math.abs(box.width - toolbar.width)).toBeLessThanOrEqual(1);
 });
 

@@ -37,6 +37,25 @@ export const TELEMETRY_METRICS = {
     totalGb: { unit: 'GB', min: 0, max: 1_000_000 },
     freePct: { unit: '%', min: 0, max: 100 },
   },
+  /**
+   * Wettergerät in NINA (SkyAlert u. a., AP-77): schreibt der Server aus dem Heartbeat (`NinaWeatherNow`), höchstens alle
+   * 5 min je Rig – kein Skript nötig. Was das Gerät nicht liefert, fehlt.
+   */
+  weather: {
+    cloudCoverPct: { unit: '%', min: 0, max: 100 },
+    skyQualityMag: { unit: 'mag/″²', min: 0, max: 30 },
+    skyBrightnessLux: { unit: 'lx', min: 0, max: 200_000 },
+    skyTemperatureC: { unit: '°C', min: -100, max: 70 },
+    starFwhmArcsec: { unit: '″', min: 0, max: 60 },
+    temperatureC: { unit: '°C', min: -60, max: 70 },
+    humidityPct: { unit: '%', min: 0, max: 100 },
+    dewPointC: { unit: '°C', min: -80, max: 60 },
+    pressureHpa: { unit: 'hPa', min: 300, max: 1100 },
+    windSpeedMs: { unit: 'm/s', min: 0, max: 100 },
+    windGustMs: { unit: 'm/s', min: 0, max: 120 },
+    windDirectionDeg: { unit: '°', min: 0, max: 360 },
+    rainRateMmH: { unit: 'mm/h', min: 0, max: 500 },
+  },
 } as const satisfies Record<
   (typeof telemetrySources)[number],
   Record<string, { unit: string; min: number; max: number }>
