@@ -1036,6 +1036,7 @@ async function projectExamples(): Promise<Record<string, Example>> {
     return {
       'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
       'GET /api/web/v1/sessions/summary': { url: '/api/web/v1/sessions/summary' },
+      'GET /api/web/v1/sessions/unreviewed': { url: '/api/web/v1/sessions/unreviewed' },
       'GET /api/web/v1/dso': { url: '/api/web/v1/dso?q=M%2031' },
       'GET /api/web/v1/dso/region': { url: '/api/web/v1/dso/region?ra=10&dec=41&radius=2' },
       'GET /api/web/v1/exo/transits': {

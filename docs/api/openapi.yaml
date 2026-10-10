@@ -11631,6 +11631,31 @@ components:
         - efficiencyPct
         - unreviewed
         - firstUnreviewed
+    NightSessionUnreviewed:
+      type: object
+      properties:
+        unreviewed:
+          type: integer
+          minimum: 0
+        firstUnreviewed:
+          type:
+            - object
+            - "null"
+          properties:
+            rigId:
+              type: string
+              format: uuid
+              description: UUID
+            night:
+              type: string
+              format: date
+              example: 2026-09-18
+          required:
+            - rigId
+            - night
+      required:
+        - unreviewed
+        - firstUnreviewed
     NightSessionDetail:
       type: object
       properties:
@@ -28115,6 +28140,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NightSessionSummary"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions/unreviewed:
+    get:
+      summary: Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite
+      tags:
+        - sessions
+      description: "Aktion: `session.read` · FA-AUS-07, S-02, AP-73"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-AUS-07
+        - S-02
+        - AP-73
+      responses:
+        "200":
+          description: Ungeprüft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NightSessionUnreviewed"
         "401":
           description: Nicht angemeldet
           content:

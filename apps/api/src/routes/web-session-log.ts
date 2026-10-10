@@ -187,16 +187,26 @@ export function webSessionLogRoutes(services: () => Promise<ApiServices>) {
     const { from, to } = c.req.valid('query');
     const days = (Date.parse(to) - Date.parse(from)) / 86_400_000;
     if (!(days >= 0) || days > MAX_RANGE_DAYS) throw new ProblemError('validation.failed');
-    const site = await repo.site(c.req.valid('param').id);
-    const data = await repo.clearNightData(site.id, from, to);
-    // „Klar laut Bildern“ (AP-72): Lights aller Rigs des Standorts im Zeitraum.
+    const siteId = c.req.valid('param').id;
     const repos = svc.repositories(requireTenant(c).tenant);
-    const rigIds = (await repos.equipment().rigs())
-      .filter((r) => r.siteId === site.id)
-      .map((r) => r.id);
-    const imagesClarity = imagesClarityByNight(
-      await repos.imageQuality().nightLights(rigIds, from, to),
-    );
+    // Gleichzeitig (Performance 10.10.2026): Standort, Nächte und – für „Klar laut Bildern“ (AP-72) – die Lights aller
+    // Rigs des Standorts im Zeitraum. Ein fremder bzw. unbekannter Standort scheitert an `repo.site` (404).
+    const lights = repos
+      .equipment()
+      .rigs()
+      .then((rigs) =>
+        repos.imageQuality().nightLights(
+          rigs.filter((r) => r.siteId === siteId).map((r) => r.id),
+          from,
+          to,
+        ),
+      );
+    const [site, data, nightLights] = await Promise.all([
+      repo.site(siteId),
+      repo.clearNightData(siteId, from, to),
+      lights,
+    ]);
+    const imagesClarity = imagesClarityByNight(nightLights);
     c.header('cache-control', 'no-store');
     const currentNight = noonNightKey(site.timeZone, svc.now().getTime());
     return c.json(clearNightView({ site, from, to, ...data, currentNight, imagesClarity }), 200);

@@ -139,12 +139,19 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
     const { tenant } = requireTenant(c);
     const { rigId, night } = c.req.valid('query');
     const repos = svc.repositories(tenant);
-    if (!(await repos.equipment().rig(rigId))) throw new ProblemError('resource.not_found');
     const ref = { tenantId: tenant.tenantId, rigId };
     const now = svc.now();
-    const d = await rigData(svc, ref);
+    // Gleichzeitig (Performance 10.10.2026): Rig-Daten (prüft auch, ob es das Rig gibt) und die NINA-Instanzen.
+    const [d, instances] = await Promise.all([
+      rigData(svc, ref).catch((error: unknown) => {
+        if (error instanceof ProblemError && error.code === 'nina.token_invalid')
+          throw new ProblemError('resource.not_found');
+        throw error;
+      }),
+      repos.ninaInstances().list(rigId),
+    ]);
     // Autofokus-Trigger wie beim Planaufbau: zuletzt gemeldeter Zustand der NINA-Instanz des Rigs (M7).
-    const instance = (await repos.ninaInstances().list(rigId))
+    const instance = instances
       .filter((x) => x.lastSeenAt !== null)
       .sort(
         (a, b) => new Date(b.lastSeenAt ?? 0).getTime() - new Date(a.lastSeenAt ?? 0).getTime(),
@@ -154,7 +161,7 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
         ? JSON.parse(instance.lastState)
         : (instance?.lastState ?? null);
     const currentNight = currentNightRow(siteNights(d.site, now, undefined, 3), isoUtc(now)).night;
-    const { input, projects } = await nightPlanInput(svc, { ...ref, lastState }, d, {
+    const planned = nightPlanInput(svc, { ...ref, lastState }, d, {
       night,
       currentNight,
       now,
@@ -163,13 +170,18 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
       pendingByLine: {},
       ignoreDeliverySwitch: true,
     });
-    const names = new Map(projects.map((x) => [x.id, x.name] as const));
-    const { names: known, ...actual } = await nightActual(svc, ref, d, {
-      night,
-      currentNight,
-      now,
-      names,
-    });
+    // Ist und Pläne der Nacht laden schon, während die Eingabe entsteht; die Namen kommen aus ihr.
+    const [{ input }, { names: known, ...actual }] = await Promise.all([
+      planned,
+      nightActual(svc, ref, d, {
+        night,
+        currentNight,
+        now,
+        names: planned.then(
+          ({ projects }) => new Map(projects.map((x) => [x.id, x.name] as const)),
+        ),
+      }),
+    ]);
     return c.json(
       {
         night,

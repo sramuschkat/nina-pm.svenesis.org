@@ -200,6 +200,20 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
     const unreviewed = (await t.web('/sessions?unreviewed=true')).body.items as Body[];
     expect(unreviewed.map((x) => x.id)).not.toContain(first.id);
     expect(unreviewed).toHaveLength(1);
+    // Eine Session der Nacht noch ungeprüft → die Nacht bleibt ungeprüft; beide geprüft → 0.
+    expect((await t.web('/sessions/unreviewed')).body).toMatchObject({ unreviewed: 1 });
+    await t.web(`/sessions/${(unreviewed[0] as Body).id as string}/review`, {
+      method: 'PUT',
+      body: { reviewed: true },
+    });
+    expect((await t.web('/sessions/unreviewed')).body).toEqual({
+      unreviewed: 0,
+      firstUnreviewed: null,
+    });
+    await t.web(`/sessions/${(unreviewed[0] as Body).id as string}/review`, {
+      method: 'PUT',
+      body: { reviewed: false },
+    });
     const [row] = await t.q<{ reviewed: boolean; reviewed_by: string }>(
       'SELECT reviewed, reviewed_by FROM session WHERE id = $1',
       [first.id],
@@ -286,6 +300,11 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       firstUnreviewed: { rigId: t.rig.id, night: NIGHT },
     });
     expect(summary.body.integrationS).toBeGreaterThan(1230);
+    // Startseite (Performance 10.10.2026): dieselbe Zählung „ungeprüft“ ohne Kennzahlen über alle Aufnahmen.
+    expect((await t.web('/sessions/unreviewed')).body).toEqual({
+      unreviewed: 1,
+      firstUnreviewed: { rigId: t.rig.id, night: NIGHT },
+    });
     // 1 h Belichtung in der Nacht → nutzbar.
     await t.q('UPDATE capture SET exposure_s = 900 WHERE frame_type = $1', ['light']);
     expect((await t.web('/sessions/summary')).body.usableNights).toBe(1);
@@ -311,6 +330,8 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
     const cookies = { [COOKIE_NAMES.session]: await s.seed.session(identity.id, other, 'tenant') };
     const foreign = await s.request('/api/web/v1/sessions/summary', { cookies });
     expect(await foreign.json()).toEqual(empty);
+    const foreignUnreviewed = await s.request('/api/web/v1/sessions/unreviewed', { cookies });
+    expect(await foreignUnreviewed.json()).toEqual({ unreviewed: 0, firstUnreviewed: null });
     const foreignList = await s.request('/api/web/v1/sessions', { cookies });
     expect(((await foreignList.json()) as { items: unknown[] }).items).toEqual([]);
   });

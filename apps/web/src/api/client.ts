@@ -741,6 +741,11 @@ export const sessionsApi = {
     const s = q.toString();
     return apiFetch<NightSessionSummary>(`${V1}/sessions/summary${s ? `?${s}` : ''}`);
   },
+  /** Nur „ungeprüft“ (Startseite, Zu tun): ohne Kennzahlen über alle Aufnahmen. */
+  unreviewed: () =>
+    apiFetch<Pick<NightSessionSummary, 'unreviewed' | 'firstUnreviewed'>>(
+      `${V1}/sessions/unreviewed`,
+    ),
   get: (id: string) => apiFetch<NightSessionDetail>(`${V1}/sessions/${id}`),
   correct: (
     id: string,

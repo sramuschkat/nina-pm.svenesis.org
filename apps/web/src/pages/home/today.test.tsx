@@ -122,7 +122,7 @@ vi.mock('../../api/client', () => ({
           },
         ],
       }),
-    summary: () =>
+    unreviewed: () =>
       Promise.resolve({ unreviewed: 2, firstUnreviewed: { rigId: ID(1), night: '2026-09-16' } }),
     get: () =>
       Promise.resolve({ captures: [{ grade: 'flagged' }, { grade: 'ok' }, { grade: 'flagged' }] }),
