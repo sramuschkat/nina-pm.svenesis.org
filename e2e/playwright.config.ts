@@ -12,6 +12,9 @@ const WEB_PORT = 4173;
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
+  // CI (10.10.2026): Die a11y-Suite (16 Tests, ≈ 78 s) läuft als eigener Job; die übrigen Shards lassen sie aus –
+  // Playwright schneidet die Shards nach Anzahl in Dateireihenfolge, a11y.spec.ts lag ganz in Shard 1.
+  ...(process.env.E2E_WITHOUT_A11Y === '1' ? { testIgnore: '**/a11y.spec.ts' } : {}),
   // Je Shard ein Worker (ein lokaler Stack, eine Datenbank); `fullyParallel` verteilt beim Sharden einzelne
   // Tests statt ganzer Dateien, damit die CI-Shards gleich lang laufen. Tests hängen nicht voneinander ab.
   fullyParallel: true,

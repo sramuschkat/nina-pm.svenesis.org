@@ -64,7 +64,17 @@ test('Abmelden in einem Tab wirkt im zweiten mit der nächsten Anfrage (TK 17)',
   await a.getByRole('button', { name: 'Benutzermenü' }).click();
   await a.getByRole('menuitem', { name: 'Abmelden', exact: true }).click();
   await expect(a.getByRole('link', { name: 'Mit Discord anmelden' })).toBeVisible();
-  await b.reload();
+  // „Nächste Anfrage“ kann auch eine eigene Abfrage von B sein (Fokuswechsel, Nachladen der Startseite): Deren 401
+  // leitet B selbst zur Anmeldung um und bricht ein gleichzeitiges Neuladen ab (CI #341: `Not attached to an active
+  // page`, vorher `ERR_ABORTED`). Beides ist das gewollte Verhalten – entscheidend ist, dass B danach abgemeldet ist.
+  await b.reload().catch((e: unknown) => {
+    if (
+      !/ERR_ABORTED|Not attached|frame was detached|interrupted by another navigation/.test(
+        String(e),
+      )
+    )
+      throw e;
+  });
   await expect(b.getByRole('link', { name: 'Mit Discord anmelden' })).toBeVisible();
 });
 

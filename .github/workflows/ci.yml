@@ -27,6 +27,9 @@
 # ist aus den drei Shards ausgenommen; E2E in 7 statt 6 Shards (17 Jobs je vollem Lauf, Grenze 20 je Repo). Reine
 # Doku-PRs (`code=false`) prüfen in `lint · typecheck` nur die Formatierung (Prettier) – ESLint, DSQL-Lint und
 # Typecheck sehen keine geänderte Datei.
+# Tempo (10.10.2026, nach #340: 180 s): Playwright schneidet die Shards nach Anzahl in Dateireihenfolge; `a11y.spec.ts`
+# (16 Tests, ≈ 78 s) lag ganz in Shard 1 (161 s, übrige 86–146 s). Die a11y-Suite läuft deshalb als eigener Teil
+# `e2e (a11y)` (`pnpm test:a11y`), die 7 Shards lassen sie aus (`E2E_WITHOUT_A11Y=1`) – 18 Jobs je vollem Lauf.
 name: ci
 
 on:
@@ -274,7 +277,7 @@ jobs:
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   e2e-shard:
-    name: e2e (${{ matrix.shard }}/7)
+    name: e2e (${{ matrix.part }})
     needs: changes
     if: needs.changes.outputs.web == 'true' && needs.changes.outputs.reuse != 'true'
     runs-on: ubuntu-latest
@@ -282,7 +285,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7]
+        part: ['1/7', '2/7', '3/7', '4/7', '5/7', '6/7', '7/7', 'a11y']
     # Prod-naher Stack: gebaute SPA hinter den Headern aus iam.md §10 + API im Node-Adapter mit Test-Login
     # und PGlite (TK 17); kein AWS, kein Docker. Enthält `pnpm test:a11y` (a11y.spec.ts, TK 18).
     steps:
@@ -351,8 +354,10 @@ jobs:
       - name: Chromium installieren (nur ohne Cache)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install chromium
-      - name: E2E (Shard ${{ matrix.shard }}/7)
+      - name: E2E (${{ matrix.part }})
         shell: bash
+        env:
+          PART: ${{ matrix.part }}
         # Diagnose (Wunsch Sven 02.10.2026): Mehrfach hing ein Shard nach „N passed“ bis zum Job-Limit (zuletzt
         # e2e 6/6 auf main, 20 min). Playwright selbst endet spätestens 30 s nach dem Ergebnis – vermutlich hält ein
         # übrig gebliebener Prozess die Ausgabe des Schritts offen. Der Wächter meldet sich erst, wenn der Schritt
@@ -390,7 +395,8 @@ jobs:
           ) 2>/dev/null &
           watchdog=$!
           status=0
-          pnpm e2e --shard=${{ matrix.shard }}/7 2>&1 | tee "$log" || status=$?
+          if [ "$PART" = "a11y" ]; then pnpm test:a11y 2>&1 | tee "$log" || status=$?
+          else E2E_WITHOUT_A11Y=1 pnpm e2e --shard="$PART" 2>&1 | tee "$log" || status=$?; fi
           # Wächter samt seinem `sleep` beenden – sonst hielte er selbst die Ausgabe offen.
           pkill -P "$watchdog" || true
           kill "$watchdog" 2>/dev/null || true
@@ -398,7 +404,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report-${{ strategy.job-index }}
           path: |
             playwright-report/
             test-results/
