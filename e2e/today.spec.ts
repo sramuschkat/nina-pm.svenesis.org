@@ -149,7 +149,11 @@ test('S-02: Kopf „Heute“, Rig zuerst wählen, Kennzahlen, Zeitleiste, Aufkla
   await page.keyboard.type(rigName);
   await expect(option).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(new RegExp(`rig=${rigId}`));
+  // Ist das Test-Rig schon vorgewählt (frischer Stack, steht vorn in der Liste), ändert die Wahl die Adresse nicht.
+  const combo = context.getByRole('combobox', { name: 'Rig wählen' });
+  await expect(combo).toContainText(rigName);
+  if (!page.url().includes(`rig=${rigId}`))
+    expect(new URL(page.url()).searchParams.get('rig')).toBeNull();
   await expect(context).toContainText(`E2E-Heute`);
   await settled(page);
   const tiles = page.getByRole('list', { name: 'Kennzahlen der Nacht' }).getByRole('listitem');
