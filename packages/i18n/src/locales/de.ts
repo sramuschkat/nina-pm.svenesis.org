@@ -1647,7 +1647,7 @@ export const de = {
       flatsSection: 'Flats',
       qualitySection: 'Bildbewertung',
       qualityHint:
-        'Die Grenzwerte bestimmen den Anteil guter Lights (Session-Qualität); verworfen wird nichts. Leeres Feld = Grenzwert aus. HFR und Sterne relativ zum Median desselben Projekts und Filters (ab 10 Bildern).',
+        'Die Grenzwerte bestimmen, welche Lights als gut oder auffällig zählen (Session-Qualität) – für alle Projekte dieses Rigs und rückwirkend; verworfen wird nichts. HFR und Sterne im Vergleich zum Median desselben Projekts und Filters (ab 10 Lights), Guiding und Wolken (Wettergerät) als feste Grenze. Leeres Feld = Prüfung aus.',
       qualityHfr: 'HFR über Median um mehr als',
       qualityStars: 'Sterne unter … vom Median',
       qualityRms: 'Guiding-RMS über',
