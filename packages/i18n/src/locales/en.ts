@@ -372,9 +372,12 @@ export const en: Messages = {
       meridian_flip: 'Meridian flip',
       end: 'End',
       block_skipped: 'Block skipped',
+      flats: 'Flats',
       gap: 'Gap',
     },
     reason: {
+      block_end: 'no longer fits the block',
+      af_recent: 'skipped – focused recently',
       late: 'late',
       failed: 'not saved',
       aborted: 'aborted',

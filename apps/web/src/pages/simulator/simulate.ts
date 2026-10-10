@@ -434,6 +434,8 @@ export function simulate(req: SimulationRequest): SimulationResult {
           filterColor,
           names,
           gapLabel: () => '',
+          afEveryMin: planInput.scheduler.overhead.afEveryMin,
+          flatsAtUtc: whole.flatsNotBeforeUtc,
           sky: protocolSky(planInput, { site: req.site, moonProfileNames: req.moonProfileNames }),
         })
       : null;

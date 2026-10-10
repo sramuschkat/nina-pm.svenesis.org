@@ -246,6 +246,10 @@ export function useNightPlan(
       filterColor: (f) => filterColors[f] ?? 'var(--npm-chart-marker)',
       names: new Map(Object.entries(data.projectNames)),
       gapLabel: () => '',
+      afEveryMin:
+        (data.input as { scheduler?: { overhead?: { afEveryMin?: number } } } | null)?.scheduler
+          ?.overhead?.afEveryMin ?? null,
+      flatsAtUtc: result?.plan.flatsNotBeforeUtc ?? null,
       sky:
         site && moonProfiles.data && skyInput(data.input)
           ? protocolSky(data.input, {

@@ -5,7 +5,7 @@
  */
 import type { ExecutedNight, StoredPlan } from '@nina-pm/shared';
 import { describe, expect, it } from 'vitest';
-import { actualView } from './actual-view';
+import { actualView, upcomingEntries, type StoredBlock } from './actual-view';
 
 const P = '0190c3f4-0000-7000-8000-0000000000c1';
 const B1 = '0190c3f4-0000-7000-8000-0000000000c2';
@@ -319,5 +319,102 @@ describe('actualView', () => {
     expect(v?.protocol.filter((r) => r.actual?.state === 'running').map((r) => r.cmd)).toEqual([
       'slew_center',
     ]);
+  });
+});
+
+/**
+ * Rig-Nacht 09./10.10.2026 (LDN 1228, G 180 s): Das Rig lag 5:16 min zurück; das Web schob G 35/36 hinter das Blockende,
+ * G 36 stand um 02:01:41 mitten im Folgeblock (IC 5146). Das Plugin nimmt eine Belichtung nur, wenn sie bis Blockende
+ * + 60 s fertig ist; ein geplanter Autofokus kurz nach dem Autofokus des Filterwechsels entfällt (`AF_SKIPPED recent`).
+ */
+describe('upcomingEntries (Rig liegt zurück)', () => {
+  const g = (seq: number, atUtc: string) => ({
+    ...expose(seq, atUtc),
+    filter: 'G',
+    exposureS: 180,
+  });
+  const block = (extra: StoredBlock['entries'] = []): StoredBlock => ({
+    id: B2,
+    kind: 'regular',
+    projectId: P,
+    startUtc: '2026-10-10T06:00:00Z',
+    endUtc: '2026-10-10T07:00:10Z',
+    raDeg: 314.5,
+    decDeg: 78.6,
+    rotationDeg: 0,
+    entries: [
+      g(1, '2026-10-10T06:41:00Z'),
+      g(2, '2026-10-10T06:44:05Z'),
+      ...extra,
+      { seq: 3, cmd: 'dither', atUtc: '2026-10-10T06:47:10Z', durationS: 19 },
+      g(4, '2026-10-10T06:47:29Z'),
+      g(5, '2026-10-10T06:50:34Z'),
+      { seq: 6, cmd: 'dither', atUtc: '2026-10-10T06:53:39Z', durationS: 19 },
+      g(7, '2026-10-10T06:53:58Z'),
+      g(8, '2026-10-10T06:57:03Z'),
+      { seq: 9, cmd: 'end', atUtc: '2026-10-10T07:00:10Z' },
+    ],
+  });
+  const iso = (x: { at: number }) => new Date(x.at * 1000).toISOString().slice(11, 19);
+
+  it('Belichtungen, die nicht bis Blockende + 60 s fertig werden, entfallen – nichts landet hinter dem Blockende', () => {
+    const items = upcomingEntries(block(), { seq: 1, delayS: 316 }, null, 0);
+    const planned = items.filter((x) => x.state === 'planned');
+    expect(planned.map((x) => x.entry.seq)).toEqual([1, 2, 3, 4, 5, 9]);
+    // Nach der letzten passenden Belichtung kein Dither mehr; Ende bleibt fest.
+    expect(planned.find((x) => x.entry.seq === 9)?.at).toBe(
+      Date.parse('2026-10-10T07:00:10Z') / 1000,
+    );
+    expect(iso(planned.find((x) => x.entry.seq === 5) ?? { at: 0 })).toBe('06:55:50');
+    const note = items.find((x) => x.reason === 'block_end');
+    expect(note).toMatchObject({ state: 'skipped', count: 2, entry: { filter: 'G' } });
+    // Kein Eintrag nach dem Blockende.
+    expect(Math.max(...items.map((x) => x.at))).toBeLessThanOrEqual(
+      Date.parse('2026-10-10T07:00:10Z') / 1000,
+    );
+    // Hinweis vor „Ende“.
+    expect(items.indexOf(note as (typeof items)[number])).toBeLessThan(
+      items.findIndex((x) => x.entry.cmd === 'end'),
+    );
+  });
+
+  it('pünktlich: nichts entfällt, Zeiten unverändert', () => {
+    const items = upcomingEntries(block(), null, null, 0);
+    expect(items.every((x) => x.state === 'planned' && !x.shifted)).toBe(true);
+    expect(items).toHaveLength(9);
+  });
+
+  it('geplanter Autofokus kurz nach einem Autofokus entfällt und verschiebt nichts', () => {
+    const af = { seq: 21, cmd: 'autofocus_hint', atUtc: '2026-10-10T06:47:10Z', durationS: 124 };
+    const lastAf = Date.parse('2026-10-10T06:44:00Z') / 1000;
+    const items = upcomingEntries(block([af]), { seq: 1, delayS: 316 }, lastAf, 60);
+    expect(items.find((x) => x.entry.seq === 21)).toMatchObject({
+      state: 'skipped',
+      reason: 'af_recent',
+    });
+    // Verzug danach 316 − 124 = 192 s: G 5 um 06:53:46 statt 06:55:50.
+    expect(iso(items.find((x) => x.entry.seq === 5) ?? { at: 0 })).toBe('06:53:46');
+    // Autofokus lange nach dem letzten: bleibt geplant.
+    const later = upcomingEntries(block([af]), { seq: 1, delayS: 316 }, lastAf - 3600, 60);
+    expect(later.find((x) => x.entry.seq === 21)?.state).toBe('planned');
+  });
+
+  it('Ist + Plan: Flats-Zeile; entfallene Belichtungen nicht im Folgeblock', () => {
+    const v = actualView({
+      executed,
+      stored,
+      first: null,
+      nowMs: NOW,
+      running: true,
+      computed: { blocks: [], filterBars: [], protocol: [] },
+      colorOfProject: () => 'var(--npm-chart-series-1)',
+      filterColor: () => 'var(--npm-chart-marker)',
+      names: new Map([[P, 'NGC 281']]),
+      gapLabel: () => '',
+      flatsAtUtc: '2026-09-18T11:16:00Z',
+    });
+    const last = v?.protocol[v.protocol.length - 1];
+    expect(last).toMatchObject({ cmd: 'flats', atUtc: '2026-09-18T11:16:00Z' });
+    expect(last?.actual?.state).toBe('planned');
   });
 });

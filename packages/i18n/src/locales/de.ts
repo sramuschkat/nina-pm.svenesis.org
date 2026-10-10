@@ -372,9 +372,12 @@ export const de = {
       meridian_flip: 'Meridian-Flip',
       end: 'Ende',
       block_skipped: 'Block übersprungen',
+      flats: 'Flats',
       gap: 'Lücke',
     },
     reason: {
+      block_end: 'passt nicht mehr in den Block',
+      af_recent: 'entfällt – gerade fokussiert',
       late: 'Verzug',
       failed: 'nicht gespeichert',
       aborted: 'abgebrochen',
