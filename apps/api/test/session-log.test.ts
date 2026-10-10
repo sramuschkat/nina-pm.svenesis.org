@@ -1,8 +1,5 @@
 /**
- * AP-30 (FA-AUS-14…17; S-61 *Protokoll*, S-64; PGlite): Sitzungsprotokoll nach einer Fake-Plugin-Nacht –
- * Vorbelegung aus NINA-Bedingungen und Wetter-Schnappschuss mit Quelle je Feld, Speichern mit `If-Match`
- * (412 bei veralteter Version), Quelle *manuell* bei geändertem Wert, Rechte (User liest, speichert nicht).
- * Klarnacht-Statistik: `session_close` schreibt `site_night_stat` (nutzbar ab 1 h akzeptierter Lights,
+ * AP-30 (FA-AUS-16/17; S-64; PGlite) nach einer Fake-Plugin-Nacht – Klarnacht-Statistik: `session_close` schreibt `site_night_stat` (nutzbar ab 1 h akzeptierter Lights,
  * Maximum über die Sessions der Nacht), manuelle Erfassung ungenutzter Nächte, Monatszeile und
  * Treffsicherheit.
  */
@@ -149,104 +146,6 @@ const SNAPSHOT = {
   nightMean: 0.72,
   moonIllumPct: 41.8,
 };
-
-describe('Sitzungsprotokoll (S-61 Protokoll)', () => {
-  it('belegt aus NINA und Vorhersage vor, speichert mit If-Match und markiert Änderungen als manuell', async () => {
-    const t = await setup();
-    await t.fakeNight();
-    const [session] = await t.q<{ id: string }>(
-      'SELECT id FROM session WHERE created_offline = false ORDER BY started_at LIMIT 1',
-    );
-    const sid = session?.id as string;
-    await t.q(
-      'UPDATE session SET forecast_snapshot = $2::jsonb, nina_conditions = $3::jsonb WHERE id = $1',
-      [
-        sid,
-        JSON.stringify(SNAPSHOT),
-        JSON.stringify({
-          sqm: { avg: 21.34, min: 21.1, max: 21.52 },
-          ambientTempC: { avg: 8.1, min: 6.9, max: 9.4 },
-          windMs: { avg: 2, min: 0.5, max: 4 },
-        }),
-      ],
-    );
-
-    const first = await t.web(`/sessions/${sid}/log`);
-    expect(first.status).toBe(200);
-    expect(first.etag).toBe('"0"');
-    expect(first.body).toMatchObject({ saved: false, updatedAt: null });
-    const values = first.body.values as Body;
-    const sources = first.body.sources as Body;
-    // NINA vor Vorhersage; Seeing liefert die Vorhersage nicht (nur NINA).
-    expect(values).toMatchObject({
-      sqm: 21.3,
-      temperatureC: 8.1,
-      windKmh: 7.2,
-      humidityPct: 78,
-      transparencyPct: 71.5,
-      cloudsNote: '12 %',
-      moonIlluminationPct: 41.8,
-      seeingArcsec: null,
-    });
-    expect(sources).toMatchObject({
-      sqm: 'nina',
-      temperatureC: 'nina',
-      windKmh: 'nina',
-      humidityPct: 'forecast',
-      transparencyPct: 'forecast',
-      cloudsNote: 'forecast',
-      startTime: 'auto',
-      moonIlluminationPct: 'auto',
-      seeingArcsec: null,
-    });
-    expect((first.body.nina as Body).windKmh).toEqual({ avg: 7.2, min: 1.8, max: 14.4 });
-    expect((first.body.forecast as Body).ratingIndex).toBe(3);
-
-    // User liest, speichert aber nicht (sessionlog.write nur Admin).
-    expect((await t.web(`/sessions/${sid}/log`, { as: 'user' })).status).toBe(200);
-    const body = { ...values, seeingArcsec: 2.4, humidityPct: 80, notesMd: 'Wind ab 2 Uhr' };
-    expect((await t.web(`/sessions/${sid}/log`, { method: 'PUT', body, as: 'user' })).status).toBe(
-      403,
-    );
-
-    const saved = await t.web(`/sessions/${sid}/log`, {
-      method: 'PUT',
-      body,
-      headers: { 'if-match': '"0"' },
-    });
-    expect(saved.status).toBe(200);
-    expect(saved.etag).not.toBe('"0"');
-    expect(saved.body).toMatchObject({ saved: true, updatedByName: expect.any(String) });
-    expect(saved.body.sources).toMatchObject({
-      sqm: 'nina',
-      seeingArcsec: 'manual',
-      humidityPct: 'manual',
-      transparencyPct: 'forecast',
-    });
-    expect((saved.body.values as Body).notesMd).toBe('Wind ab 2 Uhr');
-
-    // Veraltete Version → 412; aktuelle Version → 200.
-    const stale = await t.web(`/sessions/${sid}/log`, {
-      method: 'PUT',
-      body,
-      headers: { 'if-match': '"0"' },
-    });
-    expect(stale.status).toBe(412);
-    expect(stale.body.code).toBe('resource.version_conflict');
-    const again = await t.web(`/sessions/${sid}/log`, {
-      method: 'PUT',
-      body: { ...body, sqm: null },
-      headers: { 'if-match': saved.etag as string },
-    });
-    expect(again.status).toBe(200);
-    expect((again.body.sources as Body).sqm).toBeNull();
-
-    // Ungültige Werte → 422.
-    expect(
-      (await t.web(`/sessions/${sid}/log`, { method: 'PUT', body: { ...body, sqm: 30 } })).status,
-    ).toBe(422);
-  });
-});
 
 describe('Klarnacht-Statistik (S-64)', () => {
   it('session_close schreibt die Nacht; ab 1 h akzeptierter Lights nutzbar; manuelle Nächte', async () => {

@@ -348,6 +348,27 @@
   "rms",
   "cloud"
  ],
+ "sessionQualityGrades": [
+  "very_good",
+  "good",
+  "fair",
+  "poor"
+ ],
+ "conditionMetrics": [
+  "cloudPct",
+  "sqm",
+  "temperatureC",
+  "humidityPct",
+  "dewPointC",
+  "windMs",
+  "seeingScore",
+  "transparencyPct"
+ ],
+ "conditionSources": [
+  "captures",
+  "telemetry",
+  "forecast"
+ ],
  "deviationReasons": [
   "center_failed",
   "block_skipped",

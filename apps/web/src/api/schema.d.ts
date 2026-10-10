@@ -11197,14 +11197,13 @@ export interface paths {
         };
         /**
          * Sessions je Rig und Nacht (neueste zuerst, seitenweise) mit Effizienz, Wetterbewertung und Projekt-Chips
-         * @description Aktion: `session.read` · FA-AUS-01, FA-AUS-05, FA-AUS-07, S-60, AP-64
+         * @description Aktion: `session.read` · FA-AUS-01, FA-AUS-05, S-60, AP-64
          */
         get: {
             parameters: {
                 query?: {
                     /** @description UUID */
                     rigId?: string;
-                    unreviewed?: "true" | "false";
                     from?: string;
                     to?: string;
                     limit?: number;
@@ -11261,8 +11260,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz, ungeprüft)
-         * @description Aktion: `session.read` · FA-AUS-05, FA-AUS-07, FA-AUS-17, S-60, AP-64
+         * Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz)
+         * @description Aktion: `session.read` · FA-AUS-05, FA-AUS-17, S-60, AP-64
          */
         get: {
             parameters: {
@@ -11285,63 +11284,6 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["NightSessionSummary"];
-                    };
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/web/v1/sessions/unreviewed": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite
-         * @description Aktion: `session.read` · FA-AUS-07, S-02, AP-73
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Ungeprüft */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NightSessionUnreviewed"];
                     };
                 };
                 /** @description Nicht angemeldet */
@@ -11683,77 +11625,6 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/web/v1/sessions/{id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Session als geprüft markieren bzw. zurücknehmen
-         * @description Aktion: `session.review` · FA-AUS-07, S-61
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["NightSessionReviewed"];
-                };
-            };
-            responses: {
-                /** @description Gespeichert */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.not_found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/web/v1/sessions/{id}/report/resend": {
         parameters: {
             query?: never;
@@ -12054,153 +11925,6 @@ export interface paths {
                 };
             };
         };
-        trace?: never;
-    };
-    "/api/web/v1/sessions/{id}/log": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Sitzungsprotokoll bzw. Vorbelegung (Vorhersage, NINA) mit Quelle je Feld
-         * @description Aktion: `session.read` · FA-AUS-14, FA-AUS-15, S-61
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Protokoll */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SessionLogView"];
-                    };
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.not_found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        /**
-         * Sitzungsprotokoll speichern
-         * @description Aktion: `sessionlog.write` · FA-AUS-14, FA-AUS-15, S-61
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: {
-                    /** @description `ETag` des Protokolls (`"0"` = noch keins); abweichend → 412 */
-                    "if-match"?: string;
-                };
-                path: {
-                    /** @description UUID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["SessionLogValues"];
-                };
-            };
-            responses: {
-                /** @description Gespeichert */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SessionLogView"];
-                    };
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.not_found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.version_conflict */
-                412: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description validation.failed */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/api/web/v1/sites/{id}/clear-nights": {
@@ -20319,7 +20043,6 @@ export interface components {
              */
             sessionEndUtc: string | null;
             createdOffline: boolean;
-            reviewed: boolean;
             ninaInstanceName: string | null;
             frames: number;
             bonusFrames: number;
@@ -20363,34 +20086,6 @@ export interface components {
             lights: number;
             projects: number;
             efficiencyPct: number | null;
-            unreviewed: number;
-            firstUnreviewed: {
-                /**
-                 * Format: uuid
-                 * @description UUID
-                 */
-                rigId: string;
-                /**
-                 * Format: date
-                 * @example 2026-09-18
-                 */
-                night: string;
-            } | null;
-        };
-        NightSessionUnreviewed: {
-            unreviewed: number;
-            firstUnreviewed: {
-                /**
-                 * Format: uuid
-                 * @description UUID
-                 */
-                rigId: string;
-                /**
-                 * Format: date
-                 * @example 2026-09-18
-                 */
-                night: string;
-            } | null;
         };
         NightSessionUnassigned: {
             count: number;
@@ -20445,17 +20140,11 @@ export interface components {
                  */
                 sessionEndUtc: string | null;
                 createdOffline: boolean;
-                reviewed: boolean;
                 ninaInstanceName: string | null;
                 frames: number;
                 bonusFrames: number;
                 integrationS: number;
                 unassigned: number;
-                /**
-                 * Format: uuid
-                 * @description UUID
-                 */
-                reviewedBy: string | null;
                 planRevision: number | null;
                 /**
                  * Format: date-time
@@ -20484,7 +20173,24 @@ export interface components {
                     medianAdu: number | null;
                     n: number;
                 }[];
+                lines: components["schemas"]["NightLineQuality"][];
+                session: {
+                    good: number;
+                    flagged: number;
+                    rejected: number;
+                    none: number;
+                    sharePct: number | null;
+                    reasons: {
+                        hfr: number;
+                        stars: number;
+                        rms: number;
+                        cloud: number;
+                    };
+                    /** @enum {string|null} */
+                    grade: "very_good" | "good" | "fair" | "poor" | null;
+                };
             };
+            conditions?: components["schemas"]["NightCondition"][];
         };
         NightSessionLineRow: {
             /**
@@ -20671,6 +20377,59 @@ export interface components {
             count: number;
             durationS: number | null;
         };
+        NightLineQuality: {
+            good: number;
+            flagged: number;
+            rejected: number;
+            none: number;
+            sharePct: number | null;
+            reasons: {
+                hfr: number;
+                stars: number;
+                rms: number;
+                cloud: number;
+            };
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            exposureLineId: string | null;
+            filter: string;
+            hfr: components["schemas"]["QualitySpread"];
+            stars: components["schemas"]["QualitySpread"];
+            rmsArcsec: components["schemas"]["QualitySpread"];
+            hfrLimit: number | null;
+            rmsLimit: number | null;
+            series: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc: string;
+                hfr: number | null;
+                rmsArcsec: number | null;
+                flagged: boolean;
+            }[];
+        };
+        QualitySpread: {
+            median: number;
+            min: number;
+            max: number;
+        } | null;
+        NightCondition: {
+            /** @enum {string} */
+            metric: "cloudPct" | "sqm" | "temperatureC" | "humidityPct" | "dewPointC" | "windMs" | "seeingScore" | "transparencyPct";
+            /** @enum {string} */
+            source: "captures" | "telemetry" | "forecast";
+            median: number;
+            min: number;
+            max: number;
+        };
         NightSessionCorrection: {
             /**
              * Format: uuid
@@ -20704,9 +20463,6 @@ export interface components {
              * @enum {string|null}
              */
             reason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | "auto_quality" | null;
-        };
-        NightSessionReviewed: {
-            reviewed: boolean;
         };
         ReportResendResult: {
             channels: number;
@@ -20810,93 +20566,6 @@ export interface components {
         CaptureKeep: {
             kept: boolean;
         };
-        SessionLogView: {
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            sessionId: string;
-            version: string;
-            saved: boolean;
-            values: components["schemas"]["SessionLogValues"];
-            sources: {
-                /** @enum {string|null} */
-                startTime?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                endTime?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                seeingArcsec?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                transparencyPct?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                sqm?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                temperatureC?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                humidityPct?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                windKmh?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                cloudsNote?: "forecast" | "nina" | "manual" | "auto" | null;
-                /** @enum {string|null} */
-                moonIlluminationPct?: "forecast" | "nina" | "manual" | "auto" | null;
-            };
-            forecast: {
-                transparencyPct: number | null;
-                temperatureC: number | null;
-                humidityPct: number | null;
-                windKmh: number | null;
-                cloudPct: number | null;
-                ratingIndex: number | null;
-                nightMean: number | null;
-                seeingScore: number | null;
-            } | null;
-            nina: {
-                sqm: components["schemas"]["SessionLogStat"];
-                temperatureC: components["schemas"]["SessionLogStat"];
-                humidityPct: components["schemas"]["SessionLogStat"];
-                windKmh: components["schemas"]["SessionLogStat"];
-                seeingArcsec: components["schemas"]["SessionLogStat"];
-            };
-            /**
-             * Format: date-time
-             * @example 2026-09-18T13:00:00Z
-             */
-            updatedAt: string | null;
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            updatedBy: string | null;
-            updatedByName: string | null;
-        };
-        SessionLogValues: {
-            /**
-             * Format: date-time
-             * @example 2026-09-18T13:00:00Z
-             */
-            startTime: string | null;
-            /**
-             * Format: date-time
-             * @example 2026-09-18T13:00:00Z
-             */
-            endTime: string | null;
-            seeingArcsec: number | null;
-            transparencyPct: number | null;
-            sqm: number | null;
-            temperatureC: number | null;
-            humidityPct: number | null;
-            windKmh: number | null;
-            cloudsNote: string | null;
-            moonIlluminationPct: number | null;
-            weatherNotes: string;
-            notesMd: string;
-        };
-        SessionLogStat: {
-            avg: number | null;
-            min: number | null;
-            max: number | null;
-        } | null;
         ClearNightView: {
             /**
              * Format: uuid

@@ -145,8 +145,9 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
       ninaInstanceName: 'PC',
       frames: 4,
       unassigned: 1,
-      reviewed: false,
     });
+    // Prüfen entfällt (AP-77): kein `reviewed` mehr in der Liste.
+    expect(online).not.toHaveProperty('reviewed');
     // 2 × 300 s + 330 s (abweichend gemeldet) + 300 s nach dem Lease-Verlust.
     expect(online.integrationS).toBe(1230);
 
@@ -181,14 +182,36 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
       expect.arrayContaining(['plan_built', 'af', 'lease_conflict']),
     );
     expect(d.capturesTruncated).toBe(false);
+    // Sessionqualität (AP-77): eine Zeile mit allen 4 Lights dieser Session, Urteil aus dem Anteil guter Lights.
+    const quality = d.quality as Body;
+    const lines = quality.lines as Body[];
+    expect(lines).toHaveLength(1);
+    const line = lines[0] as Body;
+    expect(line).toMatchObject({ projectId: t.pid, exposureLineId: t.lineId, filter: 'Ha' });
+    expect(
+      (line.good as number) +
+        (line.flagged as number) +
+        (line.rejected as number) +
+        (line.none as number),
+    ).toBe(4);
+    expect((line.series as Body[]).length).toBe(4);
+    expect(quality.session).toMatchObject({ grade: 'very_good', sharePct: 100 });
+    expect(line.hfr).toMatchObject({ median: 2.1 });
+    // Bedingungen (AP-77): Wolken und SQM aus den Lights (Wettergerät zum Zeitpunkt der Aufnahme); ohne Powerbox,
+    // Wetter-Verlauf und Schnappschuss nichts weiter.
+    expect(d.conditions).toEqual([
+      { metric: 'cloudPct', source: 'captures', median: 0, min: 0, max: 0 },
+      { metric: 'sqm', source: 'captures', median: 21.4, min: 21.4, max: 21.4 },
+    ]);
   });
 
-  it('fremde und unbekannte Session → 404; Filter „ungeprüft“ und *Als geprüft markieren*', async () => {
+  it('fremde und unbekannte Session → 404; Prüfen entfällt (AP-77)', async () => {
     const t = await setup();
     await t.fakeNight();
     const items = (await t.web('/sessions')).body.items as Body[];
     const first = items[0] as Body;
     expect((await t.web(`/sessions/${id()}`)).status).toBe(404);
+    // *Als geprüft markieren* und die Zählung „ungeprüft“ gibt es nicht mehr.
     expect(
       (
         await t.web(`/sessions/${first.id as string}/review`, {
@@ -196,39 +219,8 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
           body: { reviewed: true },
         })
       ).status,
-    ).toBe(204);
-    const unreviewed = (await t.web('/sessions?unreviewed=true')).body.items as Body[];
-    expect(unreviewed.map((x) => x.id)).not.toContain(first.id);
-    expect(unreviewed).toHaveLength(1);
-    // Eine Session der Nacht noch ungeprüft → die Nacht bleibt ungeprüft; beide geprüft → 0.
-    expect((await t.web('/sessions/unreviewed')).body).toMatchObject({ unreviewed: 1 });
-    await t.web(`/sessions/${(unreviewed[0] as Body).id as string}/review`, {
-      method: 'PUT',
-      body: { reviewed: true },
-    });
-    expect((await t.web('/sessions/unreviewed')).body).toEqual({
-      unreviewed: 0,
-      firstUnreviewed: null,
-    });
-    await t.web(`/sessions/${(unreviewed[0] as Body).id as string}/review`, {
-      method: 'PUT',
-      body: { reviewed: false },
-    });
-    const [row] = await t.q<{ reviewed: boolean; reviewed_by: string }>(
-      'SELECT reviewed, reviewed_by FROM session WHERE id = $1',
-      [first.id],
-    );
-    expect(row).toEqual({ reviewed: true, reviewed_by: t.owner });
-    // User darf nicht als geprüft markieren (Admin, FA-AUS-07).
-    expect(
-      (
-        await t.web(`/sessions/${first.id as string}/review`, {
-          method: 'PUT',
-          body: { reviewed: false },
-          as: 'user',
-        })
-      ).status,
-    ).toBe(403);
+    ).toBe(404);
+    expect((await t.web('/sessions/unreviewed')).status).not.toBe(200);
   });
 });
 
@@ -295,20 +287,13 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       usableNights: 0,
       lights: 5,
       projects: 1,
-      // Ungeprüft zählt Nächte: zwei ungeprüfte Sessions in einer Nacht = 1.
-      unreviewed: 1,
-      firstUnreviewed: { rigId: t.rig.id, night: NIGHT },
     });
+    expect(summary.body).not.toHaveProperty('unreviewed');
     expect(summary.body.integrationS).toBeGreaterThan(1230);
     // Nicht zugeordnete Lights (AP-77): die Fake-Nacht meldet eine unzugeordnete Aufnahme.
     expect((await t.web('/sessions/unassigned')).body).toEqual({
       count: 1,
       nights: [{ rigId: t.rig.id, night: NIGHT, count: 1 }],
-    });
-    // Startseite (Performance 10.10.2026): dieselbe Zählung „ungeprüft“ ohne Kennzahlen über alle Aufnahmen.
-    expect((await t.web('/sessions/unreviewed')).body).toEqual({
-      unreviewed: 1,
-      firstUnreviewed: { rigId: t.rig.id, night: NIGHT },
     });
     // 1 h Belichtung in der Nacht → nutzbar.
     await t.q('UPDATE capture SET exposure_s = 900 WHERE frame_type = $1', ['light']);
@@ -321,8 +306,6 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
       lights: 0,
       projects: 0,
       efficiencyPct: null,
-      unreviewed: 0,
-      firstUnreviewed: null,
     };
     expect((await t.web(`/sessions/summary?rigId=${id()}`)).body).toEqual(empty);
     expect((await t.web('/sessions/summary?from=2026-09-19')).body).toEqual(empty);
@@ -337,8 +320,6 @@ describe('AP-64: Nächte-Liste und Kennzahlen (S-60)', () => {
     expect(await foreign.json()).toEqual(empty);
     const foreignUnassigned = await s.request('/api/web/v1/sessions/unassigned', { cookies });
     expect(await foreignUnassigned.json()).toEqual({ count: 0, nights: [] });
-    const foreignUnreviewed = await s.request('/api/web/v1/sessions/unreviewed', { cookies });
-    expect(await foreignUnreviewed.json()).toEqual({ unreviewed: 0, firstUnreviewed: null });
     const foreignList = await s.request('/api/web/v1/sessions', { cookies });
     expect(((await foreignList.json()) as { items: unknown[] }).items).toEqual([]);
   });

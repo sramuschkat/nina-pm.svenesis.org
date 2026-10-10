@@ -32,3 +32,4 @@ export * from './executed-night';
 export * from './measured-overheads';
 export * from './image-quality';
 export * from './image-grading';
+export * from './session-quality';

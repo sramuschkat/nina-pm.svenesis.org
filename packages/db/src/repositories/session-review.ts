@@ -14,7 +14,6 @@ import {
 } from '@nina-pm/shared';
 import { sql } from 'kysely';
 import { TenantRepo } from './base';
-import { retryOcc } from '../tx';
 
 const iso = (v: Date | string | null | undefined): string | null =>
   v === null || v === undefined ? null : new Date(v).toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -31,8 +30,6 @@ export interface NightSessionRow {
   readonly endedAt: string | null;
   readonly sessionEndUtc: string | null;
   readonly createdOffline: boolean;
-  readonly reviewed: boolean;
-  readonly reviewedBy: string | null;
   readonly ninaInstanceName: string | null;
   readonly frames: number;
   readonly bonusFrames: number;
@@ -109,7 +106,6 @@ function snapshotWeather(raw: unknown): NightSessionExtras['weather'] {
 
 export interface NightSessionFilter {
   readonly rigId?: string | undefined;
-  readonly unreviewed?: boolean | undefined;
   readonly from?: string | undefined;
   readonly to?: string | undefined;
   readonly limit: number;
@@ -310,8 +306,6 @@ export class SessionReviewRepository extends TenantRepo {
         's.endedAt',
         's.sessionEndUtc',
         's.createdOffline',
-        's.reviewed',
-        's.reviewedBy',
         'ni.name as ninaInstanceName',
       ])
       .where('s.tenantId', '=', this.ctx.tenantId);
@@ -370,8 +364,6 @@ export class SessionReviewRepository extends TenantRepo {
       endedAt: iso(r.endedAt),
       sessionEndUtc: iso(r.sessionEndUtc),
       createdOffline: Boolean(r.createdOffline),
-      reviewed: Boolean(r.reviewed),
-      reviewedBy: r.reviewedBy,
       ninaInstanceName: r.ninaInstanceName,
       frames: c?.f ?? 0,
       bonusFrames: c?.b ?? 0,
@@ -383,7 +375,6 @@ export class SessionReviewRepository extends TenantRepo {
   async list(f: NightSessionFilter): Promise<NightSessionRow[]> {
     let q = this.base();
     if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
-    if (f.unreviewed) q = q.where('s.reviewed', '=', false);
     if (f.from) q = q.where('s.night', '>=', f.from);
     if (f.to) q = q.where('s.night', '<=', f.to);
     const rows = await q
@@ -408,7 +399,6 @@ export class SessionReviewRepository extends TenantRepo {
     const query = (after: ListCursor | null) => {
       let q = this.base();
       if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
-      if (f.unreviewed) q = q.where('s.reviewed', '=', false);
       if (f.from) q = q.where('s.night', '>=', f.from);
       if (f.to) q = q.where('s.night', '<=', f.to);
       if (after)
@@ -602,21 +592,19 @@ export class SessionReviewRepository extends TenantRepo {
 
   /**
    * Kennzahlen S-60 (AP-64) für Rig und Zeitraum: Nächte mit Session, davon nutzbar (≥ 1 h akzeptierte Lights in der
-   * Nacht), Integration, Lights, Projekte, Effizienz Ø (Summe Belichtung / Summe nutzbare Dunkelzeit) und Ungeprüfte.
+   * Nacht), Integration, Lights, Projekte, Effizienz Ø (Summe Belichtung / Summe nutzbare Dunkelzeit).
    */
-  async summary(f: Omit<NightSessionFilter, 'limit' | 'unreviewed'>): Promise<{
+  async summary(f: Omit<NightSessionFilter, 'limit'>): Promise<{
     nights: number;
     usableNights: number;
     integrationS: number;
     lights: number;
     projects: number;
     efficiencyPct: number | null;
-    unreviewed: number;
-    firstUnreviewed: { rigId: string; night: string } | null;
   }> {
     let q = this.db
       .selectFrom('session as s')
-      .select(['s.id', 's.rigId', 's.night', 's.startedAt', 's.endedAt', 's.reviewed'])
+      .select(['s.id', 's.rigId', 's.night', 's.startedAt', 's.endedAt'])
       .where('s.tenantId', '=', this.ctx.tenantId);
     if (f.rigId) q = q.where('s.rigId', '=', f.rigId);
     if (f.from) q = q.where('s.night', '>=', f.from);
@@ -667,12 +655,6 @@ export class SessionReviewRepository extends TenantRepo {
         dark += eff.usableDarkS;
       }
     }
-    // Ungeprüft zählt Nächte (je Rig): eine Nacht ist ungeprüft, solange eine ihrer Sessions ungeprüft ist.
-    const unreviewed = new Map<string, { rigId: string; night: string }>();
-    for (const s of sessions) {
-      const night = String(s.night).slice(0, 10);
-      if (!s.reviewed) unreviewed.set(`${night}|${s.rigId}`, { rigId: s.rigId, night });
-    }
     return {
       nights: perNight.size,
       usableNights: [...perNight.values()].filter((v) => v >= USABLE_NIGHT_S).length,
@@ -680,34 +662,6 @@ export class SessionReviewRepository extends TenantRepo {
       lights,
       projects: projects.filter((p) => p.projectId !== null).length,
       efficiencyPct: dark > 0 ? Math.round((exposure / dark) * 1000) / 10 : null,
-      unreviewed: unreviewed.size,
-      firstUnreviewed: [...unreviewed.values()][0] ?? null,
-    };
-  }
-
-  /**
-   * Ungeprüfte Nächte je Rig über alle Zeit (Startseite): eine Nacht ist ungeprüft, solange eine ihrer Sessions
-   * ungeprüft ist; die neueste zuerst – wie in `summary`, aber nur über die Sessions.
-   */
-  async unreviewed(): Promise<{
-    unreviewed: number;
-    firstUnreviewed: { rigId: string; night: string } | null;
-  }> {
-    const rows = await this.db
-      .selectFrom('session')
-      .select(['rigId', 'night'])
-      .distinct()
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('reviewed', '=', false)
-      .orderBy('night', 'desc')
-      .orderBy('rigId')
-      .execute();
-    const first = rows[0];
-    return {
-      unreviewed: rows.length,
-      firstUnreviewed: first
-        ? { rigId: first.rigId, night: String(first.night).slice(0, 10) }
-        : null,
     };
   }
 
@@ -744,6 +698,17 @@ export class SessionReviewRepository extends TenantRepo {
   }
 
   /** Detail S-61: Soll/Ist je Zeile, Aufnahmen (höchstens `captureLimit`), Ereignisse, Flats. */
+  /** Wetter-Schnappschuss zum Sessionbeginn (jsonb, AP-30) für die Bedingungen der Nacht (AP-77); `null` ohne. */
+  async forecastSnapshot(id: string): Promise<unknown> {
+    const row = await this.db
+      .selectFrom('session')
+      .select('forecastSnapshot')
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where('id', '=', id)
+      .executeTakeFirst();
+    return row?.forecastSnapshot == null ? null : parseJson<unknown>(row.forecastSnapshot);
+  }
+
   async detail(id: string, captureLimit: number) {
     const session = await this.byId(id);
     if (!session) throw new ProblemError('resource.not_found');
@@ -1075,19 +1040,6 @@ export class SessionReviewRepository extends TenantRepo {
       kpis,
       reasons,
     };
-  }
-
-  /** *Als geprüft markieren* (FA-AUS-07, Admin). */
-  async setReviewed(id: string, reviewed: boolean): Promise<void> {
-    const r = await retryOcc(() =>
-      this.db
-        .updateTable('session')
-        .set({ reviewed, reviewedBy: reviewed ? (this.ctx.memberId ?? null) : null })
-        .where('tenantId', '=', this.ctx.tenantId)
-        .where('id', '=', id)
-        .executeTakeFirst(),
-    );
-    if (Number(r.numUpdatedRows) === 0) throw new ProblemError('resource.not_found');
   }
 
   /**
