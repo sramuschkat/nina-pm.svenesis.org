@@ -65,6 +65,8 @@ export const ExecutedEvent = z
     projectId: Uuid.nullable(),
     /** Grund bzw. Code (übersprungen, Neuplanung). */
     code: Code.nullable(),
+    /** Filter des Autofokus (`af`); sonst `null`. */
+    filter: Code.nullable(),
     durationS: z.number().min(0).nullable(),
     /** Planrevision bei `plan_built`/`plan_rebuilt`. */
     revision: z.number().int().min(1).nullable(),

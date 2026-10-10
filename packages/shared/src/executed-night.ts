@@ -6,7 +6,8 @@
  *   des Blocks im gespeicherten Plan, sofern der höchstens `DERIVED_LEAD_MAX_S` vor der ersten Aufnahme liegt und nicht
  *   in den vorigen Block reicht – sonst stünden Anfahren, Zentrieren und Autofokus als roter „Leerlauf“ da (07.10.2026).
  * - Blöcke ohne Belichtung, die im Abstand ≤ 2 min mit demselben Grund aufeinander folgen (z. B. die
- *   `transit_interrupt`-Schleife der Rig-Nacht 06./07.10.2026), werden **eine** Lücke „n leere Blöcke“.
+ *   `transit_interrupt`-Schleife der Rig-Nacht 06./07.10.2026), werden **eine** Lücke „n leere Blöcke“; ein einzelner
+ *   kurzer leerer Block bleibt ein Block mit 0 Aufnahmen.
  * - Lücken zwischen erledigten Blöcken ab 2 min: Safety-Pause, übersprungene Blöcke (mit Grund), sonst Leerlauf; der
  *   Flip ist eine eigene Lücke (Ende = Zeitpunkt des Ereignisses, Beginn = Ende − Dauer).
  * - Filterabschnitte: aufeinanderfolgende Aufnahmen gleichen Blocks und Filters, Pause ≤ 15 min.
@@ -203,16 +204,26 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
   // ---- leere Blöcke → Lücken ----
   const closed = blocks.filter((b) => !b.running);
   const full = closed.filter((b) => b.exposures > 0);
-  const runs: { from: number; to: number; reason: string | null; count: number }[] = [];
+  const runs: {
+    from: number;
+    to: number;
+    reason: string | null;
+    count: number;
+    blocks: Work[];
+  }[] = [];
   for (const b of closed.filter((x) => x.exposures === 0)) {
     const to = b.end ?? b.start;
     const last = runs.at(-1);
     if (last && b.start - last.to <= EMPTY_MERGE_MAX_S * 1000 && last.reason === b.endReason) {
       last.to = to;
       last.count++;
-    } else runs.push({ from: b.start, to, reason: b.endReason, count: 1 });
+      last.blocks.push(b);
+    } else runs.push({ from: b.start, to, reason: b.endReason, count: 1, blocks: [b] });
   }
   const empty = runs.filter((r) => r.count > 1 || r.to - r.from >= GAP_MIN_S * 1000);
+  // Ein einzelner kurzer Block ohne Aufnahme (Anfahren, Zentrieren, dann leer – Rig-Nacht 09./10.10.2026, 01:58) ist
+  // keine Lücke, bleibt aber als Block sichtbar, statt ganz zu verschwinden.
+  const lonelyEmpty = new Set(runs.filter((r) => !empty.includes(r)).flatMap((r) => r.blocks));
 
   const gaps: ExecutedGap[] = empty.map((g) => ({
     kind: 'empty_blocks',
@@ -307,6 +318,8 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
       blockId: e.blockId,
       projectId: e.projectId,
       code: str(e.data?.code) ?? str(e.data?.reason),
+      // Filter des Autofokus (Plugin ≥ 0.4.21: Filter der Belichtung bzw. des Auslösers).
+      filter: e.kind === 'af' ? str(e.data?.filter) : null,
       durationS: e.durationS,
       revision:
         typeof e.data?.revision === 'number' && e.data.revision >= 1
@@ -315,7 +328,7 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
     }));
 
   const outBlocks: ExecutedBlock[] = blocks
-    .filter((b) => b.running || b.exposures > 0)
+    .filter((b) => b.running || b.exposures > 0 || lonelyEmpty.has(b))
     .map((b) => ({
       blockId: b.blockId,
       nightPlanId: b.nightPlanId,

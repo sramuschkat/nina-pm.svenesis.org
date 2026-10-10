@@ -69,7 +69,36 @@ export interface ActualViewInput {
   readonly afEveryMin?: number | null | undefined;
   /** Frühester Beginn der Flats der Nacht (`flatsNotBeforeUtc` der Rechnung); ohne keine Zeile. */
   readonly flatsAtUtc?: string | null | undefined;
+  /**
+   * Projekte der Eingabe (Panels mit Position, Zeilen mit Gain, Offset, Binning, Auslesemodus): Details der Ist-Zeilen,
+   * wenn der Block in keiner gespeicherten Revision steht.
+   */
+  readonly targets?: readonly ActualTarget[] | undefined;
 }
+
+export interface ActualTarget {
+  readonly id: string;
+  readonly raDeg: number;
+  readonly decDeg: number;
+  readonly rotationDeg: number;
+  readonly panels: readonly {
+    readonly id: string;
+    readonly raDeg: number;
+    readonly decDeg: number;
+    readonly rotationDeg: number;
+    readonly lines: readonly {
+      readonly id: string;
+      readonly filter: string;
+      readonly gain: number | null;
+      readonly offset: number | null;
+      readonly binning: number;
+      readonly readoutMode: string | null;
+    }[];
+  }[];
+}
+
+/** Pause zwischen zwei Aufnahmen eines Blocks, die weder Autofokus noch Flip erklärt (Warten vor dem Meridian …). */
+export const ACTUAL_WAIT_MIN_S = 120;
 
 const sec = (iso: string) => Date.parse(iso) / 1000;
 
@@ -320,6 +349,74 @@ export function actualView(i: ActualViewInput): ActualView | null {
   const nowS = i.nowMs / 1000;
   const name = (projectId: string | null, title?: string) =>
     title || (projectId ? (i.names.get(projectId) ?? '') : '');
+  // Details der Ist-Zeilen (Rig-Nacht 09./10.10.2026: Gain … Höhe waren leer): Block der gespeicherten Revisionen, sonst
+  // Panel bzw. Projekt und Zeile gleichen Filters aus der Eingabe.
+  const storedById = new Map(
+    [
+      ...((i.first?.blocks ?? []) as unknown as StoredBlock[]),
+      ...((i.stored?.blocks ?? []) as unknown as StoredBlock[]),
+    ].map((b) => [b.id, b] as const),
+  );
+  const targetById = new Map((i.targets ?? []).map((t) => [t.id, t] as const));
+  const panelOf = (blockId: string | null) =>
+    blockId ? (ex?.blocks.find((b) => b.blockId === blockId)?.panelId ?? null) : null;
+  const details = (
+    blockId: string | null,
+    projectId: string | null,
+    filter: string,
+    atUtc: string,
+  ): Partial<SimProtocolRow> => {
+    if (!projectId) return {};
+    const stored = blockId ? storedById.get(blockId) : undefined;
+    const target = targetById.get(projectId);
+    const panelId = panelOf(blockId);
+    const panel = target?.panels.find((x) => x.id === panelId) ?? target?.panels[0];
+    const place = stored ?? panel ?? target;
+    const entry = stored?.entries.find((e) => isExpose(e.cmd) && e.filter === filter);
+    const line = target?.panels.flatMap((x) => x.lines).find((l) => l.filter === filter);
+    const settings = entry
+      ? {
+          gain: entry.gain ?? null,
+          offset: entry.offset ?? null,
+          binning: entry.binning ?? null,
+          readoutMode: entry.readoutMode ?? null,
+        }
+      : line
+        ? {
+            gain: line.gain,
+            offset: line.offset,
+            binning: line.binning,
+            readoutMode: line.readoutMode,
+          }
+        : {};
+    if (!place) return settings;
+    const pos = { raDeg: place.raDeg, decDeg: place.decDeg, rotationDeg: place.rotationDeg };
+    return {
+      ...settings,
+      ...pos,
+      ...(i.sky
+        ? i.sky(
+            {
+              ...(stored ?? {
+                id: blockId ?? '',
+                kind: 'regular',
+                startUtc: atUtc,
+                endUtc: atUtc,
+                entries: [],
+              }),
+              projectId,
+              ...pos,
+            },
+            {
+              seq: 0,
+              cmd: 'expose',
+              atUtc,
+              exposureLineId: entry?.exposureLineId ?? line?.id ?? null,
+            },
+          )
+        : {}),
+    };
+  };
 
   // ---- Erledigtes ----
   const blocks: TimelineBlock[] = [];
@@ -359,7 +456,8 @@ export function actualView(i: ActualViewInput): ActualView | null {
       // Mit gespeicherter Aufnahme ist das Anfahren erledigt; „läuft“ zeigt dann die laufende Planzeile.
       actual: {
         state: b.running && b.exposures === 0 ? 'running' : 'done',
-        reason: null,
+        // Angefahren, aber ohne Aufnahme beendet (leerer Block).
+        reason: !b.running && b.exposures === 0 ? 'no_exposures' : null,
         count: null,
         past: true,
       },
@@ -391,6 +489,7 @@ export function actualView(i: ActualViewInput): ActualView | null {
         no,
         filter: s.filter,
         exposureS: s.exposureS,
+        ...details(s.blockId, s.projectId, s.filter, s.startUtc),
       }),
       actual: {
         state: s.saved === 0 && s.failed > 0 ? 'failed' : 'saved',
@@ -456,6 +555,51 @@ export function actualView(i: ActualViewInput): ActualView | null {
         ...row({ ...base, cmd: 'block_skipped' }),
         actual: { state: 'skipped', reason: e.code, count: null, past: true },
       });
+    else if (e.kind === 'af')
+      // Autofokus als Zeile (Rig-Nacht 09./10.10.2026: 15 Läufe, ≈ 34 min, standen nirgends); das Ereignis kommt am Ende.
+      rows.push({
+        ...row({
+          ...base,
+          cmd: 'autofocus_hint',
+          atUtc: new Date(Date.parse(e.atUtc) - (e.durationS ?? 0) * 1000)
+            .toISOString()
+            .replace('.000Z', 'Z'),
+          durationS: e.durationS,
+          filter: e.filter ?? '',
+        }),
+        actual: { state: 'done', reason: null, count: null, past: true },
+      });
+  }
+  // Warten im Block: Pause zwischen zwei Filterabschnitten desselben Blocks, die kein Autofokus und kein Flip erklärt
+  // (z. B. die Pause vor dem Meridian – das Plugin meldet sie nicht als Ereignis).
+  const busy = (ex?.events ?? [])
+    .filter((e) => (e.kind === 'af' || e.kind === 'flip') && (e.durationS ?? 0) > 0)
+    .map((e) => ({ from: sec(e.atUtc) - (e.durationS ?? 0), to: sec(e.atUtc) }));
+  const segs = [...(ex?.segments ?? [])].sort((a, b) => sec(a.startUtc) - sec(b.startUtc));
+  for (const [k, cur] of segs.entries()) {
+    const prev = segs[k - 1];
+    if (!prev || !cur.blockId || prev.blockId !== cur.blockId) continue;
+    const from = sec(prev.endUtc);
+    const to = sec(cur.startUtc);
+    // Unerklärte Zeit: von `from` bis zum ersten Autofokus bzw. Flip, der in die Pause fällt.
+    const first = busy
+      .filter((x) => x.to > from && x.from < to)
+      .reduce((m, x) => Math.min(m, x.from), to);
+    const until = Math.max(from, first);
+    if (until - from < ACTUAL_WAIT_MIN_S) continue;
+    rows.push({
+      ...row({
+        key: `ist:wait:${String(k)}`,
+        blockId: cur.blockId,
+        projectId: cur.projectId ?? '',
+        cmd: 'wait',
+        atUtc: prev.endUtc,
+        untilUtc: new Date(until * 1000).toISOString().replace('.000Z', 'Z'),
+        durationS: Math.round(until - from),
+        projectName: name(cur.projectId),
+      }),
+      actual: { state: 'done', reason: null, count: null, past: true },
+    });
   }
 
   // ---- Kommendes ----

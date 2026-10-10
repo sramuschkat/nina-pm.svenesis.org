@@ -436,6 +436,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
           gapLabel: () => '',
           afEveryMin: planInput.scheduler.overhead.afEveryMin,
           flatsAtUtc: whole.flatsNotBeforeUtc,
+          targets: planInput.projects,
           sky: protocolSky(planInput, { site: req.site, moonProfileNames: req.moonProfileNames }),
         })
       : null;
