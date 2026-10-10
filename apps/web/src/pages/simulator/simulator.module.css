@@ -389,42 +389,291 @@
   align-items: center;
   gap: var(--npm-space-2) var(--npm-space-3);
 }
-.nightStrip {
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+/* Mehrnacht neu (10.10.2026): Kopf, Kacheln, Säulen je Nacht, Projekt × Nacht. */
+.simHeadText {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.simTiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--npm-space-3);
+}
+.simTile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.simTileLabel {
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  color: var(--npm-text-light);
+}
+.simTileValue {
+  font-size: var(--npm-font-h2);
+  font-variant-numeric: tabular-nums;
+}
+.simSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.simSectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+  font-size: var(--npm-font-small);
+}
+.simSectionTitle {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.simNights {
+  display: grid;
   gap: var(--npm-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
   overflow-x: auto;
 }
-.nightCell {
+.simNight {
   display: flex;
-  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   gap: var(--npm-space-1);
-  min-width: 3.5rem;
+  min-width: 3rem;
+  padding: var(--npm-space-2) var(--npm-space-1);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
   font-size: var(--npm-font-small);
   text-align: center;
 }
-.nightTrack {
+.simNights[data-compact] .simNight {
+  padding: var(--npm-space-1) 2px;
+}
+.simNightDate {
   display: flex;
-  align-items: flex-end;
-  width: 1.5rem;
-  height: 4.5rem;
+  flex-direction: column;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.simRating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  max-width: 100%;
+  padding: 2px var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: 999px;
+  background: var(--npm-white);
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+}
+.simNights[data-compact] .simRating {
+  padding: 2px;
+  border: 0;
+  background: transparent;
+}
+.simRatingDot {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--npm-muted);
+}
+.simRating[data-tone='good'] .simRatingDot {
+  background: var(--npm-success);
+}
+.simRating[data-tone='fair'] .simRatingDot {
+  background: var(--npm-warning);
+}
+.simRating[data-tone='poor'] .simRatingDot {
+  background: var(--npm-danger);
+}
+.simBar {
+  position: relative;
+  width: min(4rem, 100%);
+  height: 10rem;
+}
+.simDark {
+  position: absolute;
+  inset: auto 0 0 0;
+  border: 1px dashed var(--npm-muted);
+  border-radius: var(--npm-radius);
+}
+.simPossible {
+  position: absolute;
+  inset: auto 18% 0 18%;
+  border: 1px solid var(--npm-border-strong);
+  border-radius: 3px 3px 0 0;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--npm-border-strong) 0 2px,
+    transparent 2px 5px
+  );
+}
+.simStack {
+  position: absolute;
+  inset: auto 18% 0 18%;
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  border-radius: 3px 3px 0 0;
+}
+.simStack > span {
+  min-height: 2px;
+  border-top: 1px solid var(--npm-white);
+}
+.simNightHours {
+  font-variant-numeric: tabular-nums;
+}
+.simNightNote {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.simLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.simLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.simSwatch,
+.simSwatchPossible,
+.simSwatchDark {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.simSwatchPossible {
+  border: 1px solid var(--npm-border-strong);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--npm-border-strong) 0 2px,
+    transparent 2px 5px
+  );
+}
+.simSwatchDark {
+  border: 1px dashed var(--npm-muted);
+}
+.simGrid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.simGrid th {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.simGrid thead th {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.simGridNight {
+  text-align: center !important;
+}
+.simExpand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--npm-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.simExpand:focus-visible {
+  outline: none;
+  box-shadow: var(--npm-focus-ring);
+}
+.simCell {
+  min-width: 2.75rem;
+  padding: 6px 2px;
+  border-radius: var(--npm-radius);
+  text-align: center;
+  font-weight: 600;
+  color: var(--npm-text);
+}
+.simProgress {
+  min-width: 11rem;
+}
+.simProgressTrack {
+  display: flex;
+  height: 8px;
+  margin-bottom: 3px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--npm-neutral-bg);
+}
+.simDone {
+  color: var(--npm-success);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.simOpen {
+  color: var(--npm-warning);
+  white-space: nowrap;
+}
+.simFilters {
+  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3) var(--npm-space-6);
   background: var(--npm-surface-sub);
   border-radius: var(--npm-radius);
-  overflow: hidden;
 }
-.nightFill {
-  width: 100%;
-  background: var(--npm-accent);
+.simFilterTable {
+  border-collapse: collapse;
+  font-size: var(--npm-font-small);
 }
-/* Nachtbewertung der Vorhersage (Farbe wie im Wetter-Farbband), nur mit Wettergewichtung. */
-.nightRating {
-  width: 1.5rem;
-  height: 0.375rem;
-  border-radius: var(--npm-radius);
+.simFilterTable th,
+.simFilterTable td {
+  padding: 3px var(--npm-space-3) 3px 0;
+  text-align: left;
+}
+.simFilterTable td:nth-child(2) {
+  min-width: 10rem;
+}
+.simHow > summary {
+  cursor: pointer;
+  color: var(--npm-link);
+  font-size: var(--npm-font-small);
+}
+.simHow > p {
+  margin: var(--npm-space-2) 0 0;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
 }
 
 /* Ist + Plan (AP-53c): Hinweis zur Eingabe, Zähler, Ursprungsplan; erledigte Protokollzeilen blass. */

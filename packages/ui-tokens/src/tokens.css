@@ -175,6 +175,12 @@
   --npm-quality-good: #1e7e4f;
   --npm-quality-flagged: #d9a21b;
   --npm-quality-rejected: #b3261e;
+  --npm-sim-1: #2a78d6;
+  --npm-sim-2: #e0602c;
+  --npm-sim-3: #14946a;
+  --npm-sim-4: #6a3fb5;
+  --npm-sim-5: #b9770e;
+  --npm-sim-6: #c2185b;
   --npm-row-h: 32px;
   --npm-font-scale: 1;
   --npm-space-scale: 1;
@@ -240,6 +246,12 @@
   --npm-quality-good: #3fa36b;
   --npm-quality-flagged: #f0c35a;
   --npm-quality-rejected: #e0675d;
+  --npm-sim-1: #3987e5;
+  --npm-sim-2: #d95926;
+  --npm-sim-3: #199e70;
+  --npm-sim-4: #c3a6f5;
+  --npm-sim-5: #f5b041;
+  --npm-sim-6: #f06292;
   --npm-shadow: none;
   color-scheme: dark;
 }
