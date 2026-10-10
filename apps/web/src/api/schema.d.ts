@@ -11372,6 +11372,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/sessions/unassigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nicht zugeordnete Aufnahmen je Nacht und Rig („Zu tun“ auf der Startseite)
+         * @description Aktion: `session.read` · FA-AUS-22, S-02, AP-77
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Nicht zugeordnet */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NightSessionUnassigned"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/sessions/{id}": {
         parameters: {
             query?: never;
@@ -20335,6 +20392,22 @@ export interface components {
                 night: string;
             } | null;
         };
+        NightSessionUnassigned: {
+            count: number;
+            nights: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                rigId: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                count: number;
+            }[];
+        };
         NightSessionDetail: {
             session: {
                 /**
@@ -20883,6 +20956,13 @@ export interface components {
             /** @enum {string|null} */
             imagesClarity?: "clear" | "thin" | "cloudy" | null;
             imagesClearPct?: number | null;
+            qualityPct?: number | null;
+            cloudPct?: number | null;
+            /** @enum {string|null} */
+            cloudSource?: "images" | "device" | null;
+            sqmMeasured?: number | null;
+            moonIllumPct?: number | null;
+            forecastSeeingScore?: number | null;
         };
         ClearNightMark: {
             /** @enum {boolean} */
@@ -20909,7 +20989,7 @@ export interface components {
         };
         TelemetrySeries: {
             /** @enum {string} */
-            source: "pc" | "power_box" | "storage";
+            source: "pc" | "power_box" | "storage" | "weather";
             /** @enum {string} */
             resolution: "raw" | "hourly";
             stepS: number;
@@ -23611,7 +23691,7 @@ export interface components {
         };
         NinaTelemetryBatch: {
             /** @enum {string} */
-            source: "pc" | "power_box" | "storage";
+            source: "pc" | "power_box" | "storage" | "weather";
             samples: components["schemas"]["NinaTelemetrySample"][];
         };
         NinaTelemetrySample: {

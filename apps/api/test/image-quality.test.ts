@@ -277,5 +277,39 @@ describe('Bildqualität (AP-72a)', () => {
     // 01:00–01:50 klar, 02:00–02:10 kaum Sterne → die Hälfte der Stunden klar.
     expect(n).toMatchObject({ imagesClarity: 'thin', imagesClearPct: 50 });
     expect(r.body.imagesAccuracy).toMatchObject({ compared: expect.any(Number) });
+    // AP-77: Qualität und Bewölkung aus den Lights (8 Lights, Bezug < 10 → nur Guiding und Wolken geprüft, alle gut).
+    expect(n).toMatchObject({
+      qualityPct: 100,
+      cloudPct: 0,
+      cloudSource: 'images',
+      sqmMeasured: null,
+    });
+  });
+
+  it('Standort-Statistik (AP-77): Nacht ohne Session mit Wettergerät, Mond je vergangener Nacht', async () => {
+    const w = await setup();
+    // Wettergerät in der Nacht 15./16.09. (01:00–01:10 CDT, astronomisch dunkel): 80, 90, 100 % Wolken.
+    const samples = [80, 90, 100].map((cloud, i) => ({
+      atUtc: new Date(Date.parse('2026-09-16T06:00:00Z') + i * 300_000)
+        .toISOString()
+        .replace('.000Z', 'Z'),
+      values: { cloudCoverPct: cloud, skyQualityMag: 18.5 + i * 0.1 },
+    }));
+    expect(
+      (await w.call('/telemetry', { method: 'POST', body: { source: 'weather', samples } })).status,
+    ).toBe(200);
+    const r = await w.web(`/sites/${w.siteId}/clear-nights?from=2026-09-10&to=2026-09-18`);
+    const n15 = (r.body.nights as Body[]).find((x) => x.night === '2026-09-15');
+    expect(n15).toMatchObject({
+      sessionIds: [],
+      qualityPct: null,
+      cloudPct: 90,
+      cloudSource: 'device',
+      sqmMeasured: 18.6,
+    });
+    // Mond: gerechnet für vergangene Nächte (Vollmond 26.09.2026, am 10.09. abnehmend ≈ 2 %, am 15.09. zunehmend).
+    expect(typeof n15?.moonIllumPct).toBe('number');
+    const n10 = (r.body.nights as Body[]).find((x) => x.night === '2026-09-10');
+    expect(n10).toMatchObject({ cloudPct: null, cloudSource: null, qualityPct: null });
   });
 });

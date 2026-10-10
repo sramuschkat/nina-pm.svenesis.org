@@ -152,6 +152,18 @@ export const NightSessionUnreviewed = NightSessionSummary.pick({
 export type NightSessionUnreviewed = z.infer<typeof NightSessionUnreviewed>;
 
 /**
+ * Nicht zugeordnete Lights (FA-AUS-22, AP-77): sie zählen erst nach dem Zuordnen – die einzige Aufgabe der Startseite aus den
+ * Nächten. Anzahl gesamt und je Nacht und Rig, neueste Nacht zuerst.
+ */
+export const NightSessionUnassigned = z
+  .object({
+    count: z.number().int().min(0),
+    nights: z.array(z.object({ rigId: Uuid, night: NightKey, count: z.number().int().min(1) })),
+  })
+  .meta({ id: 'NightSessionUnassigned' });
+export type NightSessionUnassigned = z.infer<typeof NightSessionUnassigned>;
+
+/**
  * Soll/Ist je Zeile der Session (FA-AUS-03). Entscheidung Sven 07.10.2026: **Soll** = Belichtungen des ersten
  * Plans dieser Session (niedrigste Revision) **ohne Bonus**, **Ist** = gespeicherte Lights **dieser** Session
  * (nicht der ganzen Nacht über mehrere Sessions); Bonus-Aufnahmen nur in *Bonus* und *Bonus verworfen*.

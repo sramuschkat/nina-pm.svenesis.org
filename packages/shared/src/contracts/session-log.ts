@@ -140,6 +140,20 @@ export const ClearNightNight = z
      */
     imagesClarity: z.enum(['clear', 'thin', 'cloudy']).nullable().optional(),
     imagesClearPct: z.number().min(0).max(100).nullable().optional(),
+    /** AP-77: Anteil guter Lights der Nacht in % (Grenzen des Rigs, Bezug des Projekts); `null` ohne bewertbare Lights. */
+    qualityPct: z.number().min(0).max(100).nullable().optional(),
+    /**
+     * AP-77: Bewölkung in % – Median der Lights (`images`, Wettergerät zum Zeitpunkt der Aufnahme), ohne Lights Mittel des
+     * Wettergeräts über die astronomische Dunkelheit (`device`, Telemetrie seit AP-77).
+     */
+    cloudPct: z.number().min(0).max(100).nullable().optional(),
+    cloudSource: z.enum(['images', 'device']).nullable().optional(),
+    /** AP-77: SQM (mag/″²) gemessen – Median der Lights bzw. des Wettergeräts. */
+    sqmMeasured: z.number().nullable().optional(),
+    /** AP-77: Mondbeleuchtung in % (Schnappschuss der Vorhersage, sonst um Mitternacht gerechnet). */
+    moonIllumPct: z.number().min(0).max(100).nullable().optional(),
+    /** AP-77: Seeing der Vorhersage zum Sessionbeginn (Bewertung 0…1 wie im Wetter). */
+    forecastSeeingScore: z.number().nullable().optional(),
   })
   .meta({ id: 'ClearNightNight' });
 export type ClearNightNight = z.infer<typeof ClearNightNight>;

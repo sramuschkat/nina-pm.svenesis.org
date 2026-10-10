@@ -89,6 +89,32 @@ const HOUR_MS = 3_600_000;
 /** Unveränderte Filterrad-Meldung höchstens stündlich neu speichern (`reportedAt`). */
 const REPORTED_WHEEL_REFRESH_MS = HOUR_MS;
 
+/** Wettergerät als Telemetrie (AP-77): je Rig höchstens ein Messpunkt je 5-min-Fenster. */
+export const WEATHER_SAMPLE_MS = 5 * 60_000;
+/** Zuletzt geschriebenes Fenster je Rig in diesem Container (spart das Einfügen; doppelt schreibt die Datenbank nie). */
+const weatherSlots = new Map<string, number>();
+
+/**
+ * Messpunkt aus `NinaWeatherNow`: nur bekannte Messgrößen im zulässigen Bereich (`TELEMETRY_METRICS.weather`), Zeitpunkt =
+ * Beginn des 5-min-Fensters; ohne gültigen Wert `null`.
+ */
+export function weatherSample(
+  weather: NonNullable<Heartbeat['devices']>['weather'] | undefined,
+  now: Date,
+): { atUtc: Date; metrics: Record<string, number> } | null {
+  if (!weather) return null;
+  const values = weather as Record<string, unknown>;
+  const metrics: Record<string, number> = {};
+  for (const [key, range] of Object.entries(nina.TELEMETRY_METRICS.weather)) {
+    const v = values[key];
+    if (typeof v === 'number' && Number.isFinite(v) && v >= range.min && v <= range.max)
+      metrics[key] = v;
+  }
+  if (Object.keys(metrics).length === 0) return null;
+  const at = Math.floor(now.getTime() / WEATHER_SAMPLE_MS) * WEATHER_SAMPLE_MS;
+  return { atUtc: new Date(at), metrics };
+}
+
 /**
  * Betriebsalarm in der App an alle aktiven Admins (AP-15, TK 16.2): entprellt über `payload.key` im
  * Zeitraum `debounceMs`; ein Fehler dabei ändert die Plugin-Antwort nie.
@@ -519,6 +545,23 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
   // alles Weitere ist voneinander unabhängig.
   if (mismatch.codes.length > 0)
     logger.warn('alert_nina_settings_mismatch', { rigId: p.rigId, codes: mismatch.codes });
+  // Wettergerät als Telemetrie (AP-77); ein Fehler hier hält den Heartbeat nicht auf.
+  const weather = weatherSample(hb.devices?.weather, now);
+  const recordWeather =
+    weather && weatherSlots.get(p.rigId) !== weather.atUtc.getTime()
+      ? repos
+          .telemetry()
+          .recordSample(p.rigId, 'weather', weather.atUtc, weather.metrics, now)
+          .then(() => {
+            weatherSlots.set(p.rigId, weather.atUtc.getTime());
+          })
+          .catch((error: unknown) => {
+            logger.warn('weather_sample_failed', {
+              rigId: p.rigId,
+              error: error instanceof Error ? error.message : '',
+            });
+          })
+      : undefined;
   const [, , , commands, t] = await Promise.all([
     // Mit Code-Liste; dieselbe Liste höchstens einmal je 24 h, eine geänderte sofort.
     mismatch.codes.length > 0
@@ -556,6 +599,7 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
     sessions.commands(hb.ackedCommandIds ?? [], now),
     // ETag und Einstellungsstand aus derselben, nach den Meldungen gelesenen Rig-Zeile wie `GET /targets`.
     targets(svc, p),
+    recordWeather,
   ]);
   return {
     serverTimeUtc: isoUtc(now),

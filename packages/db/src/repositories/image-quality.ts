@@ -269,6 +269,59 @@ export class ImageQualityRepository extends TenantRepo {
     });
   }
 
+  /**
+   * Lights der Rigs in den Nächten `from…to` für die Sessionqualität (AP-77): gespeichert und zugeordnet, auch verworfene,
+   * mit allen Messwerten (`metrics`) zur Bewertung gegen den Bezug des Projekts.
+   */
+  async nightGradeRows(
+    rigIds: readonly string[],
+    fromNight: string,
+    toNight: string,
+  ): Promise<
+    {
+      night: string;
+      rigId: string;
+      projectId: string;
+      filter: string;
+      rejected: boolean;
+      metrics: Record<string, unknown>;
+    }[]
+  > {
+    if (rigIds.length === 0) return [];
+    const rows = await this.db
+      .selectFrom('capture as c')
+      .innerJoin('session as s', (j) =>
+        j.onRef('s.id', '=', 'c.sessionId').onRef('s.tenantId', '=', 'c.tenantId'),
+      )
+      .select(['s.night', 's.rigId', 'c.projectId', 'c.filterShortName', 'c.rejected', 'c.metrics'])
+      .where('c.tenantId', '=', this.ctx.tenantId)
+      .where('s.rigId', 'in', [...rigIds])
+      .where('s.night', '>=', fromNight)
+      .where('s.night', '<=', toNight)
+      .where('c.frameType', '=', 'light')
+      .where('c.result', '=', 'saved')
+      .where('c.assignment', '=', 'assigned')
+      .limit(ROW_LIMIT)
+      .execute();
+    return rows.flatMap((r) =>
+      r.projectId
+        ? [
+            {
+              night: nightKey(r.night),
+              rigId: r.rigId,
+              projectId: r.projectId,
+              filter: r.filterShortName,
+              rejected: r.rejected,
+              metrics:
+                (typeof r.metrics === 'string'
+                  ? (JSON.parse(r.metrics) as Record<string, unknown>)
+                  : (r.metrics as Record<string, unknown> | null)) ?? {},
+            },
+          ]
+        : [],
+    );
+  }
+
   /** Gespeicherte, zugeordnete, nicht verworfene Lights des Rigs mit Messwerten in den Nächten `from…to`. */
   private lightRows(rigIds: readonly string[], fromNight: string, toNight: string) {
     return this.db

@@ -345,3 +345,85 @@ describe('Löschen', () => {
     expect(await s.pg.db.selectFrom('rigTelemetryHourly').selectAll().execute()).toHaveLength(0);
   });
 });
+
+describe('Wettergerät als Telemetrie (AP-77)', () => {
+  const beat = (token: string, weather: Record<string, number>) =>
+    s.request('/api/nina/v1/heartbeat', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        state: 'running',
+        pluginVersion: '0.4.23',
+        engineVersion: '0.6.0',
+        devices: {
+          connected: {
+            camera: true,
+            mount: true,
+            focuser: true,
+            filterWheel: true,
+            rotator: false,
+            guider: true,
+            safetyMonitor: true,
+            weather: true,
+            flatDevice: false,
+            switch: false,
+            dome: false,
+          },
+          focuser: null,
+          mountState: null,
+          guider: null,
+          filter: null,
+          safe: true,
+          weather,
+        },
+      },
+    });
+  const rows = async (rigId: string) =>
+    (
+      await s.pg.admin.query(
+        "SELECT at_utc, metrics FROM rig_telemetry_sample WHERE rig_id = $1 AND source = 'weather' ORDER BY at_utc",
+        [rigId],
+      )
+    ).rows as { at_utc: Date; metrics: Record<string, number> | string }[];
+
+  it('Heartbeat schreibt höchstens einen Messpunkt je 5 min; nur gültige Werte; im Web als Quelle weather', async () => {
+    const t = await setup();
+    s.clock.set(new Date('2026-10-08T06:00:30Z'));
+    expect(
+      (
+        await beat(t.token, {
+          cloudCoverPct: 12,
+          skyQualityMag: 21.4,
+          pressureHpa: 50,
+          temperatureC: 9.5,
+        })
+      ).status,
+    ).toBe(200);
+    s.clock.set(new Date('2026-10-08T06:02:00Z'));
+    await beat(t.token, { cloudCoverPct: 40, skyQualityMag: 20.1 });
+    let all = await rows(t.rig.id);
+    expect(all).toHaveLength(1);
+    const first = all[0] as { at_utc: Date; metrics: Record<string, number> | string };
+    expect(new Date(first.at_utc).toISOString()).toBe('2026-10-08T06:00:00.000Z');
+    const metrics = typeof first.metrics === 'string' ? JSON.parse(first.metrics) : first.metrics;
+    // Luftdruck 50 hPa liegt außerhalb des Bereichs und fehlt.
+    expect(metrics).toEqual({ cloudCoverPct: 12, skyQualityMag: 21.4, temperatureC: 9.5 });
+
+    s.clock.set(new Date('2026-10-08T06:05:10Z'));
+    await beat(t.token, { cloudCoverPct: 55 });
+    all = await rows(t.rig.id);
+    expect(all.map((r) => new Date(r.at_utc).toISOString())).toEqual([
+      '2026-10-08T06:00:00.000Z',
+      '2026-10-08T06:05:00.000Z',
+    ]);
+    // Ohne gültigen Wert kein Messpunkt.
+    s.clock.set(new Date('2026-10-08T06:10:10Z'));
+    await beat(t.token, { pressureHpa: 50 });
+    expect(await rows(t.rig.id)).toHaveLength(2);
+
+    const now = s.clock.now().getTime();
+    const weather = sourceOf((await t.view(now - HOUR, now + MIN)).body, 'weather');
+    expect(weather.series.cloudCoverPct?.avg).toEqual([12, 55]);
+    expect(weather.latest?.values).toEqual({ cloudCoverPct: 55 });
+  });
+});

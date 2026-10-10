@@ -9,10 +9,12 @@
  *   „bewölkt/nicht genutzt“ erfassen bzw. zurücknehmen.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
+import { moonAt, nightBounds } from '@nina-pm/engine';
 import {
   ClearNightMark,
   ClearNightQuery,
   ClearNightView,
+  IMAGE_QUALITY_DEFAULTS,
   logSuggestions,
   NightKey,
   ProblemError,
@@ -23,8 +25,10 @@ import {
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
 import { imagesClarityByNight } from '../sessions/images-clarity';
-import { noonNightKey } from '../lib/night-table';
-import { clearNightView, sessionLogView } from '../sessions/log';
+import { buildNightTable, noonNightKey, timeZoneTransitions } from '../lib/night-table';
+import { deviceMeasures, nightMeasures } from '../sessions/night-measures';
+import { refsByProject } from '../sessions/project-images';
+import { clearNightView, nightKeys, sessionLogView } from '../sessions/log';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
@@ -189,27 +193,80 @@ export function webSessionLogRoutes(services: () => Promise<ApiServices>) {
     if (!(days >= 0) || days > MAX_RANGE_DAYS) throw new ProblemError('validation.failed');
     const siteId = c.req.valid('param').id;
     const repos = svc.repositories(requireTenant(c).tenant);
-    // Gleichzeitig (Performance 10.10.2026): Standort, Nächte und – für „Klar laut Bildern“ (AP-72) – die Lights aller
-    // Rigs des Standorts im Zeitraum. Ein fremder bzw. unbekannter Standort scheitert an `repo.site` (404).
-    const lights = repos
-      .equipment()
-      .rigs()
-      .then((rigs) =>
-        repos.imageQuality().nightLights(
-          rigs.filter((r) => r.siteId === siteId).map((r) => r.id),
-          from,
-          to,
-        ),
-      );
-    const [site, data, nightLights] = await Promise.all([
+    const eq = repos.equipment();
+    // Gleichzeitig (Performance 10.10.2026): Standort, Nächte und – für „Klar laut Bildern“ (AP-72) und die Qualität je
+    // Nacht (AP-77) – die Lights aller Rigs des Standorts im Zeitraum, dazu das Wettergerät. Ein fremder bzw. unbekannter
+    // Standort scheitert an `repo.site` (404).
+    const siteRigs = eq.rigs().then((rigs) => rigs.filter((r) => r.siteId === siteId));
+    const rigIds = siteRigs.then((rigs) => rigs.map((r) => r.id));
+    const fromMs = Date.parse(`${from}T00:00:00Z`) - 86_400_000;
+    const toMs = Date.parse(`${to}T00:00:00Z`) + 2 * 86_400_000;
+    const [site, geo, data, nightLights, gradeRows, rigs, weather] = await Promise.all([
       repo.site(siteId),
+      eq.site(siteId),
       repo.clearNightData(siteId, from, to),
-      lights,
+      rigIds.then((ids) => repos.imageQuality().nightLights(ids, from, to)),
+      rigIds.then((ids) => repos.imageQuality().nightGradeRows(ids, from, to)),
+      siteRigs,
+      rigIds.then((ids) =>
+        Promise.all(
+          ids.map((id) => repos.telemetry().raw(id, 'weather', new Date(fromMs), new Date(toMs))),
+        ),
+      ),
     ]);
     const imagesClarity = imagesClarityByNight(nightLights);
-    c.header('cache-control', 'no-store');
+    // Qualität je Nacht: Bezug je Projekt und Filter wie in der Bildbewertung, Grenzwerte des jeweiligen Rigs.
+    const refs = refsByProject(
+      await repos.imageQuality().gradeBasis([...new Set(gradeRows.map((r) => r.projectId))]),
+    );
+    const settingsOf = new Map(rigs.map((r) => [r.id, r.imageQuality] as const));
+    const measured = nightMeasures(
+      gradeRows,
+      refs,
+      (rigId) => settingsOf.get(rigId) ?? IMAGE_QUALITY_DEFAULTS,
+    );
     const currentNight = noonNightKey(site.timeZone, svc.now().getTime());
-    return c.json(clearNightView({ site, from, to, ...data, currentNight, imagesClarity }), 200);
+    const keys = nightKeys(from, to).filter((n) => n < currentNight);
+    // Wettergerät über die astronomische Dunkelheit – nur für Nächte ohne Bewölkung aus den Lights (meist ohne Session).
+    const samples = weather.flat().map((r) => ({ atUtc: r.atUtc, metrics: r.metrics }));
+    const windows = new Map<string, { fromMs: number; toMs: number }>();
+    if (geo && samples.length > 0)
+      for (const night of keys) {
+        if (measured.get(night)?.cloudPct != null) continue;
+        const row = buildNightTable(geo, night, 1, { twilight: true }).nights[0];
+        const dusk = row?.twilight?.astronomical.duskUtc;
+        const dawn = row?.twilight?.astronomical.dawnUtc;
+        if (dusk && dawn) windows.set(night, { fromMs: Date.parse(dusk), toMs: Date.parse(dawn) });
+      }
+    const device = deviceMeasures(samples, windows);
+    // Mond um Mitternacht (Mitte Mittag–Mittag) für Nächte ohne Schnappschuss.
+    const moon = new Map<string, number>();
+    if (geo) {
+      const transitions = timeZoneTransitions(geo.timeZone, fromMs, toMs);
+      for (const night of keys) {
+        const b = nightBounds(night, transitions);
+        const t = (b.noonStartUtc + b.noonEndUtc) / 2;
+        moon.set(
+          night,
+          Math.round(moonAt(t, { latDeg: geo.latitudeDeg, lonDeg: geo.longitudeDeg }).illumPct),
+        );
+      }
+    }
+    c.header('cache-control', 'no-store');
+    return c.json(
+      clearNightView({
+        site,
+        from,
+        to,
+        ...data,
+        currentNight,
+        imagesClarity,
+        measured,
+        device,
+        moon,
+      }),
+      200,
+    );
   });
 
   app.openapi(clearNightMarkRoute, async (c) => {

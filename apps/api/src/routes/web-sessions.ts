@@ -29,6 +29,7 @@ import {
   NightSessionReviewed,
   NightSessionSummary,
   NightSessionUnreviewed,
+  NightSessionUnassigned,
   NightSessionSummaryQuery,
   gradeFlags,
   IMAGE_QUALITY_DEFAULTS,
@@ -93,6 +94,20 @@ export const sessionUnreviewedRoute = defineRoute(
     summary: 'Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite',
     tags: ['sessions'],
     responses: { 200: { description: 'Ungeprüft', ...json(NightSessionUnreviewed) }, ...denied },
+  },
+);
+
+export const sessionUnassignedRoute = defineRoute(
+  { action: 'session.read', requirements: ['FA-AUS-22', 'S-02', 'AP-77'] },
+  {
+    method: 'get',
+    path: `${BASE}/unassigned`,
+    summary: 'Nicht zugeordnete Aufnahmen je Nacht und Rig („Zu tun“ auf der Startseite)',
+    tags: ['sessions'],
+    responses: {
+      200: { description: 'Nicht zugeordnet', ...json(NightSessionUnassigned) },
+      ...denied,
+    },
   },
 );
 
@@ -201,6 +216,7 @@ export const SESSION_ROUTES = [
   listSessionsRoute,
   sessionSummaryRoute,
   sessionUnreviewedRoute,
+  sessionUnassignedRoute,
   sessionDetailRoute,
   sessionCorrectionRoute,
   sessionReviewRoute,
@@ -245,6 +261,14 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
   app.openapi(sessionUnreviewedRoute, async (c) => {
     const svc = await services();
     const result = await svc.repositories(requireTenant(c).tenant).sessionReview().unreviewed();
+    c.header('cache-control', 'no-store');
+    return c.json(result, 200);
+  });
+
+  // Vor `/{id}` registriert.
+  app.openapi(sessionUnassignedRoute, async (c) => {
+    const svc = await services();
+    const result = await svc.repositories(requireTenant(c).tenant).sessionReview().unassigned();
     c.header('cache-control', 'no-store');
     return c.json(result, 200);
   });

@@ -90,7 +90,7 @@ export type ReportStatus = (typeof reportStatuses)[number];
 export const sessionEventKinds = ["plan_built","plan_rebuilt","block_start","block_end","block_skipped","center_failed","safety_pause","safety_resume","transit_start","transit_end","af","flip","flats_start","flats_end","rotation_mismatch","lease_conflict","lease_lost","flip_settings_mismatch","filter_not_found","readout_mode_not_found","trigger_suppressed","offline_start","offline_end","warning","error","session_end","lease_regained","rotation_unknown","flip_undetected","skipped_timeaware","past_mismatch"] as const;
 export type SessionEventKind = (typeof sessionEventKinds)[number];
 
-export const telemetrySources = ["pc","power_box","storage"] as const;
+export const telemetrySources = ["pc","power_box","storage","weather"] as const;
 export type TelemetrySource = (typeof telemetrySources)[number];
 
 export const heartbeatStates = ["running","idle","paused","flats","offline","blocked"] as const;
