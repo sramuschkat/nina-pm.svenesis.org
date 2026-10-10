@@ -6,12 +6,20 @@
  * erscheinen grau, wenn die Standort-Statistik sie als bewölkt führt. Die Liste lädt seitenweise. Prüfen (Kennzahl
  * „Ungeprüft“, Schalter „Nur ungeprüfte“, Plakette) entfällt seit AP-77; `?ungeprueft=1` wird ignoriert.
  */
-import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
+import {
+  combineQualityCounts,
+  formatNightKey,
+  formatTzAbbr,
+  formatZonedTime,
+  sessionGrade,
+  shareLabelPct,
+} from '@nina-pm/shared';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { sessionLogApi, sessionsApi, type NightSessionListItem } from '../../api/client';
 import { ProblemMessage } from '../../components/ProblemMessage';
+import { QualityBar } from '../../components/quality';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Person } from '../../lib/member';
 import { problemCode } from '../admin/shared';
@@ -219,6 +227,9 @@ function NightCard({
   const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
   const bar = efficiencyBar(s.efficiency);
   const tone = weatherTone(s.weather);
+  // Sessionqualität der Nacht (AP-77) aus den Sessions; die Vorhersage steht klar beschriftet darunter.
+  const quality = combineQualityCounts(s.sessions.flatMap((x) => (x.quality ? [x.quality] : [])));
+  const grade = sessionGrade(quality.sharePct);
   const zone = s.siteTimeZone;
   const time = (at: string) => `${formatZonedTime(at, zone)} ${formatTzAbbr(at, zone)}`;
   const label = t('evaluation.nights.cardLabel', {
@@ -229,6 +240,18 @@ function NightCard({
     <article className={styles.card} aria-label={label}>
       <div className={styles.cardStart}>
         <NightDate night={s.night} />
+        {grade && quality.sharePct !== null ? (
+          <span className={styles.quality} data-grade={grade}>
+            <span className={styles.weatherDot} aria-hidden="true" />
+            {t('evaluation.nights.quality', {
+              grade: t(`evaluation.quality.grade.${grade}`),
+              pct: shareLabelPct(quality.sharePct),
+            })}
+            <span className={styles.qualityMini}>
+              <QualityBar counts={quality} />
+            </span>
+          </span>
+        ) : null}
         <span className={styles.weather} data-tone={tone}>
           <span className={styles.weatherDot} aria-hidden="true" />
           {s.weather && s.weather.ratingIndex !== null

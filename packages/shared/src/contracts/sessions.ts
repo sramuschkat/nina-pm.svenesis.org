@@ -91,6 +91,33 @@ export const NightSessionEfficiency = z
   })
   .meta({ id: 'NightSessionEfficiency' });
 
+/** Median und Spanne einer Messgröße (AP-77). */
+export const QualitySpread = z
+  .object({ median: z.number(), min: z.number(), max: z.number() })
+  .meta({ id: 'QualitySpread' });
+export type QualitySpread = z.infer<typeof QualitySpread>;
+
+/**
+ * Anteile der Bewertung (AP-77, FA-AUS-25): gut (in Ordnung), auffällig (Grenzwert überschritten, Gründe je Kennzahl),
+ * verworfen (Korrekturen); ohne Messwert zählt nicht. `sharePct` = gut / (gut + auffällig + verworfen).
+ */
+export const QualityCounts = z
+  .object({
+    good: z.number().int().min(0),
+    flagged: z.number().int().min(0),
+    rejected: z.number().int().min(0),
+    none: z.number().int().min(0),
+    sharePct: z.number().min(0).max(100).nullable(),
+    reasons: z.object({
+      hfr: z.number().int().min(0),
+      stars: z.number().int().min(0),
+      rms: z.number().int().min(0),
+      cloud: z.number().int().min(0),
+    }),
+  })
+  .meta({ id: 'QualityCounts' });
+export type QualityCounts = z.infer<typeof QualityCounts>;
+
 /** Listeneintrag S-60 (AP-64): Session plus Effizienz, Wetterbewertung zum Sessionbeginn und Projekt-Chips. */
 export const NightSessionListItem = NightSession.extend({
   efficiency: NightSessionEfficiency.nullable(),
@@ -102,6 +129,11 @@ export const NightSessionListItem = NightSession.extend({
     })
     .nullable(),
   projects: z.array(NightSessionProject),
+  /**
+   * Sessionqualität (AP-77): Anteile der bewerteten Lights dieser Session wie im Detail; `null` ohne zugeordnete Lights.
+   * Die Karte einer Nacht summiert die Sessions.
+   */
+  quality: QualityCounts.nullable(),
 }).meta({ id: 'NightSessionListItem' });
 export type NightSessionListItem = z.infer<typeof NightSessionListItem>;
 
@@ -364,33 +396,6 @@ export const NightSessionReason = z
   })
   .meta({ id: 'NightSessionReason' });
 export type NightSessionReason = z.infer<typeof NightSessionReason>;
-
-/** Median und Spanne einer Messgröße (AP-77). */
-export const QualitySpread = z
-  .object({ median: z.number(), min: z.number(), max: z.number() })
-  .meta({ id: 'QualitySpread' });
-export type QualitySpread = z.infer<typeof QualitySpread>;
-
-/**
- * Anteile der Bewertung (AP-77, FA-AUS-25): gut (in Ordnung), auffällig (Grenzwert überschritten, Gründe je Kennzahl),
- * verworfen (Korrekturen); ohne Messwert zählt nicht. `sharePct` = gut / (gut + auffällig + verworfen).
- */
-export const QualityCounts = z
-  .object({
-    good: z.number().int().min(0),
-    flagged: z.number().int().min(0),
-    rejected: z.number().int().min(0),
-    none: z.number().int().min(0),
-    sharePct: z.number().min(0).max(100).nullable(),
-    reasons: z.object({
-      hfr: z.number().int().min(0),
-      stars: z.number().int().min(0),
-      rms: z.number().int().min(0),
-      cloud: z.number().int().min(0),
-    }),
-  })
-  .meta({ id: 'QualityCounts' });
-export type QualityCounts = z.infer<typeof QualityCounts>;
 
 /** Qualität einer Zeile der Session (AP-77): Anteile, Median/Spanne und Verlauf über die Nacht mit Grenzwerten. */
 export const NightLineQuality = QualityCounts.extend({

@@ -19817,6 +19817,7 @@ export interface components {
                 nightMean: number | null;
             } | null;
             projects: components["schemas"]["NightSessionProject"][];
+            quality: components["schemas"]["QualityCounts"];
         };
         NightSessionEfficiency: {
             exposureS: number;
@@ -19842,6 +19843,19 @@ export interface components {
                 frames: number;
             }[];
         };
+        QualityCounts: {
+            good: number;
+            flagged: number;
+            rejected: number;
+            none: number;
+            sharePct: number | null;
+            reasons: {
+                hfr: number;
+                stars: number;
+                rms: number;
+                cloud: number;
+            };
+        } | null;
         NightSessionSummary: {
             nights: number;
             usableNights: number;

@@ -57,6 +57,7 @@ const session = (n: number, over: Partial<NightSession> = {}): NightSession => (
   efficiency: null,
   weather: null,
   projects: [],
+  quality: null,
   ...over,
 });
 

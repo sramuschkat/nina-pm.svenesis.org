@@ -324,6 +324,7 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
     unassigned: 0,
     efficiency: { exposureS: 6000, usableDarkS: 18_000, pct: 33.3 },
     weather: null,
+    quality: null,
     projects: [
       {
         projectId: ID(10),

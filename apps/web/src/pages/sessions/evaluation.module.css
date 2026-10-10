@@ -260,6 +260,28 @@
 .weather[data-tone='poor'] .weatherDot {
   background: var(--npm-danger);
 }
+/* Sessionqualität auf der Karte (AP-77): Hauptwert über der Vorhersage. */
+.quality {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1) var(--npm-space-2);
+  font-weight: 600;
+}
+.quality[data-grade='very_good'] .weatherDot,
+.quality[data-grade='good'] .weatherDot {
+  background: var(--npm-quality-good);
+}
+.quality[data-grade='fair'] .weatherDot {
+  background: var(--npm-quality-flagged);
+}
+.quality[data-grade='poor'] .weatherDot {
+  background: var(--npm-quality-rejected);
+}
+.qualityMini {
+  display: inline-flex;
+  width: 4rem;
+}
 .cardMid {
   display: flex;
   flex-direction: column;

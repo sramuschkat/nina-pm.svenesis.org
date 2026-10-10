@@ -164,6 +164,14 @@ const session = (over: Partial<NightSessionListItem> = {}): NightSessionListItem
   unassigned: 1,
   efficiency: { exposureS: 29_520, usableDarkS: 34_560, pct: 85.4 },
   weather: { ratingIndex: 3, nightMean: 0.89 },
+  quality: {
+    good: 140,
+    flagged: 5,
+    rejected: 0,
+    none: 0,
+    sharePct: 96.6,
+    reasons: { hfr: 1, stars: 4, rms: 0, cloud: 0 },
+  },
   projects: [
     {
       projectId: ID(10),
@@ -437,7 +445,12 @@ describe('S-60 Nächte (AP-64)', () => {
     const card = await screen.findByRole('article', { name: 'Nacht 17./18.09. · Rig A' });
     expect(within(card).getByText('Do 17./18.09.')).toBeTruthy();
     expect(within(card).getByText('8,2 von 9,6 h · 85 %')).toBeTruthy();
-    expect(within(card).getByText('Gut · 89 %')).toBeTruthy();
+    // Sessionqualität als Hauptwert, die Vorhersage klar beschriftet darunter (AP-77).
+    expect(within(card).getByText('Qualität sehr gut · 96 %')).toBeTruthy();
+    expect(
+      within(card).getByRole('img', { name: 'gut: 140, auffällig: 5, verworfen: 0' }),
+    ).toBeTruthy();
+    expect(within(card).getByText('Vorhersage: Gut · 89 %')).toBeTruthy();
     // Ersteller mit mehr als 10 Zeichen gekürzt, voller Name als zugänglicher Name.
     expect(await within(card).findByRole('img', { name: 'Maximilian Mustermann' })).toBeTruthy();
     expect(within(card).getByText('Maximilian…')).toBeTruthy();
