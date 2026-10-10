@@ -1,0 +1,57 @@
+.wrap {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  border-radius: var(--npm-radius-card);
+  overflow: hidden;
+  background: var(--npm-chart-frame);
+}
+
+.canvas {
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.controls {
+  position: absolute;
+  top: var(--npm-space-2);
+  right: var(--npm-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+
+.controls button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--npm-chart-axis);
+  border-radius: var(--npm-radius);
+  background: var(--npm-sky-chrome-bg);
+  color: var(--npm-sky-chrome-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.controls button:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 2;
+  max-width: 250px;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-sky-clock-bg);
+  box-shadow: var(--npm-sky-chrome-shadow);
+  color: var(--npm-sky-chrome-text);
+  font-size: var(--npm-font-small);
+  pointer-events: none;
+}

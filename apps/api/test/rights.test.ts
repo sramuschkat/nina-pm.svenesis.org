@@ -1311,6 +1311,9 @@ async function projectExamples(): Promise<Record<string, Example>> {
       'GET /api/web/v1/reports/projects': {
         url: '/api/web/v1/reports/projects?from=2026-09-01&to=2026-09-30',
       },
+      'GET /api/web/v1/reports/sky': {
+        url: '/api/web/v1/reports/sky?from=2026-09-01&to=2026-09-30',
+      },
       'GET /api/web/v1/tonight': { url: '/api/web/v1/tonight' },
       'PUT /api/web/v1/projects/{id}/lines/{lineId}/tonight': {
         url: `/api/web/v1/projects/${SP}/lines/${spLine}/tonight`,

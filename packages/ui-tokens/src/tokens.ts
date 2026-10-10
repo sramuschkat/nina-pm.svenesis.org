@@ -297,7 +297,25 @@ export const SKY: Readonly<Record<string, string>> = {
   'sky-project-unfinished': '#80cbc4',
   'sky-project-completed': '#7a8799',
   'sky-label': 'rgba(228, 233, 239, 0.9)',
+  /**
+   * Auswertung „Himmel“ (AP-69, S-65) auf `sky-bg`: Stundenskala in fünf Stufen (Helligkeit steigt mit den Stunden),
+   * Filtermix in vier Klassen, geplante Projekte ohne Aufnahmen als Umriss. Geprüft in `tokens.test.ts` (OKLab:
+   * Helligkeit monoton, Kontrast ≥ 3:1 gegen `sky-bg`, Abstand ≥ 8 auch bei Rot-/Grün-Schwäche).
+   */
+  'sky-hours-1': '#3a6fc4',
+  'sky-hours-2': '#2a9d9a',
+  'sky-hours-3': '#5dbb57',
+  'sky-hours-4': '#c9c23a',
+  'sky-hours-5': '#ffe98a',
+  'sky-mix-broadband': '#6fb1ff',
+  'sky-mix-narrowband': '#ff7a59',
+  'sky-mix-osc': '#e8d44d',
+  'sky-mix-mixed': '#e9edf5',
+  'sky-planned': 'rgba(205, 215, 230, 0.8)',
 };
+
+/** Stufen der Stundenskala `sky-hours-n` (AP-69). */
+export const SKY_HOURS_STEPS = 5;
 
 /**
  * Astro-Wetter `WeatherChart` (components.md §2.5, WS-17; Vorlage legacy/…/weather-core.js): Grafik auf

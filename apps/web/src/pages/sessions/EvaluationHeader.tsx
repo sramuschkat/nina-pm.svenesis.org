@@ -1,5 +1,5 @@
 /**
- * Kopf des Bereichs Auswertung (AP-64): Titel, Bereichsreiter Nächte | Projekte | Standort-Statistik als
+ * Kopf des Bereichs Auswertung (AP-64): Titel, Bereichsreiter Nächte | Projekte | Standort-Statistik | Himmel als
  * Segmentsteuerung und der gemeinsame Filter Rig + Zeitraum (in der URL, bleibt beim Reiterwechsel und beim Zurück
  * erhalten). Die Standort-Statistik wählt statt des Rigs einen Standort, vorbelegt mit dem Standort des Rigs.
  */
@@ -53,6 +53,7 @@ export function EvaluationTabs({ search }: { search: string }) {
     { to: EVALUATION_PATHS.nights, label: t('evaluation.tab.nights') },
     { to: EVALUATION_PATHS.projects, label: t('evaluation.tab.projects') },
     { to: EVALUATION_PATHS.site, label: t('evaluation.tab.site') },
+    { to: EVALUATION_PATHS.sky, label: t('evaluation.tab.sky') },
   ];
   return (
     <nav className={styles.segments} aria-label={t('evaluation.tabsLabel')}>

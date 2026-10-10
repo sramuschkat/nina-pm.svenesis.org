@@ -4,6 +4,7 @@ export * from './healpix';
 export * from './planets';
 export * from './projection';
 export * from './vec';
+export * from './allsky';
 export * from './night-bodies';
 export * from './events';
 export * from './constellations';

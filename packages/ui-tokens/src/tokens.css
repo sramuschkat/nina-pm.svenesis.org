@@ -101,6 +101,16 @@
   --npm-sky-project-unfinished: #80cbc4;
   --npm-sky-project-completed: #7a8799;
   --npm-sky-label: rgba(228, 233, 239, 0.9);
+  --npm-sky-hours-1: #3a6fc4;
+  --npm-sky-hours-2: #2a9d9a;
+  --npm-sky-hours-3: #5dbb57;
+  --npm-sky-hours-4: #c9c23a;
+  --npm-sky-hours-5: #ffe98a;
+  --npm-sky-mix-broadband: #6fb1ff;
+  --npm-sky-mix-narrowband: #ff7a59;
+  --npm-sky-mix-osc: #e8d44d;
+  --npm-sky-mix-mixed: #e9edf5;
+  --npm-sky-planned: rgba(205, 215, 230, 0.8);
   --npm-wx-bg: #10151c;
   --npm-wx-label-bg: #0b0f14;
   --npm-wx-grid: rgba(255, 255, 255, 0.06);

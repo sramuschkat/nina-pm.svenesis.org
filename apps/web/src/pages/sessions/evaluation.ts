@@ -1,5 +1,5 @@
 /**
- * Bereich Auswertung (AP-64, S-60…S-64): Pfade der drei Reiter Nächte | Projekte | Standort-Statistik und der
+ * Bereich Auswertung (AP-64, S-60…S-64): Pfade der Reiter Nächte | Projekte | Standort-Statistik | Himmel (AP-69) und der
  * gemeinsame Filter Rig + Zeitraum in der URL (`?rig=…&zeitraum=…&von=…&bis=…`), damit er beim Reiterwechsel und beim
  * Zurück erhalten bleibt. Zeiträume einheitlich in Nächten (Nacht-Schlüssel, NT-04): letzte 30 / 90 / 365 Nächte,
  * dieses Jahr, von–bis. Rein: „heute“ kommt vom Aufrufer.
@@ -10,6 +10,7 @@ export const EVALUATION_PATHS = {
   nights: '/auswertung/naechte',
   projects: '/auswertung/projekte',
   site: '/auswertung/standort',
+  sky: '/auswertung/himmel',
 } as const;
 
 export const PERIODS = ['30', '90', '365', 'year', 'custom'] as const;

@@ -46,6 +46,7 @@ import { NightsPage } from '../pages/sessions/NightsPage';
 import { ProjectsPage as EvaluationProjectsPage } from '../pages/sessions/ProjectsPage';
 import { LegacyRedirect, SessionRedirect } from '../pages/sessions/redirects';
 import { SiteStatsPage } from '../pages/sessions/SiteStatsPage';
+import { SkyPage } from '../pages/sessions/SkyPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
 import { SkyMapPage } from '../pages/planning/SkyMapPage';
@@ -219,12 +220,14 @@ export function createRouter() {
               element: <RequireAction action="session.read" />,
               children: [
                 { index: true, element: <Navigate to={EVALUATION_PATHS.nights} replace /> },
-                // AP-64: Nächte | Projekte | Standort-Statistik; alte Pfade leiten um (Suche bleibt erhalten).
+                // AP-64: Nächte | Projekte | Standort-Statistik (| Himmel, AP-69); alte Pfade leiten um (Suche bleibt erhalten).
                 { path: 'naechte', element: <NightsPage /> },
                 { path: 'naechte/:id', element: <SessionRedirect /> },
                 { path: 'naechte/:rigId/:night', element: <NightPage /> },
                 { path: 'projekte', element: <EvaluationProjectsPage /> },
                 { path: 'standort', element: <SiteStatsPage /> },
+                // AP-69: Ganzhimmelkarte und Zeitachse je Rig (Entscheidung Sven 10.10.2026: in der Auswertung).
+                { path: 'himmel', element: <SkyPage /> },
                 { path: 'sessions', element: <LegacyRedirect to={EVALUATION_PATHS.nights} /> },
                 {
                   path: 'sessions/:id',

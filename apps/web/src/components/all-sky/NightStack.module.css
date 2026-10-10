@@ -1,0 +1,52 @@
+.wrap {
+  width: 100%;
+  padding: var(--npm-space-3) var(--npm-space-3) var(--npm-space-2);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-chart-frame);
+  box-sizing: border-box;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+}
+
+.rigName {
+  fill: var(--npm-chart-dim-label);
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+}
+
+.rigMax,
+.tick {
+  fill: var(--npm-chart-axis);
+  font-size: var(--npm-font-label);
+}
+
+.base {
+  stroke: var(--npm-chart-grid);
+}
+
+.night {
+  cursor: pointer;
+  outline: none;
+}
+
+.night:focus-visible .hit {
+  stroke: var(--npm-sky-selected);
+  stroke-width: 1.5;
+}
+
+.hit {
+  fill: transparent;
+}
+
+.hot {
+  stroke: var(--npm-sky-selected);
+  stroke-width: 1.5;
+}
+
+.moonBar {
+  fill: var(--npm-moon-lit);
+  opacity: 0.75;
+}
