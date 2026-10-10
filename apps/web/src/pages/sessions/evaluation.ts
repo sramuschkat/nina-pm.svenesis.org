@@ -8,7 +8,6 @@ import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 
 export const EVALUATION_PATHS = {
   nights: '/auswertung/naechte',
-  projects: '/auswertung/projekte',
   site: '/auswertung/standort',
   sky: '/auswertung/himmel',
 } as const;

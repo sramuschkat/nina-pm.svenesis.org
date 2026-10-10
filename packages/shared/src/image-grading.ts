@@ -1,14 +1,13 @@
 /**
  * Automatische Bildbewertung (AP-72b, FA-AUS-25): je Light gegen die Grenzwerte des Rigs. HFR und Sterne relativ zum
  * Median desselben Projekts und Filters (nicht verworfene Lights, mindestens `GRADE_MIN_REF`), Guiding-RMS und Wolken
- * absolut. Rein – Server (Eingang, Projekt-Ansicht, Nacht) und Tests rechnen dasselbe.
+ * absolut. Rein – Server (Projekt-Qualität, Nacht) und Tests rechnen dasselbe.
  */
 import type { ImageQualitySettings } from './contracts/equipment';
 import type { ImageGrade, ImageGradeMetric } from './generated/enums';
 
-/** Startwerte (Entscheidung Sven 09.10.2026): HFR + 30 %, Sterne < 50 %, RMS > 1,5″, Wolken > 50 %, nur markieren. */
+/** Startwerte (Entscheidung Sven 09.10.2026): HFR + 30 %, Sterne < 50 %, RMS > 1,5″, Wolken > 50 %. */
 export const IMAGE_QUALITY_DEFAULTS: ImageQualitySettings = {
-  mode: 'mark',
   hfrPct: 30,
   starsPct: 50,
   rmsArcsec: 1.5,

@@ -1,19 +1,23 @@
 // @vitest-environment jsdom
 /**
- * Reiter *Sessions & Protokoll* im Projekt-Editor (S-31): der Abschnitt des Projektberichts für genau dieses Projekt,
- * aufgeklappt; Abfrage mit `projectId` über alle Nächte.
+ * Reiter *Sessions & Protokoll* im Projekt-Editor (S-31, AP-77): Fortschritt und Qualität je Filter als Karten, Verlauf,
+ * Sessions mit Qualität, HFR-Spanne und Guiding Ø; Abfrage mit `projectId` über alle Nächte; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../../test/setup';
-import type { ProjectReport } from '../../api/client';
+import { expectNoSeriousA11y } from '../../../test/setup';
+import type { ProjectQualityView, ProjectReport, QualityStats } from '../../api/client';
 import { ProjectSessionsTab } from './ProjectTabs';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-const state = vi.hoisted(() => ({ calls: [] as unknown[], report: null as unknown }));
+const state = vi.hoisted(() => ({
+  calls: [] as unknown[],
+  report: null as unknown,
+  quality: null as unknown,
+}));
 
 vi.mock('../../api/client', () => ({
   memberApi: {
@@ -40,7 +44,45 @@ vi.mock('../../api/client', () => ({
       return Promise.resolve(state.report);
     },
   },
+  sessionsApi: { projectQuality: () => Promise.resolve(state.quality) },
 }));
+
+const stats = (o: Partial<QualityStats> = {}): QualityStats => ({
+  good: 16,
+  flagged: 1,
+  rejected: 1,
+  none: 0,
+  sharePct: 88.9,
+  reasons: { hfr: 0, stars: 1, rms: 0, cloud: 0 },
+  hfr: { median: 1.51, min: 1.45, max: 1.95 },
+  stars: { median: 1600, min: 400, max: 1700 },
+  rmsArcsec: { median: 0.62, min: 0.4, max: 0.9 },
+  ...o,
+});
+
+const quality = (): ProjectQualityView => ({
+  projectId: ID(10),
+  rigId: ID(1),
+  settings: { hfrPct: 30, starsPct: 50, rmsArcsec: 1.5, cloudPct: 50 },
+  minRef: 10,
+  filters: [
+    { filter: 'OIII', ...stats() },
+    {
+      filter: 'L',
+      ...stats({
+        good: 8,
+        flagged: 0,
+        rejected: 0,
+        sharePct: 100,
+        reasons: { hfr: 0, stars: 0, rms: 0, cloud: 0 },
+      }),
+    },
+  ],
+  nights: [],
+  sessions: [{ sessionId: ID(20), ...stats({ good: 24, sharePct: 92.3 }) }],
+  total: stats(),
+  truncated: false,
+});
 
 const report = (): ProjectReport => ({
   from: '2026-09-01',
@@ -147,15 +189,39 @@ const wrap = (projectId: string) =>
 beforeEach(() => {
   state.calls = [];
   state.report = report();
+  state.quality = quality();
 });
 
 describe('Projekt-Editor: Reiter Sessions & Protokoll (S-31)', () => {
-  it('zeigt Filter, Verlauf und Sessions des Projekts, Abfrage nur mit projectId', async () => {
+  it('Karten je Filter mit Fortschritt und Qualität, Sessions mit Qualität, HFR-Spanne und Guiding; axe', async () => {
     wrap(ID(10));
     const sessions = await screen.findByRole('table', { name: 'Sessions von NGC 7000' });
     expect(within(sessions).getByRole('link', { name: '12./13.09.' })).toBeTruthy();
-    expect(screen.getByRole('table', { name: 'Filter von NGC 7000' })).toBeTruthy();
+    expect(
+      within(sessions)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual([
+      'Nacht',
+      'Rig',
+      'Frames je Filter',
+      'Qualität',
+      'HFR (Spanne)',
+      'Guiding Ø',
+      'Wetter',
+    ]);
+    expect(await within(sessions).findByText('92 % gut')).toBeTruthy();
+    expect(within(sessions).getByText('1,45–1,95 px')).toBeTruthy();
+    expect(within(sessions).getByText('0,6″')).toBeTruthy();
+    const cards = screen.getByRole('list', { name: 'Filter von NGC 7000' });
+    const oiii = within(cards).getAllByRole('listitem')[0] as HTMLElement;
+    expect(within(oiii).getByText('36/40')).toBeTruthy();
+    expect(within(oiii).getByText('88 % gut')).toBeTruthy();
+    expect(within(oiii).getByText(/6 % ⚠ auffällig \(1 Sterne\)/)).toBeTruthy();
+    expect(within(oiii).getByText('HFR 1,51 px · Guiding Ø 0,6″')).toBeTruthy();
+    expect(screen.getByText(/1 Nächte · 44 Lights · 3,7 h · Qualität 88 % gut/)).toBeTruthy();
     expect(state.calls).toEqual([{ projectId: ID(10) }]);
+    await expectNoSeriousA11y();
   });
 
   it('ohne Aufnahmen ein Hinweis', async () => {

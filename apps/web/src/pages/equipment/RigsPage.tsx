@@ -18,7 +18,6 @@ import {
   RigInput,
   SchedulerSettings,
   IMAGE_QUALITY_DEFAULTS,
-  imageQualityModes,
   strategies,
   telescopeDerived,
 } from '@nina-pm/shared';
@@ -956,14 +955,8 @@ export function SchedulerForm({
         </section>
         <section className={sched.box} aria-labelledby="scheduler-quality">
           <h4 id="scheduler-quality">{t('rigs.scheduler.qualitySection')}</h4>
-          <SelectField
-            label={t('rigs.scheduler.qualityMode')}
-            value={quality.mode}
-            onChange={(v) => setQuality('mode', v)}
-            options={imageQualityModes.map((m) => ({ value: m, label: t(`images.mode.${m}`) }))}
-            hint={t('rigs.scheduler.qualityHint')}
-            disabled={disabled}
-          />
+          {/* AP-77: kein Modus mehr – die Grenzwerte gehen nur in die Anteile der Session-Qualität ein. */}
+          <p className={styles.muted}>{t('rigs.scheduler.qualityHint')}</p>
           <div className={sched.pair}>
             <NumberField
               label={t('rigs.scheduler.qualityHfr')}

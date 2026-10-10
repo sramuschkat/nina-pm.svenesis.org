@@ -5,7 +5,6 @@
  */
 import { medianOf, type ClarityLight, type QualityRef } from '@nina-pm/shared';
 import { sql } from 'kysely';
-import { withTx } from '../tx';
 import { TenantRepo } from './base';
 
 /** Fenster der Bezugswerte bzw. Autofokus-Läufe in Nächten bis zur Nacht der Session. */
@@ -63,7 +62,7 @@ export interface ProjectImageRow {
   readonly metrics: Record<string, unknown>;
 }
 
-/** Höchstzahl Lights je Projekt in der Ansicht „Bilder“ (ein großes Projekt hat einige tausend). */
+/** Höchstzahl Lights je Projekt im Reiter „Qualität“ (ein großes Projekt hat einige tausend). */
 export const PROJECT_IMAGE_LIMIT = 8000;
 
 const object = (v: unknown): Record<string, unknown> => {
@@ -75,7 +74,7 @@ const object = (v: unknown): Record<string, unknown> => {
 
 export class ImageQualityRepository extends TenantRepo {
   /**
-   * Gespeicherte, zugeordnete Lights eines Projekts über alle Nächte (AP-72b, Reiter „Bilder“), neueste zuerst; höchstens
+   * Gespeicherte, zugeordnete Lights eines Projekts über alle Nächte (Reiter „Qualität“, AP-77), neueste zuerst; höchstens
    * `limit` (+1 zum Erkennen des Abschneidens).
    */
   async projectImages(projectId: string, limit = PROJECT_IMAGE_LIMIT): Promise<ProjectImageRow[]> {
@@ -239,34 +238,6 @@ export class ImageQualityRepository extends TenantRepo {
           ]
         : [],
     );
-  }
-
-  async setKept(captureId: string, kept: boolean): Promise<{ projectId: string } | null> {
-    return withTx(this.db, async (trx) => {
-      const row = await trx
-        .selectFrom('capture')
-        .select(['projectId', 'metrics', 'frameType', 'result', 'assignment'])
-        .where('tenantId', '=', this.ctx.tenantId)
-        .where('id', '=', captureId)
-        .executeTakeFirst();
-      if (
-        !row?.projectId ||
-        row.frameType !== 'light' ||
-        row.result !== 'saved' ||
-        row.assignment !== 'assigned'
-      )
-        return null;
-      const metrics = { ...object(row.metrics) };
-      if (kept) metrics.qualityKept = true;
-      else delete metrics.qualityKept;
-      await trx
-        .updateTable('capture')
-        .set({ metrics: JSON.stringify(metrics) })
-        .where('tenantId', '=', this.ctx.tenantId)
-        .where('id', '=', captureId)
-        .execute();
-      return { projectId: row.projectId };
-    });
   }
 
   /**

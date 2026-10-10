@@ -1,20 +1,21 @@
 /**
- * Auswertung – Reiter „Standort-Statistik“ (AP-64; ersetzt S-64 Klarnacht-Statistik; FA-AUS-16, FA-AUS-17): „Wie oft ist
- * es nutzbar, stimmt die Vorhersage?“ Standort des gewählten Rigs (Auswahl „Standort“, vorbelegt). Kalender der letzten
- * drei Monate im Zeitraum, ein Kästchen je Nacht – klar und belichtet, teilweise, bewölkt, keine Angabe (gestrichelt) –
- * mit Tooltip (Stunden, Vorhersage, Seeing, SQM); ein Klick öffnet die Nacht bzw. ohne Session „bewölkt erfassen“
- * (`sessionlog.write`). Kacheln „Nutzbare Nächte“ und „Vorhersage stimmte“, SQM- und Seeing-Verlauf als Balken; die
- * bisherige Tabelle unter „Alle Nächte als Tabelle“. Nutzbar = ab 1 h Belichtung akzeptierter Lights (26.09.2026).
+ * Auswertung – Reiter „Standort-Statistik“ (AP-64, AP-77; S-64; FA-AUS-16, FA-AUS-17): „Wie oft ist es nutzbar, stimmt
+ * die Vorhersage?“ Standort des gewählten Rigs (Auswahl „Standort“, vorbelegt). Kalender der letzten drei Monate im
+ * Zeitraum, ein Kästchen je Nacht – klar und belichtet, klar ungenutzt, teilweise, bewölkt, keine Angabe (gestrichelt) –
+ * mit Tooltip; ein Klick öffnet die Nacht. Kacheln „Nutzbare Nächte“ und „Vorhersage stimmte“. Darunter **immer** die
+ * Tabelle aller Nächte (Status, Belichtet, Vorhersage, laut Bildern, Qualität, Wolken Ø, SQM Ø, Mond, Seeing). Seit AP-77
+ * ohne SQM-/Seeing-Balken, Transparenz, Verworfen und „bewölkt erfassen“; Nächte ohne Session stuft die gemessene
+ * Bewölkung des Wettergeräts ein, sonst die Vorhersage. Nutzbar = ab 1 h Belichtung akzeptierter Lights (26.09.2026).
  */
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
-import { formatNightKey } from '@nina-pm/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { formatNightKey, shareLabelPct } from '@nina-pm/shared';
+import { useQuery } from '@tanstack/react-query';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { sessionLogApi, type ClearNightNight, type ClearNightView } from '../../api/client';
-import { useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { QualityBar } from '../../components/quality';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
@@ -27,6 +28,10 @@ export type DayKind = 'clear' | 'clearUnused' | 'partial' | 'cloudy' | 'none';
 /** Wetterklasse „gut“ oder besser (FA-WET-03) gilt als klar. */
 const CLEAR_RATING = 3;
 
+/** Gemessene Bewölkung (Wettergerät, Mittel über die Dunkelheit) unter … % = klar, ab … % = bewölkt (wie FA-AUS-24). */
+export const MEASURED_CLEAR_PCT = 25;
+export const MEASURED_CLOUDY_PCT = 60;
+
 /**
  * Klasse eines Kalendertags (Entscheidung Sven 07.10.2026): *klar, belichtet* = nutzbar (≥ 1 h belichtete Lights);
  * *klar, aber nicht genutzt* = Vorhersage gut oder besser, aber unter 1 h belichtet; *teilweise* = Session ohne
@@ -34,11 +39,19 @@ const CLEAR_RATING = 3;
  * (nur Anzeige, keine erfasste Nacht; Entscheidung Sven 07.10.2026); sonst *keine Angabe*. Die Vorhersage kommt aus
  * dem Schnappschuss zum Sessionbeginn, sonst aus der gespeicherten Vorhersage je Standort und Nacht (AP-64b) – so wird
  * auch eine vergangene Nacht **ohne Session** „klar, aber nicht genutzt“, wenn die Vorhersage gut oder besser war.
+ * Seit AP-77 hat bei Nächten ohne Session die **gemessene** Bewölkung des Wettergeräts Vorrang vor der Vorhersage: unter
+ * 25 % klar, ungenutzt; ab 60 % bewölkt; dazwischen teilweise.
  */
 export function dayKind(n: ClearNightNight | undefined): DayKind {
   if (!n) return 'none';
   if (n.source === 'manual') return 'cloudy';
   if (n.usable === true) return 'clear';
+  const noSession = n.source !== 'session' && n.sessionIds.length === 0;
+  if (noSession && n.cloudSource === 'device' && n.cloudPct != null) {
+    if (n.cloudPct < MEASURED_CLEAR_PCT) return 'clearUnused';
+    if (n.cloudPct >= MEASURED_CLOUDY_PCT) return 'cloudy';
+    return 'partial';
+  }
   if (n.forecastRatingIndex !== null && n.forecastRatingIndex >= CLEAR_RATING) return 'clearUnused';
   if (n.source === 'session' || n.sessionIds.length > 0) return 'partial';
   // Ohne Session und ohne Erfassung, Vorhersage unter „gut“: bewölkt laut Vorhersage (Entscheidung Sven 07.10.2026).
@@ -100,8 +113,6 @@ function SiteStatsBody({ view }: { view: ClearNightView }) {
   const recorded = view.months.reduce((n, m) => n + m.recorded, 0);
   const usable = view.months.reduce((n, m) => n + m.usable, 0);
   const clearUnused = view.nights.filter((n) => dayKind(n) === 'clearUnused').length;
-  const [table, setTable] = useState(false);
-  const tableId = useId();
   return (
     <>
       <div className={styles.siteGrid}>
@@ -149,24 +160,9 @@ function SiteStatsBody({ view }: { view: ClearNightView }) {
               </span>
             </div>
           </section>
-          <section className={styles.subCard} aria-label={t('evaluation.site.conditions')}>
-            <Bars view={view} field="sqm" />
-            <Bars view={view} field="seeingArcsec" />
-            <button
-              type="button"
-              className={styles.linkButton}
-              aria-expanded={table}
-              aria-controls={tableId}
-              onClick={() => setTable(!table)}
-            >
-              {table ? t('evaluation.site.hideTable') : t('evaluation.site.showTable')}
-            </button>
-          </section>
         </div>
       </div>
-      <div id={tableId} hidden={!table}>
-        {table ? <NightsTable view={view} /> : null}
-      </div>
+      <NightsTable view={view} />
     </>
   );
 }
@@ -174,15 +170,6 @@ function SiteStatsBody({ view }: { view: ClearNightView }) {
 function Calendar({ view }: { view: ClearNightView }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const canMark = useCan('sessionlog.write');
-  const client = useQueryClient();
-  const [picked, setPicked] = useState<string | null>(null);
-  const mark = useMutation({
-    mutationFn: (a: { night: string; on: boolean }) =>
-      sessionLogApi.markUnused(view.siteId, a.night, a.on),
-    onSuccess: () => setPicked(null),
-    onSettled: () => client.invalidateQueries({ queryKey: ['clear-nights', view.siteId] }),
-  });
   const byNight = new Map(view.nights.map((n) => [n.night, n]));
   const headingId = useId();
   const lang = i18n.language === 'en' ? 'en-GB' : 'de-DE';
@@ -207,14 +194,14 @@ function Calendar({ view }: { view: ClearNightView }) {
             rating: t(`weather.rating.${String(x.forecastRatingIndex)}`),
           })
         : null,
-      x?.seeingArcsec !== null && x?.seeingArcsec !== undefined
-        ? t('evaluation.site.seeing', { v: n(x.seeingArcsec, 1, '″') })
+      x?.qualityPct != null
+        ? t('evaluation.site.quality', { pct: shareLabelPct(x.qualityPct) })
         : null,
-      x?.sqm !== null && x?.sqm !== undefined ? t('evaluation.site.sqm', { v: n(x.sqm, 2) }) : null,
+      x?.cloudPct != null ? t('evaluation.site.clouds', { v: n(x.cloudPct, 0) }) : null,
+      x?.sqmMeasured != null ? t('evaluation.site.sqm', { v: n(x.sqmMeasured, 2) }) : null,
     ]
       .filter((s): s is string => s !== null)
       .join(' · ');
-  const pickedNight = picked ? byNight.get(picked) : undefined;
   return (
     <section className={styles.subCard} aria-labelledby={headingId}>
       <div className={styles.cardHead}>
@@ -274,7 +261,7 @@ function Calendar({ view }: { view: ClearNightView }) {
                         const kind = inside ? dayKind(x) : 'none';
                         const label = tip(night, x);
                         const session = x?.sessionIds[0];
-                        const clickable = inside && (session !== undefined || canMark);
+                        const clickable = inside && session !== undefined;
                         return (
                           <td key={dow}>
                             {clickable ? (
@@ -282,12 +269,9 @@ function Calendar({ view }: { view: ClearNightView }) {
                                 type="button"
                                 className={styles.day}
                                 data-kind={kind}
-                                data-picked={picked === night || undefined}
                                 title={label}
                                 aria-label={label}
-                                onClick={() =>
-                                  session ? navigate(sessionPath(session, true)) : setPicked(night)
-                                }
+                                onClick={() => navigate(sessionPath(session, true))}
                               >
                                 {i + 1}
                               </button>
@@ -312,98 +296,19 @@ function Calendar({ view }: { view: ClearNightView }) {
           );
         })}
       </div>
-      {picked ? (
-        <div className={styles.markPanel} role="group" aria-label={formatNightKey(picked)}>
-          <span>
-            {pickedNight?.source === 'manual'
-              ? t('evaluation.site.markedCloudy', { night: formatNightKey(picked) })
-              : t('evaluation.site.markQuestion', { night: formatNightKey(picked) })}
-          </span>
-          <button
-            type="button"
-            className={styles.buttonPrimary}
-            disabled={mark.isPending}
-            onClick={() => mark.mutate({ night: picked, on: pickedNight?.source !== 'manual' })}
-          >
-            {pickedNight?.source === 'manual' ? t('clearNights.unmark') : t('evaluation.site.mark')}
-          </button>
-          <button type="button" className={styles.button} onClick={() => setPicked(null)}>
-            {t('sessions.correction.cancel')}
-          </button>
-        </div>
-      ) : null}
-      {mark.error ? <ProblemMessage code={problemCode(mark.error)} /> : null}
     </section>
   );
 }
 
-/** SQM- bzw. Seeing-Verlauf als Balken je Nacht mit Wert (FA-AUS-16). */
-function Bars({ view, field }: { view: ClearNightView; field: 'sqm' | 'seeingArcsec' }) {
-  const { t, i18n } = useTranslation();
-  const values = view.nights.flatMap((n) =>
-    n[field] === null ? [] : [{ night: n.night, v: n[field] as number }],
-  );
-  const fmt = (v: number, d: number) =>
-    v.toLocaleString(i18n.language, { maximumFractionDigits: d });
-  const digits = field === 'sqm' ? 2 : 1;
-  const unit = field === 'sqm' ? ' mag/″²' : '″';
-  const label = t(`evaluation.site.${field === 'sqm' ? 'sqmTitle' : 'seeingTitle'}`);
-  if (values.length === 0)
-    return (
-      <div className={styles.bars}>
-        <div className={styles.barsHead}>
-          <strong>{label}</strong>
-          <span className={styles.muted}>{t('evaluation.site.noValues')}</span>
-        </div>
-      </div>
-    );
-  const max = Math.max(...values.map((x) => x.v));
-  const min = Math.min(...values.map((x) => x.v));
-  const lo = Math.max(0, min - (max - min) * 0.5 - (field === 'sqm' ? 0.5 : 0.2));
-  const mean = values.reduce((s, x) => s + x.v, 0) / values.length;
-  return (
-    <div className={styles.bars}>
-      <div className={styles.barsHead}>
-        <strong>{label}</strong>
-        <span className={styles.muted}>
-          {t('evaluation.site.mean', { v: `${fmt(mean, digits)}${unit}` })}
-        </span>
-      </div>
-      <div
-        className={styles.barRow}
-        data-kind={field}
-        role="img"
-        aria-label={t('evaluation.site.barsSummary', {
-          what: label,
-          count: values.length,
-          min: `${fmt(min, digits)}${unit}`,
-          max: `${fmt(max, digits)}${unit}`,
-        })}
-      >
-        {values.map((x) => (
-          <span
-            key={x.night}
-            className={styles.bar}
-            title={`${formatNightKey(x.night)} · ${fmt(x.v, digits)}${unit}`}
-            style={{ height: `${String(Math.max(6, ((x.v - lo) / (max - lo || 1)) * 100))}%` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
+/**
+ * Tabelle aller Nächte (S-64, seit AP-77 immer sichtbar): Nacht (Link), Status, Belichtet, Vorhersage, laut Bildern,
+ * Qualität (Anteil guter Lights), Wolken Ø und SQM Ø (Lights bzw. Wettergerät), Mond, Seeing (Vorhersage).
+ */
 function NightsTable({ view }: { view: ClearNightView }) {
   const { t, i18n } = useTranslation();
-  const canMark = useCan('sessionlog.write');
-  const client = useQueryClient();
-  const mark = useMutation({
-    mutationFn: (a: { night: string; on: boolean }) =>
-      sessionLogApi.markUnused(view.siteId, a.night, a.on),
-    onSettled: () => client.invalidateQueries({ queryKey: ['clear-nights', view.siteId] }),
-  });
-  const num = (v: number | null, digits = 1, unit = '') =>
-    v === null
+  const headingId = useId();
+  const num = (v: number | null | undefined, digits = 1, unit = '') =>
+    v === null || v === undefined
       ? '–'
       : `${v.toLocaleString(i18n.language, { maximumFractionDigits: digits })}${unit}`;
   const columns: DataColumn<ClearNightNight>[] = [
@@ -422,20 +327,14 @@ function NightsTable({ view }: { view: ClearNightView }) {
     {
       id: 'status',
       header: t('clearNights.col.status'),
-      sortValue: (n) => (n.usable === null ? null : n.usable ? 1 : 0),
-      cell: (n) =>
-        n.usable === null ? (
-          <span className={styles.muted}>{t('clearNights.status.none')}</span>
-        ) : (
-          <span className={styles.badges}>
-            <span className={n.usable ? styles.badgeOk : styles.badgeWarn}>
-              {n.usable ? t('clearNights.status.usable') : t('clearNights.status.unusable')}
-            </span>
-            {n.source === 'manual' ? (
-              <span className={styles.badge}>{t('clearNights.status.manual')}</span>
-            ) : null}
-          </span>
-        ),
+      sortValue: (n) => dayKind(n),
+      nowrap: true,
+      cell: (n) => (
+        <span className={styles.statusCell}>
+          <span className={styles.legendBox} data-kind={dayKind(n)} aria-hidden="true" />
+          {t(`evaluation.site.kind.${dayKind(n)}`)}
+        </span>
+      ),
     },
     {
       id: 'hours',
@@ -444,7 +343,7 @@ function NightsTable({ view }: { view: ClearNightView }) {
       align: 'end',
       nowrap: true,
       cell: (n) =>
-        n.usableHours === null ? '–' : t('sessions.hours', { h: num(n.usableHours, 2) }),
+        n.usableHours === null ? '–' : t('sessions.hours', { h: num(n.usableHours, 1) }),
     },
     {
       id: 'forecast',
@@ -453,44 +352,6 @@ function NightsTable({ view }: { view: ClearNightView }) {
       priority: 2,
       cell: (n) =>
         n.forecastRatingIndex === null ? '–' : t(`weather.rating.${String(n.forecastRatingIndex)}`),
-    },
-    {
-      id: 'seeing',
-      header: t('clearNights.col.seeing'),
-      sortValue: (n) => n.seeingArcsec,
-      priority: 3,
-      align: 'end',
-      cell: (n) => num(n.seeingArcsec, 1, '″'),
-    },
-    {
-      id: 'sqm',
-      header: t('clearNights.col.sqm'),
-      sortValue: (n) => n.sqm,
-      priority: 3,
-      align: 'end',
-      cell: (n) => num(n.sqm, 2),
-    },
-    {
-      id: 'transparency',
-      header: t('clearNights.col.transparency'),
-      sortValue: (n) => n.transparencyPct ?? n.forecastTransparencyPct,
-      priority: 3,
-      align: 'end',
-      nowrap: true,
-      cell: (n) =>
-        n.transparencyPct !== null
-          ? num(n.transparencyPct, 0, ' %')
-          : n.forecastTransparencyPct !== null
-            ? t('clearNights.forecastValue', { value: num(n.forecastTransparencyPct, 0, ' %') })
-            : '–',
-    },
-    {
-      id: 'rejected',
-      header: t('clearNights.col.rejected'),
-      sortValue: (n) => n.rejectedPct,
-      priority: 2,
-      align: 'end',
-      cell: (n) => num(n.rejectedPct, 1, ' %'),
     },
     {
       id: 'images',
@@ -506,31 +367,72 @@ function NightsTable({ view }: { view: ClearNightView }) {
             })
           : '–',
     },
-    ...(canMark
-      ? [
-          {
-            id: 'action',
-            header: t('clearNights.col.action'),
-            headerHidden: true,
-            nowrap: true,
-            cell: (n: ClearNightNight) =>
-              n.source === 'session' || n.sessionIds.length > 0 ? null : (
-                <button
-                  type="button"
-                  className={styles.linkButton}
-                  disabled={mark.isPending}
-                  onClick={() => mark.mutate({ night: n.night, on: n.source !== 'manual' })}
-                >
-                  {n.source === 'manual' ? t('clearNights.unmark') : t('clearNights.mark')}
-                </button>
-              ),
-          },
-        ]
-      : []),
+    {
+      id: 'quality',
+      header: t('clearNights.col.quality'),
+      sortValue: (n) => n.qualityPct ?? null,
+      cell: (n) =>
+        n.qualityPct == null ? (
+          '–'
+        ) : (
+          <span className={styles.qualityCell}>
+            <QualityBar
+              counts={{
+                good: Math.round(n.qualityPct * 10),
+                flagged: Math.round((100 - n.qualityPct) * 10),
+                rejected: 0,
+                none: 0,
+                sharePct: n.qualityPct,
+                reasons: { hfr: 0, stars: 0, rms: 0, cloud: 0 },
+              }}
+            />
+            <span>{t('sessionQuality.good', { pct: shareLabelPct(n.qualityPct) })}</span>
+          </span>
+        ),
+    },
+    {
+      id: 'clouds',
+      header: t('clearNights.col.clouds'),
+      sortValue: (n) => n.cloudPct ?? null,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (n) => num(n.cloudPct, 0, ' %'),
+    },
+    {
+      id: 'sqm',
+      header: t('clearNights.col.sqm'),
+      sortValue: (n) => n.sqmMeasured ?? null,
+      priority: 3,
+      align: 'end',
+      cell: (n) => num(n.sqmMeasured, 2),
+    },
+    {
+      id: 'moon',
+      header: t('clearNights.col.moon'),
+      sortValue: (n) => n.moonIllumPct ?? null,
+      priority: 3,
+      align: 'end',
+      cell: (n) => num(n.moonIllumPct, 0, ' %'),
+    },
+    {
+      id: 'seeing',
+      header: t('clearNights.col.seeing'),
+      sortValue: (n) => n.forecastSeeingScore ?? null,
+      priority: 3,
+      align: 'end',
+      cell: (n) =>
+        n.forecastSeeingScore == null ? '–' : num(n.forecastSeeingScore * 100, 0, ' %'),
+    },
   ];
   return (
-    <section className={styles.subCard} aria-label={t('clearNights.nights')}>
-      {mark.error ? <ProblemMessage code={problemCode(mark.error)} /> : null}
+    <section className={styles.subCard} aria-labelledby={headingId}>
+      <div className={styles.cardHead}>
+        <h2 id={headingId} className={styles.sectionTitle}>
+          {t('clearNights.nights')}
+        </h2>
+        <span className={styles.muted}>{t('evaluation.site.tableHint')}</span>
+      </div>
       <DataTable
         columns={columns}
         rows={view.nights}

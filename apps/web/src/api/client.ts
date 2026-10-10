@@ -220,8 +220,8 @@ export type ExposureTemplateView = Schemas['ExposureTemplateView'];
 export type RigView = Schemas['RigView'];
 export type FilterWheelView = Schemas['FilterWheelView'];
 export type FocusOffsetsView = Schemas['FocusOffsetsView'];
-export type ProjectImagesView = Schemas['ProjectImagesView'];
-export type ProjectImage = Schemas['ProjectImage'];
+export type ProjectQualityView = Schemas['ProjectQualityView'];
+export type QualityStats = Schemas['QualityStats'];
 export type ImageQualitySettings = Schemas['ImageQualitySettings'];
 export type SiteNightsView = Schemas['SiteNightsView'];
 export type WeatherView = Schemas['WeatherView'];
@@ -761,19 +761,12 @@ export const sessionsApi = {
       `${V1}/captures/${captureId}`,
       json('PATCH', { rejected, reason }),
     ),
-  /** Bilder des Projekts mit Bewertung (AP-72b). */
-  projectImages: (projectId: string) =>
-    apiFetch<ProjectImagesView>(`${V1}/projects/${projectId}/images`),
-  rejectImages: (projectId: string, captureIds: string[], rejected: boolean) =>
-    apiFetch<Schemas['ProjectImagesRejectResult']>(
-      `${V1}/projects/${projectId}/images/reject`,
-      json('POST', { captureIds, rejected }),
-    ),
-  keepImage: (captureId: string, kept: boolean) =>
-    apiFetch<Schemas['CaptureKeepResult']>(
-      `${V1}/captures/${captureId}/quality`,
-      json('PATCH', { kept }),
-    ),
+  /** Qualität des Projekts je Nacht, Filter und Session (AP-77, Reiter „Qualität“). */
+  projectQuality: (projectId: string) =>
+    apiFetch<ProjectQualityView>(`${V1}/projects/${projectId}/quality`),
+  /** Adresse der Dateiliste zum Stacken (CSV, Download über einen Link). */
+  projectQualityFilesUrl: (projectId: string, good: boolean) =>
+    `${V1}/projects/${projectId}/quality/files?good=${String(good)}`,
   /** Nicht zugeordnete Aufnahme einer Zeile zuordnen (FA-AUS-22, Admin). */
   assign: (captureId: string, exposureLineId: string) =>
     apiFetch<undefined>(`${V1}/captures/${captureId}/assign`, json('PATCH', { exposureLineId })),
@@ -787,12 +780,6 @@ export const sessionLogApi = {
   clearNights: (siteId: string, from: string, to: string) =>
     apiFetch<ClearNightView>(
       `${V1}/sites/${siteId}/clear-nights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-    ),
-  /** Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen bzw. zurücknehmen (FA-AUS-17, Admin). */
-  markUnused: (siteId: string, night: string, on: boolean) =>
-    apiFetch<undefined>(
-      `${V1}/sites/${siteId}/clear-nights/${night}`,
-      on ? json('PUT', { usable: false }) : json('DELETE'),
     ),
 };
 

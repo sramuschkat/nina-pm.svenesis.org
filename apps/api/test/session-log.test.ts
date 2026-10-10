@@ -1,6 +1,6 @@
 /**
  * AP-30 (FA-AUS-16/17; S-64; PGlite) nach einer Fake-Plugin-Nacht – Klarnacht-Statistik: `session_close` schreibt `site_night_stat` (nutzbar ab 1 h akzeptierter Lights,
- * Maximum über die Sessions der Nacht), manuelle Erfassung ungenutzter Nächte, Monatszeile und
+ * Maximum über die Sessions der Nacht), ältere manuelle Einträge (Erfassen entfällt seit AP-77), Monatszeile und
  * Treffsicherheit.
  */
 import { runFakeNight } from '@nina-pm/fake-plugin';
@@ -148,7 +148,7 @@ const SNAPSHOT = {
 };
 
 describe('Klarnacht-Statistik (S-64)', () => {
-  it('session_close schreibt die Nacht; ab 1 h akzeptierter Lights nutzbar; manuelle Nächte', async () => {
+  it('session_close schreibt die Nacht; ab 1 h akzeptierter Lights nutzbar; alte manuelle Nächte zählen', async () => {
     const t = await setup();
     await t.fakeNight();
     const sessions = await t.q<{ id: string }>('SELECT id FROM session ORDER BY started_at');
@@ -194,24 +194,20 @@ describe('Klarnacht-Statistik (S-64)', () => {
     expect((nights[0]?.usableHours as number) >= 1).toBe(true);
     expect(view.body.accuracy).toEqual({ compared: 1, hits: 1, hitPct: 100 });
 
-    // Nacht mit Session lässt sich nicht manuell erfassen; eine andere schon – und zurücknehmen.
-    s.clock.set(new Date('2026-09-20T12:00:00Z'));
-    const conflict = await t.web(`/sites/${t.site.id}/clear-nights/${NIGHT}`, {
-      method: 'PUT',
-      body: { usable: false },
-    });
-    expect(conflict.status).toBe(409);
-    expect(conflict.body.code).toBe('site_night.has_session');
-    const future = await t.web(`/sites/${t.site.id}/clear-nights/2026-09-20`, {
-      method: 'PUT',
-      body: { usable: false },
-    });
-    expect(future.status).toBe(422);
-    const mark = await t.web(`/sites/${t.site.id}/clear-nights/2026-09-17`, {
-      method: 'PUT',
-      body: { usable: false },
-    });
-    expect(mark.status).toBe(204);
+    // „Bewölkt erfassen“ entfällt (AP-77); ältere manuelle Einträge bleiben in der Statistik.
+    expect(
+      (
+        await t.web(`/sites/${t.site.id}/clear-nights/2026-09-17`, {
+          method: 'PUT',
+          body: { usable: false },
+        })
+      ).status,
+    ).toBe(404);
+    await t.q(
+      `INSERT INTO site_night_stat (tenant_id, site_id, night, usable, usable_hours, source)
+        SELECT tenant_id, id, '2026-09-17', false, 0, 'manual' FROM site WHERE id = $1`,
+      [t.site.id],
+    );
     const after = await t.web(`/sites/${t.site.id}/clear-nights?from=2026-09-01&to=2026-09-18`);
     expect(after.body.months).toEqual([
       {
@@ -228,11 +224,6 @@ describe('Klarnacht-Statistik (S-64)', () => {
       usable: false,
       sessionIds: [],
     });
-    expect(
-      (await t.web(`/sites/${t.site.id}/clear-nights/2026-09-17`, { method: 'DELETE' })).status,
-    ).toBe(204);
-    const gone = await t.web(`/sites/${t.site.id}/clear-nights?from=2026-09-17&to=2026-09-17`);
-    expect((gone.body.nights as Body[])[0]).toMatchObject({ source: null, usable: null });
 
     // Zeitraum zu lang oder verkehrt herum → 422.
     expect(

@@ -11694,7 +11694,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/web/v1/projects/{id}/images": {
+    "/api/web/v1/projects/{id}/quality": {
         parameters: {
             query?: never;
             header?: never;
@@ -11702,8 +11702,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Lights des Projekts über alle Nächte mit Messwerten, Bewertung und Datei (Reiter „Bilder“)
-         * @description Aktion: `session.read` · FA-AUS-25, AP-72b, S-31
+         * Qualität des Projekts: Anteile guter Lights je Nacht, Filter und Session (Reiter „Qualität“)
+         * @description Aktion: `session.read` · FA-AUS-25, AP-77, S-31
          */
         get: {
             parameters: {
@@ -11717,13 +11717,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Bilder */
+                /** @description Qualität */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ProjectImagesView"];
+                        "application/json": components["schemas"]["ProjectQualityView"];
                     };
                 };
                 /** @description Nicht angemeldet */
@@ -11763,22 +11763,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/web/v1/projects/{id}/images/reject": {
+    "/api/web/v1/projects/{id}/quality/files": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Mehrere Lights des Projekts verwerfen (Grund auto_quality) bzw. zurücknehmen
-         * @description Aktion: `session.correct` · FA-AUS-25, FA-AUS-20, FK 8.4
+         * Dateiliste zum Stacken als CSV: alle bzw. nur gute Lights mit relativem Pfad
+         * @description Aktion: `session.read` · FA-AUS-25, AP-77, S-31
          */
-        post: {
+        get: {
             parameters: {
-                query?: never;
+                query?: {
+                    good?: "true" | "false";
+                };
                 header?: never;
                 path: {
                     /** @description UUID */
@@ -11786,19 +11786,15 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ProjectImagesReject"];
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description Geändert */
+                /** @description CSV */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ProjectImagesRejectResult"];
+                        "text/csv": string;
                     };
                 };
                 /** @description Nicht angemeldet */
@@ -11828,103 +11824,14 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description validation.failed */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/web/v1/captures/{id}/quality": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * „Behalten“: Light bestätigen, die Bildbewertung markiert es nicht wieder
-         * @description Aktion: `session.correct` · FA-AUS-25
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CaptureKeep"];
-                };
-            };
-            responses: {
-                /** @description Gespeichert */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CaptureKeepResult"];
-                    };
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.not_found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description capture.not_rejectable */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
+        patch?: never;
         trace?: never;
     };
     "/api/web/v1/sites/{id}/clear-nights": {
@@ -12003,148 +11910,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/web/v1/sites/{id}/clear-nights/{night}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen
-         * @description Aktion: `sessionlog.write` · FA-AUS-17, S-64
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUID */
-                    id: string;
-                    night: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ClearNightMark"];
-                };
-            };
-            responses: {
-                /** @description Erfasst */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.not_found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description site_night.has_session */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description validation.failed */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /**
-         * Manuelle Erfassung einer Nacht zurücknehmen
-         * @description Aktion: `sessionlog.write` · FA-AUS-17, S-64
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description UUID */
-                    id: string;
-                    night: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Zurückgenommen */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Nicht angemeldet */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Keine Berechtigung */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description resource.not_found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
         options?: never;
         head?: never;
         patch?: never;
@@ -16747,8 +16512,6 @@ export interface components {
             imageQuality?: components["schemas"]["ImageQualitySettings"];
         };
         ImageQualitySettings: {
-            /** @enum {string} */
-            mode: "mark" | "reject";
             hfrPct: number | null;
             starsPct: number | null;
             rmsArcsec: number | null;
@@ -20467,7 +20230,7 @@ export interface components {
         ReportResendResult: {
             channels: number;
         };
-        ProjectImagesView: {
+        ProjectQualityView: {
             /**
              * Format: uuid
              * @description UUID
@@ -20479,92 +20242,74 @@ export interface components {
              */
             rigId: string | null;
             settings: components["schemas"]["ImageQualitySettings"];
-            scaleArcsecPx: number | null;
             minRef: number;
-            refs: {
-                filter: string;
-                hfr: number | null;
-                hfrArcsec: number | null;
-                stars: number | null;
-                rmsArcsec: number | null;
-                n: number;
+            filters: components["schemas"]["FilterQuality"][];
+            nights: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                sessionIds: string[];
+                filters: components["schemas"]["FilterQuality"][];
+                total: components["schemas"]["QualityStats"];
             }[];
-            items: components["schemas"]["ProjectImage"][];
+            sessions: {
+                good: number;
+                flagged: number;
+                rejected: number;
+                none: number;
+                sharePct: number | null;
+                reasons: {
+                    hfr: number;
+                    stars: number;
+                    rms: number;
+                    cloud: number;
+                };
+                hfr: components["schemas"]["QualitySpread"];
+                stars: components["schemas"]["QualitySpread"];
+                rmsArcsec: components["schemas"]["QualitySpread"];
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                sessionId: string;
+            }[];
+            total: components["schemas"]["QualityStats"];
             truncated: boolean;
-            canCorrect: boolean;
         };
-        ProjectImage: {
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            id: string;
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            sessionId: string;
-            /**
-             * Format: date
-             * @example 2026-09-18
-             */
-            night: string;
-            /**
-             * Format: date-time
-             * @example 2026-09-18T13:00:00Z
-             */
-            capturedAt: string;
+        FilterQuality: {
+            good: number;
+            flagged: number;
+            rejected: number;
+            none: number;
+            sharePct: number | null;
+            reasons: {
+                hfr: number;
+                stars: number;
+                rms: number;
+                cloud: number;
+            };
+            hfr: components["schemas"]["QualitySpread"];
+            stars: components["schemas"]["QualitySpread"];
+            rmsArcsec: components["schemas"]["QualitySpread"];
             filter: string;
-            exposureS: number;
-            gain: number | null;
-            offset: number | null;
-            binning: number | null;
-            isBonus: boolean;
-            rejected: boolean;
-            /** @enum {string|null} */
-            rejectReason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | "auto_quality" | null;
-            kept: boolean;
-            /** @enum {string} */
-            grade: "ok" | "flagged" | "kept" | "rejected" | "none";
-            flags: components["schemas"]["ImageFlag"][];
-            fileName: string | null;
-            relativePath: string | null;
-            hfr: number | null;
-            hfrArcsec: number | null;
-            stars: number | null;
-            rmsArcsec: number | null;
-            rmsRaArcsec: number | null;
-            rmsDecArcsec: number | null;
-            cloudCoverPct: number | null;
-            skyQualityMag: number | null;
-            altitudeDeg: number | null;
-            airmass: number | null;
-            focusPosition: number | null;
-            focuserTemperatureC: number | null;
-            medianAdu: number | null;
-            saturatedPct: number | null;
-            sensorTempC: number | null;
-            setPointC: number | null;
         };
-        ProjectImagesRejectResult: {
-            changed: number;
-            skipped: number;
-            projectStatus: string | null;
-        };
-        ProjectImagesReject: {
-            captureIds: string[];
-            rejected: boolean;
-        };
-        CaptureKeepResult: {
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            captureId: string;
-            kept: boolean;
-        };
-        CaptureKeep: {
-            kept: boolean;
+        QualityStats: {
+            good: number;
+            flagged: number;
+            rejected: number;
+            none: number;
+            sharePct: number | null;
+            reasons: {
+                hfr: number;
+                stars: number;
+                rms: number;
+                cloud: number;
+            };
+            hfr: components["schemas"]["QualitySpread"];
+            stars: components["schemas"]["QualitySpread"];
+            rmsArcsec: components["schemas"]["QualitySpread"];
         };
         ClearNightView: {
             /**
@@ -20632,10 +20377,6 @@ export interface components {
             sqmMeasured?: number | null;
             moonIllumPct?: number | null;
             forecastSeeingScore?: number | null;
-        };
-        ClearNightMark: {
-            /** @enum {boolean} */
-            usable: false;
         };
         TelemetryView: {
             /**

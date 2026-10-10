@@ -10,7 +10,6 @@ import {
   filterTypes,
   flatsAutoModes,
   flatsSources,
-  imageQualityModes,
   moonModes,
   observatoryTypes,
   opticalDesigns,
@@ -467,13 +466,13 @@ export const RigOverheadsView = z
 export type RigOverheadsView = z.infer<typeof RigOverheadsView>;
 
 /**
- * Automatische Bildbewertung je Rig (AP-72b, FA-AUS-25; Entscheidung Sven 09.10.2026): Grenzwerte, `null` = aus. HFR
- * und Sterne relativ zum Median desselben Projekts und Filters, RMS und Wolken absolut. `mark` = nur markieren
- * (Standard), `reject` = beim Eingang verwerfen (Grund `auto_quality`).
+ * Grenzwerte der Bildbewertung je Rig (AP-72b, FA-AUS-25; Entscheidung Sven 09.10.2026), `null` = aus. HFR und Sterne
+ * relativ zum Median desselben Projekts und Filters, RMS und Wolken absolut. Die Bewertung fließt nur in die Anteile der
+ * Sessionqualität ein (AP-77); den Modus „beim Eingang verwerfen“ gibt es nicht mehr (ein gespeichertes `mode` wird
+ * beim Lesen ignoriert).
  */
 export const ImageQualitySettings = z
   .object({
-    mode: z.enum(imageQualityModes),
     /** Markieren, wenn HFR mehr als so viele % über dem Median liegt. */
     hfrPct: z.number().min(1).max(500).nullable(),
     /** Markieren, wenn die Sternzahl unter so vielen % des Medians liegt. */

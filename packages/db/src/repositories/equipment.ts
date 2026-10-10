@@ -148,11 +148,16 @@ function parseOverhead(value: unknown): Overhead {
   return { ...DEFAULT_OVERHEAD, ...(o as Partial<Overhead>) };
 }
 
-/** Bildbewertung (AP-72b) aus `rig.overhead.imageQuality`; fehlt oder ungültig → Startwerte. */
+/**
+ * Bildbewertung (AP-72b) aus `rig.overhead.imageQuality`; fehlt oder ungültig → Startwerte. Der frühere Modus (`mode`,
+ * bis AP-77) wird verworfen, die Grenzwerte bleiben.
+ */
 function parseImageQuality(value: unknown): ImageQualitySettings {
-  const parsed = ImageQualitySettings.safeParse(
-    (value as { imageQuality?: unknown } | null)?.imageQuality,
-  );
+  const stored = (value as { imageQuality?: unknown } | null)?.imageQuality;
+  const limits: Record<string, unknown> =
+    stored !== null && typeof stored === 'object' ? { ...(stored as Record<string, unknown>) } : {};
+  delete limits.mode;
+  const parsed = ImageQualitySettings.safeParse(limits);
   return parsed.success ? parsed.data : { ...IMAGE_QUALITY_DEFAULTS };
 }
 

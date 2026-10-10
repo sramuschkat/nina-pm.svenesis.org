@@ -15,6 +15,7 @@ import {
   equipmentApi,
   projectsApi,
   reportsApi,
+  sessionsApi,
   type HistoryEntry,
   type SiteView,
 } from '../../api/client';
@@ -369,15 +370,18 @@ export function HistoryTab({ projectId }: { projectId: string }) {
 }
 
 /**
- * Reiter *Sessions & Protokoll* (S-31): derselbe Abschnitt wie im Projektbericht S-63 über alle Nächte – Frames und
- * Integration je Filter, Verlauf je Nacht, Sessions mit Frames je Filter, Verworfen-Quote und Wetter; jede Session
- * führt zur Detailseite mit Aufnahmen und Protokoll.
+ * Reiter *Sessions & Protokoll* (S-31): Fortschritt und Qualität je Filter über alle Nächte, Verlauf je Nacht, Sessions
+ * mit Lights je Filter, Qualität, HFR-Spanne, Guiding Ø und Wetter (AP-77); jede Session führt zu ihrer Nacht.
  */
 export function ProjectSessionsTab({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const report = useQuery({
     queryKey: ['project-report', { projectId }],
     queryFn: () => reportsApi.projects({ projectId }),
+  });
+  const quality = useQuery({
+    queryKey: ['project-quality', projectId],
+    queryFn: () => sessionsApi.projectQuality(projectId),
   });
   if (report.isPending) return <p role="status">{t('common.loading')}</p>;
   if (report.isError)
@@ -387,5 +391,5 @@ export function ProjectSessionsTab({ projectId }: { projectId: string }) {
   const project = report.data.projects[0];
   if (!project || project.sessions.length === 0)
     return <p className={styles.muted}>{t('projectEditor.tabs.sessionsEmpty')}</p>;
-  return <ProjectSection project={project} open />;
+  return <ProjectSection project={project} quality={quality.data} />;
 }

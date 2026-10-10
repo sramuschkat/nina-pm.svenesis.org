@@ -98,6 +98,8 @@ export interface ProjectMeta {
   readonly createdBy: string;
   readonly approvalStatus: string;
   readonly deletedAt: Date | null;
+  /** Rig des Projekts bzw. das beantragte Rig (wie `projectRigId`). */
+  readonly rigId: string | null;
 }
 
 export interface ListFilter {
@@ -236,6 +238,7 @@ export class ProjectRepository extends TenantRepo {
           createdBy: p.createdBy,
           approvalStatus: p.approvalStatus,
           deletedAt: p.deletedAt,
+          rigId: projectRigId(p),
         }
       : undefined;
   }

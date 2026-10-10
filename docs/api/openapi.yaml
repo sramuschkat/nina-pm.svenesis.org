@@ -3766,11 +3766,6 @@ components:
     ImageQualitySettings:
       type: object
       properties:
-        mode:
-          type: string
-          enum:
-            - mark
-            - reject
         hfrPct:
           type:
             - number
@@ -3796,7 +3791,6 @@ components:
           minimum: 0
           maximum: 100
       required:
-        - mode
         - hfrPct
         - starsPct
         - rmsArcsec
@@ -12642,7 +12636,7 @@ components:
           type: integer
       required:
         - channels
-    ProjectImagesView:
+    ProjectQualityView:
       type: object
       properties:
         projectId:
@@ -12657,291 +12651,233 @@ components:
           description: UUID
         settings:
           $ref: "#/components/schemas/ImageQualitySettings"
-        scaleArcsecPx:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
         minRef:
           type: integer
-        refs:
+        filters:
+          type: array
+          items:
+            $ref: "#/components/schemas/FilterQuality"
+        nights:
           type: array
           items:
             type: object
             properties:
-              filter:
+              night:
                 type: string
-              hfr:
-                type:
-                  - number
-                  - "null"
-              hfrArcsec:
-                type:
-                  - number
-                  - "null"
-              stars:
-                type:
-                  - number
-                  - "null"
-              rmsArcsec:
-                type:
-                  - number
-                  - "null"
-              n:
-                type: integer
-                minimum: 0
+                format: date
+                example: 2026-09-18
+              sessionIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                  description: UUID
+              filters:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FilterQuality"
+              total:
+                $ref: "#/components/schemas/QualityStats"
             required:
-              - filter
-              - hfr
-              - hfrArcsec
-              - stars
-              - rmsArcsec
-              - n
-        items:
+              - night
+              - sessionIds
+              - filters
+              - total
+        sessions:
           type: array
           items:
-            $ref: "#/components/schemas/ProjectImage"
+            type: object
+            properties:
+              good:
+                type: integer
+                minimum: 0
+              flagged:
+                type: integer
+                minimum: 0
+              rejected:
+                type: integer
+                minimum: 0
+              none:
+                type: integer
+                minimum: 0
+              sharePct:
+                type:
+                  - number
+                  - "null"
+                minimum: 0
+                maximum: 100
+              reasons:
+                type: object
+                properties:
+                  hfr:
+                    type: integer
+                    minimum: 0
+                  stars:
+                    type: integer
+                    minimum: 0
+                  rms:
+                    type: integer
+                    minimum: 0
+                  cloud:
+                    type: integer
+                    minimum: 0
+                required:
+                  - hfr
+                  - stars
+                  - rms
+                  - cloud
+              hfr:
+                $ref: "#/components/schemas/QualitySpread"
+              stars:
+                $ref: "#/components/schemas/QualitySpread"
+              rmsArcsec:
+                $ref: "#/components/schemas/QualitySpread"
+              sessionId:
+                type: string
+                format: uuid
+                description: UUID
+            required:
+              - good
+              - flagged
+              - rejected
+              - none
+              - sharePct
+              - reasons
+              - hfr
+              - stars
+              - rmsArcsec
+              - sessionId
+        total:
+          $ref: "#/components/schemas/QualityStats"
         truncated:
-          type: boolean
-        canCorrect:
           type: boolean
       required:
         - projectId
         - rigId
         - settings
-        - scaleArcsecPx
         - minRef
-        - refs
-        - items
+        - filters
+        - nights
+        - sessions
+        - total
         - truncated
-        - canCorrect
-    ProjectImage:
+    FilterQuality:
       type: object
       properties:
-        id:
-          type: string
-          format: uuid
-          description: UUID
-        sessionId:
-          type: string
-          format: uuid
-          description: UUID
-        night:
-          type: string
-          format: date
-          example: 2026-09-18
-        capturedAt:
-          type: string
-          format: date-time
-          example: 2026-09-18T13:00:00Z
+        good:
+          type: integer
+          minimum: 0
+        flagged:
+          type: integer
+          minimum: 0
+        rejected:
+          type: integer
+          minimum: 0
+        none:
+          type: integer
+          minimum: 0
+        sharePct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        reasons:
+          type: object
+          properties:
+            hfr:
+              type: integer
+              minimum: 0
+            stars:
+              type: integer
+              minimum: 0
+            rms:
+              type: integer
+              minimum: 0
+            cloud:
+              type: integer
+              minimum: 0
+          required:
+            - hfr
+            - stars
+            - rms
+            - cloud
+        hfr:
+          $ref: "#/components/schemas/QualitySpread"
+        stars:
+          $ref: "#/components/schemas/QualitySpread"
+        rmsArcsec:
+          $ref: "#/components/schemas/QualitySpread"
         filter:
           type: string
-        exposureS:
-          type: number
-          minimum: 0
-        gain:
-          type:
-            - integer
-            - "null"
-        offset:
-          type:
-            - integer
-            - "null"
-        binning:
-          type:
-            - integer
-            - "null"
-        isBonus:
-          type: boolean
-        rejected:
-          type: boolean
-        rejectReason:
-          type:
-            - string
-            - "null"
-          enum:
-            - clouds
-            - wind
-            - focus
-            - satellite
-            - guiding
-            - other
-            - auto_quality
-            - null
-        kept:
-          type: boolean
-        grade:
-          type: string
-          enum:
-            - ok
-            - flagged
-            - kept
-            - rejected
-            - none
-        flags:
-          type: array
-          items:
-            $ref: "#/components/schemas/ImageFlag"
-        fileName:
-          type:
-            - string
-            - "null"
-        relativePath:
-          type:
-            - string
-            - "null"
-        hfr:
-          type:
-            - number
-            - "null"
-        hfrArcsec:
-          type:
-            - number
-            - "null"
-        stars:
-          type:
-            - number
-            - "null"
-        rmsArcsec:
-          type:
-            - number
-            - "null"
-        rmsRaArcsec:
-          type:
-            - number
-            - "null"
-        rmsDecArcsec:
-          type:
-            - number
-            - "null"
-        cloudCoverPct:
-          type:
-            - number
-            - "null"
-        skyQualityMag:
-          type:
-            - number
-            - "null"
-        altitudeDeg:
-          type:
-            - number
-            - "null"
-        airmass:
-          type:
-            - number
-            - "null"
-        focusPosition:
-          type:
-            - number
-            - "null"
-        focuserTemperatureC:
-          type:
-            - number
-            - "null"
-        medianAdu:
-          type:
-            - number
-            - "null"
-        saturatedPct:
-          type:
-            - number
-            - "null"
-        sensorTempC:
-          type:
-            - number
-            - "null"
-        setPointC:
-          type:
-            - number
-            - "null"
       required:
-        - id
-        - sessionId
-        - night
-        - capturedAt
-        - filter
-        - exposureS
-        - gain
-        - offset
-        - binning
-        - isBonus
+        - good
+        - flagged
         - rejected
-        - rejectReason
-        - kept
-        - grade
-        - flags
-        - fileName
-        - relativePath
+        - none
+        - sharePct
+        - reasons
         - hfr
-        - hfrArcsec
         - stars
         - rmsArcsec
-        - rmsRaArcsec
-        - rmsDecArcsec
-        - cloudCoverPct
-        - skyQualityMag
-        - altitudeDeg
-        - airmass
-        - focusPosition
-        - focuserTemperatureC
-        - medianAdu
-        - saturatedPct
-        - sensorTempC
-        - setPointC
-    ProjectImagesRejectResult:
+        - filter
+    QualityStats:
       type: object
       properties:
-        changed:
+        good:
           type: integer
           minimum: 0
-        skipped:
+        flagged:
           type: integer
           minimum: 0
-        projectStatus:
-          type:
-            - string
-            - "null"
-      required:
-        - changed
-        - skipped
-        - projectStatus
-    ProjectImagesReject:
-      type: object
-      properties:
-        captureIds:
-          type: array
-          items:
-            type: string
-            format: uuid
-            description: UUID
-          minItems: 1
-          maxItems: 500
         rejected:
-          type: boolean
+          type: integer
+          minimum: 0
+        none:
+          type: integer
+          minimum: 0
+        sharePct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        reasons:
+          type: object
+          properties:
+            hfr:
+              type: integer
+              minimum: 0
+            stars:
+              type: integer
+              minimum: 0
+            rms:
+              type: integer
+              minimum: 0
+            cloud:
+              type: integer
+              minimum: 0
+          required:
+            - hfr
+            - stars
+            - rms
+            - cloud
+        hfr:
+          $ref: "#/components/schemas/QualitySpread"
+        stars:
+          $ref: "#/components/schemas/QualitySpread"
+        rmsArcsec:
+          $ref: "#/components/schemas/QualitySpread"
       required:
-        - captureIds
+        - good
+        - flagged
         - rejected
-      additionalProperties: false
-    CaptureKeepResult:
-      type: object
-      properties:
-        captureId:
-          type: string
-          format: uuid
-          description: UUID
-        kept:
-          type: boolean
-      required:
-        - captureId
-        - kept
-    CaptureKeep:
-      type: object
-      properties:
-        kept:
-          type: boolean
-      required:
-        - kept
-      additionalProperties: false
+        - none
+        - sharePct
+        - reasons
+        - hfr
+        - stars
+        - rmsArcsec
     ClearNightView:
       type: object
       properties:
@@ -13171,16 +13107,6 @@ components:
         - transparencyPct
         - forecastTransparencyPct
         - rejectedPct
-    ClearNightMark:
-      type: object
-      properties:
-        usable:
-          type: boolean
-          enum:
-            - false
-      required:
-        - usable
-      additionalProperties: false
     TelemetryView:
       type: object
       properties:
@@ -28391,16 +28317,16 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/projects/{id}/images:
+  /api/web/v1/projects/{id}/quality:
     get:
-      summary: Lights des Projekts über alle Nächte mit Messwerten, Bewertung und Datei (Reiter „Bilder“)
+      summary: "Qualität des Projekts: Anteile guter Lights je Nacht, Filter und Session (Reiter „Qualität“)"
       tags:
         - sessions
-      description: "Aktion: `session.read` · FA-AUS-25, AP-72b, S-31"
+      description: "Aktion: `session.read` · FA-AUS-25, AP-77, S-31"
       x-npm-action: session.read
       x-npm-requirements:
         - FA-AUS-25
-        - AP-72b
+        - AP-77
         - S-31
       parameters:
         - schema:
@@ -28413,11 +28339,11 @@ paths:
           in: path
       responses:
         "200":
-          description: Bilder
+          description: Qualität
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProjectImagesView"
+                $ref: "#/components/schemas/ProjectQualityView"
         "401":
           description: Nicht angemeldet
           content:
@@ -28436,17 +28362,17 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/projects/{id}/images/reject:
-    post:
-      summary: Mehrere Lights des Projekts verwerfen (Grund auto_quality) bzw. zurücknehmen
+  /api/web/v1/projects/{id}/quality/files:
+    get:
+      summary: "Dateiliste zum Stacken als CSV: alle bzw. nur gute Lights mit relativem Pfad"
       tags:
         - sessions
-      description: "Aktion: `session.correct` · FA-AUS-25, FA-AUS-20, FK 8.4"
-      x-npm-action: session.correct
+      description: "Aktion: `session.read` · FA-AUS-25, AP-77, S-31"
+      x-npm-action: session.read
       x-npm-requirements:
         - FA-AUS-25
-        - FA-AUS-20
-        - FK 8.4
+        - AP-77
+        - S-31
       parameters:
         - schema:
             type: string
@@ -28456,74 +28382,21 @@ paths:
           description: UUID
           name: id
           in: path
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProjectImagesReject"
-      responses:
-        "200":
-          description: Geändert
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProjectImagesRejectResult"
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: resource.not_found
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "422":
-          description: validation.failed
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/captures/{id}/quality:
-    patch:
-      summary: "„Behalten“: Light bestätigen, die Bildbewertung markiert es nicht wieder"
-      tags:
-        - sessions
-      description: "Aktion: `session.correct` · FA-AUS-25"
-      x-npm-action: session.correct
-      x-npm-requirements:
-        - FA-AUS-25
-      parameters:
         - schema:
             type: string
-            format: uuid
-            description: UUID
-          required: true
-          description: UUID
-          name: id
-          in: path
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CaptureKeep"
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: good
+          in: query
       responses:
         "200":
-          description: Gespeichert
+          description: CSV
           content:
-            application/json:
+            text/csv:
               schema:
-                $ref: "#/components/schemas/CaptureKeepResult"
+                type: string
         "401":
           description: Nicht angemeldet
           content:
@@ -28538,12 +28411,6 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "409":
-          description: capture.not_rejectable
           content:
             application/problem+json:
               schema:
@@ -28609,117 +28476,6 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-  /api/web/v1/sites/{id}/clear-nights/{night}:
-    put:
-      summary: Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen
-      tags:
-        - sessions
-      description: "Aktion: `sessionlog.write` · FA-AUS-17, S-64"
-      x-npm-action: sessionlog.write
-      x-npm-requirements:
-        - FA-AUS-17
-        - S-64
-      parameters:
-        - schema:
-            type: string
-            format: uuid
-            description: UUID
-          required: true
-          description: UUID
-          name: id
-          in: path
-        - schema:
-            type: string
-            format: date
-            example: 2026-09-18
-          required: true
-          name: night
-          in: path
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ClearNightMark"
-      responses:
-        "204":
-          description: Erfasst
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: resource.not_found
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "409":
-          description: site_night.has_session
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "422":
-          description: validation.failed
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-    delete:
-      summary: Manuelle Erfassung einer Nacht zurücknehmen
-      tags:
-        - sessions
-      description: "Aktion: `sessionlog.write` · FA-AUS-17, S-64"
-      x-npm-action: sessionlog.write
-      x-npm-requirements:
-        - FA-AUS-17
-        - S-64
-      parameters:
-        - schema:
-            type: string
-            format: uuid
-            description: UUID
-          required: true
-          description: UUID
-          name: id
-          in: path
-        - schema:
-            type: string
-            format: date
-            example: 2026-09-18
-          required: true
-          name: night
-          in: path
-      responses:
-        "204":
-          description: Zurückgenommen
-        "401":
-          description: Nicht angemeldet
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: Keine Berechtigung
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "404":
-          description: resource.not_found
           content:
             application/problem+json:
               schema:

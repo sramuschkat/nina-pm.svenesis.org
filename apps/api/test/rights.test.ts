@@ -1011,7 +1011,6 @@ async function projectExamples(): Promise<Record<string, Example>> {
         site_id: string;
       }
     ).site_id;
-    const clearNight = `/api/web/v1/sites/${siteId}/clear-nights/2026-09-10`;
     const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
     // Änderungsantrag des Einreichers zum freigegebenen Session-Projekt (AP-32b).
     const cr = await stack.services
@@ -1067,43 +1066,12 @@ async function projectExamples(): Promise<Record<string, Example>> {
         url: `/api/web/v1/sites/${siteId}/clear-nights?from=2026-09-01&to=2026-09-23`,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
-      'PUT /api/web/v1/sites/{id}/clear-nights/{night}': {
-        url: clearNight,
-        method: 'PUT',
-        body: { usable: false },
-        okStatus: 204,
+      'GET /api/web/v1/projects/{id}/quality': {
+        url: `/api/web/v1/projects/${SP}/quality`,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
-      'DELETE /api/web/v1/sites/{id}/clear-nights/{night}': {
-        url: clearNight,
-        method: 'DELETE',
-        okStatus: 204,
-        expect: { 'fremder Mandant (Admin)': 404 },
-      },
-      'GET /api/web/v1/projects/{id}/images': {
-        url: `/api/web/v1/projects/${SP}/images`,
-        expect: { 'fremder Mandant (Admin)': 404 },
-      },
-      'POST /api/web/v1/projects/{id}/images/reject': {
-        url: `/api/web/v1/projects/${SP}/images/reject`,
-        method: 'POST',
-        body: { captureIds: [captureId], rejected: false },
-        resource: {
-          tenantId: world.tenantA,
-          createdBy: submitter,
-          settings: { userCorrections: false },
-        },
-        expect: { 'fremder Mandant (Admin)': 404 },
-      },
-      'PATCH /api/web/v1/captures/{id}/quality': {
-        url: `/api/web/v1/captures/${captureId}/quality`,
-        method: 'PATCH',
-        body: { kept: false },
-        resource: {
-          tenantId: world.tenantA,
-          createdBy: submitter,
-          settings: { userCorrections: false },
-        },
+      'GET /api/web/v1/projects/{id}/quality/files': {
+        url: `/api/web/v1/projects/${SP}/quality/files?good=true`,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
       'PATCH /api/web/v1/captures/{id}': {

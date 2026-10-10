@@ -59,7 +59,6 @@ const ADMIN_ACTIONS: ReadonlySet<Action> = new Set<Action>([
   'rig.settings.write',
   'nina.instance.manage',
   'session.review',
-  'sessionlog.write',
   'tenant.settings',
   'tenant.export',
   'tenant.import',
