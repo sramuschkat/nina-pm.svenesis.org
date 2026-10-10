@@ -360,9 +360,9 @@ function targetsEtag(
 export async function targets(
   svc: ApiServices,
   p: RigRef,
-): Promise<{ body: Targets; etag: string }> {
-  const { body, etag } = await targetsData(svc, p);
-  return { body, etag };
+): Promise<{ body: Targets; etag: string; settingsVersion: number }> {
+  const { body, etag, rig } = await targetsData(svc, p);
+  return { body, etag, settingsVersion: rig.settingsVersion };
 }
 
 /**
@@ -471,8 +471,10 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   }));
   const transits = transitsOfNight(delivered.transits, night);
   const ids = list.map((x) => x.project.id);
-  const rejected = await d.repos.ninaRig(p.rigId).rejectedCounts(ids);
-  const flats = await d.repos.ninaRig(p.rigId).flatRecords(ids);
+  const [rejected, flats] = await Promise.all([
+    d.repos.ninaRig(p.rigId).rejectedCounts(ids),
+    d.repos.ninaRig(p.rigId).flatRecords(ids),
+  ]);
   const confirmed = new Map(
     d.rig.filterWheel
       .filter((s) => s.filterId !== null && s.ninaConfirmedAt !== null)
