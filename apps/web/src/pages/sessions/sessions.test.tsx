@@ -3,7 +3,7 @@
  * AP-64/AP-77 (vorher AP-15/AP-31): Auswertung – Nächte (S-60: Kennzahlen, Karten mit Effizienz, Projekt-Chips mit
  * Ersteller, nicht zugeordnete Aufnahmen, Filter in der Adresse, seitenweise) und Nacht (S-61 ohne Reiter und ohne
  * Prüfen: Session-Qualität, Hinweise mit Zuordnen, Kennzahlen, Bedingungen, Ergebnis je Projekt mit Qualitätsleiste,
- * Details mit Qualität je Filter und Korrektur, Qualitätskurve, Ereignisse eingeklappt, CSV; Rechte Admin/User); axe.
+ * Details mit Qualität je Filter und Soll/Ist, Qualitätskurve, Ereignisse eingeklappt, CSV; Rechte Admin/User); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -26,7 +26,6 @@ const state = vi.hoisted(() => ({
   listCalls: [] as Record<string, unknown>[],
   summaryCalls: [] as unknown[],
   gaps: null as unknown,
-  correct: vi.fn(),
   assign: vi.fn(),
   reject: vi.fn(),
 }));
@@ -89,7 +88,6 @@ vi.mock('../../api/client', () => ({
         (state.details as { session: { id: string } }[]).find((d) => d.session.id === id) ??
           state.detail,
       ),
-    correct: (...a: unknown[]) => state.correct(...a) as Promise<unknown>,
     assign: (...a: unknown[]) => state.assign(...a) as Promise<unknown>,
     reject: (...a: unknown[]) => state.reject(...a) as Promise<unknown>,
   },
@@ -434,7 +432,7 @@ beforeEach(() => {
   ];
   state.listCalls = [];
   state.summaryCalls = [];
-  for (const fn of [state.correct, state.assign, state.reject]) fn.mockReset();
+  for (const fn of [state.assign, state.reject]) fn.mockReset();
 });
 
 describe('S-60 Nächte (AP-64)', () => {
@@ -583,8 +581,7 @@ describe('S-61 Nacht (AP-64, AP-77)', () => {
     await waitFor(() => expect(state.assign).toHaveBeenCalledWith(ID(31), ID(20)));
   });
 
-  it('Details je Projekt: Qualität je Filter mit Verläufen, Soll/Ist ohne leere Spalten, Korrektur; axe', async () => {
-    state.correct.mockResolvedValue({ rejectedCount: 2, projectStatus: 'active' });
+  it('Details je Projekt: Qualität je Filter mit Verläufen, Soll/Ist ohne leere Spalten, ohne Korrektur; axe', async () => {
     renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17`);
     fireEvent.click(await screen.findByRole('button', { name: 'Details' }));
     const quality = screen.getByRole('table', { name: 'Bildqualität je Filter von NGC 281' });
@@ -601,24 +598,9 @@ describe('S-61 Nacht (AP-64, AP-77)', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((h) => h.textContent),
-    ).toEqual(['Filter', 'Soll', 'Ist', 'Verworfen', 'Akzeptiert', 'Integration', 'Aktion']);
-    fireEvent.click(within(table).getByRole('button', { name: 'Korrektur' }));
-    const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
-    expect(input.min).toBe('1');
-    fireEvent.change(input, { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText('Grund'), { target: { value: 'clouds' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Korrektur speichern' }));
-    await waitFor(() =>
-      expect(state.correct).toHaveBeenCalledWith(ID(1), {
-        exposureLineId: ID(20),
-        rejected: 2,
-        reason: 'clouds',
-        comment: null,
-      }),
-    );
-    expect(
-      await screen.findByText('Korrektur gespeichert; das Projekt ist wieder aktiv.'),
-    ).toBeTruthy();
+    ).toEqual(['Filter', 'Soll', 'Ist', 'Verworfen', 'Integration']);
+    // Korrektur und „Akzeptiert“ entfallen (Sven 10.10.2026).
+    expect(within(table).queryByRole('button', { name: 'Korrektur' })).toBeNull();
     await expectNoSeriousA11y();
   });
 
@@ -714,7 +696,7 @@ describe('S-61 Nacht (AP-64, AP-77)', () => {
     await expectNoSeriousA11y();
   });
 
-  it('User: kein Zuordnen; Korrektur nur mit canCorrect', async () => {
+  it('User: kein Zuordnen', async () => {
     state.me = me('user');
     const d = detail();
     d.rows = d.rows.map((r) => ({ ...r, canCorrect: false }));
@@ -724,8 +706,6 @@ describe('S-61 Nacht (AP-64, AP-77)', () => {
       await screen.findByText('Aufnahmen nicht zugeordnet: 1 – sie zählen erst nach dem Zuordnen.'),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Zuordnen' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
-    expect(screen.queryByRole('button', { name: 'Korrektur' })).toBeNull();
   });
 
   it('ohne Messwerte: „keine Messwerte“ statt Urteil', async () => {

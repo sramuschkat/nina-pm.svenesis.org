@@ -742,19 +742,6 @@ export const sessionsApi = {
   /** Nicht zugeordnete Aufnahmen je Nacht und Rig (Startseite, Zu tun; AP-77). */
   unassigned: () => apiFetch<Schemas['NightSessionUnassigned']>(`${V1}/sessions/unassigned`),
   get: (id: string) => apiFetch<NightSessionDetail>(`${V1}/sessions/${id}`),
-  correct: (
-    id: string,
-    body: {
-      exposureLineId: string;
-      rejected: number;
-      reason: string | null;
-      comment: string | null;
-    },
-  ) =>
-    apiFetch<{ rejectedCount: number; projectStatus: string | null }>(
-      `${V1}/sessions/${id}/corrections`,
-      json('POST', body),
-    ),
   /** Einzelne Aufnahme verwerfen bzw. zurücknehmen (FA-AUS-20; Rechte wie Korrektur). */
   reject: (captureId: string, rejected: boolean, reason: string | null) =>
     apiFetch<CaptureRejectResult>(

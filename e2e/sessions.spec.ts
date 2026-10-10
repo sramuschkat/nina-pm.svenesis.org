@@ -1,7 +1,7 @@
 /**
  * AP-15/AP-64/AP-77: Nächte (S-60) und Nacht (S-61, ohne Reiter) gegen den lokalen Stack – eine Fake-Plugin-Nacht auf
  * einem eigenen Rig erscheint als Karte und vollständig in der Nacht: Session-Qualität, Hinweise (Kennzeichen Temperatur
- * und Einstellungen, nicht zugeordnet mit Zuordnen), Qualitätskurve, Qualität je Filter und Korrektur in den Details je
+ * und Einstellungen, nicht zugeordnet mit Zuordnen), Qualitätskurve, Qualität je Filter und Soll/Ist in den Details je
  * Projekt, Ereignisse eingeklappt; axe hell/dunkel, 768/2400 px ohne horizontales Scrollen, Lage per `boundingBox`.
  */
 import AxeBuilder from '@axe-core/playwright';
@@ -85,32 +85,19 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   expect(tableBox.x + tableBox.width).toBeLessThanOrEqual(resultsBox.x + resultsBox.width + 1);
   await admin.getByRole('button', { name: 'Details schließen' }).click();
 
-  // FA-AUS-06: Korrektur in den Details je Projekt (Regel max, Untergrenze = einzeln verworfen).
+  // Soll/Ist je Zeile in den Details – ohne Korrektur und ohne „Akzeptiert“ (Sven 10.10.2026).
   await admin.getByRole('button', { name: 'Details', exact: true }).click();
-  await admin.getByRole('button', { name: 'Korrektur', exact: true }).click();
-  await admin.getByRole('spinbutton', { name: 'Verworfen' }).fill('1');
-  await admin.getByLabel('Grund').selectOption('clouds');
-  await admin.getByRole('button', { name: 'Korrektur speichern' }).click();
-  await expect(admin.getByText('Korrektur gespeichert.')).toBeVisible();
   await expect(
     admin
       .getByText('Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.')
       .first(),
   ).toBeVisible();
-  const row = admin
-    .getByRole('table', { name: `Soll/Ist ${projectName}` })
-    .getByRole('row')
-    .nth(1);
-  // Spalten: Filter, Soll, Ist, (Verworfen nur bei Werten > 0), Akzeptiert, Integration, Aktion.
-  // Ist = Aufnahmen dieser Session (07.10.2026). Die Korrektur gilt je Zeile und Nacht; ihren Überhang trägt die
-  // früher begonnene (offline angelegte) Session der Nacht – hier bleibt Verworfen 0 und die Spalte entfällt.
-  await expect(row.getByRole('cell').nth(2)).toHaveText('3');
-  await expect(row.getByRole('cell').nth(3)).toHaveText('3');
-  // Geschlossen und erneut geöffnet: die Korrektur zeigt den Nachtwert, nicht den der Session.
-  await admin.getByRole('button', { name: 'Abbrechen' }).click();
-  await admin.getByRole('button', { name: 'Korrektur', exact: true }).click();
-  await expect(admin.getByRole('spinbutton', { name: 'Verworfen' })).toHaveValue('1');
-  await admin.getByRole('button', { name: 'Abbrechen' }).click();
+  const plan = admin.getByRole('table', { name: `Soll/Ist ${projectName}` });
+  await expect(plan.getByRole('columnheader')).toHaveText(['Filter', 'Soll', 'Ist', 'Integration']);
+  // Ist = Aufnahmen dieser Session (07.10.2026).
+  await expect(plan.getByRole('row').nth(1).getByRole('cell').nth(2)).toHaveText('3');
+  await expect(admin.getByRole('button', { name: 'Korrektur', exact: true })).toHaveCount(0);
+  await admin.getByRole('button', { name: 'Details schließen' }).click();
 
   // Ereignisse eingeklappt am Ende der Übersicht.
   await admin.getByText(/^Alle Ereignisse \(\d+\)$/).click();
