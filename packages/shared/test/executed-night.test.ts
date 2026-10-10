@@ -322,3 +322,47 @@ describe('executedNight', () => {
     ]);
   });
 });
+
+describe('executedNight – Rig-Nacht 09./10.10.2026', () => {
+  it('einzelner kurzer leerer Block bleibt ein Block mit 0 Aufnahmen; Autofokus trägt seinen Filter', () => {
+    const B_EMPTY = '77777777-7777-4777-8777-777777777777';
+    const events = [
+      ev(at('06:58:34', 9), 'block_start', {
+        blockId: B_EMPTY,
+        projectId: P_IC,
+        data: { kind: 'regular', title: 'LDN 1228' },
+      }),
+      ev(at('06:59:21', 9), 'block_end', {
+        blockId: B_EMPTY,
+        projectId: P_IC,
+        data: { code: 'completed' },
+      }),
+      ev(at('07:05:37', 9), 'af', {
+        blockId: B_IC,
+        projectId: P_IC,
+        durationS: 318,
+        data: { result: 'ok', filter: 'SII' },
+      }),
+    ];
+    const x = executedNight({
+      night: '2026-10-09',
+      sessions: 1,
+      events,
+      lights: [],
+      running: false,
+      now: at('12:00:00', 9),
+      names,
+    });
+    expect(x.blocks).toEqual([
+      expect.objectContaining({ blockId: B_EMPTY, exposures: 0, running: false }),
+    ]);
+    expect(x.gaps.filter((g) => g.kind === 'empty_blocks')).toEqual([]);
+    expect(x.events).toEqual([
+      expect.objectContaining({ kind: 'af', filter: 'SII', durationS: 318 }),
+    ]);
+    // Die transit_interrupt-Schleife bleibt eine Lücke, ihre Blöcke stehen nicht einzeln da.
+    const loop = night();
+    expect(loop.blocks.some((b) => b.exposures === 0)).toBe(false);
+    expect(loop.gaps.filter((g) => g.kind === 'empty_blocks')).toHaveLength(1);
+  });
+});

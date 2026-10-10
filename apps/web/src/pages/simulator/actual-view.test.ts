@@ -418,3 +418,199 @@ describe('upcomingEntries (Rig liegt zurück)', () => {
     expect(last?.actual?.state).toBe('planned');
   });
 });
+
+describe('Ist-Zeilen wie im Plugin-Fenster (Rig-Nacht 09./10.10.2026)', () => {
+  const LDN = '0190c3f4-0000-7000-8000-0000000000d1';
+  const BL = '0190c3f4-0000-7000-8000-0000000000d2';
+  const B_EMPTY = '0190c3f4-0000-7000-8000-0000000000d3';
+  const night: ExecutedNight = {
+    night: '2026-10-09',
+    sessions: 1,
+    blocks: [
+      {
+        blockId: BL,
+        nightPlanId: null,
+        projectId: LDN,
+        panelId: null,
+        title: 'LDN1228-LRGB',
+        kind: 'regular',
+        startUtc: '2026-10-10T01:35:00Z',
+        endUtc: '2026-10-10T06:58:31Z',
+        endReason: 'completed',
+        exposures: 23,
+        running: false,
+      },
+      {
+        blockId: B_EMPTY,
+        nightPlanId: null,
+        projectId: LDN,
+        panelId: null,
+        title: 'LDN1228-LRGB',
+        kind: 'regular',
+        startUtc: '2026-10-10T06:58:34Z',
+        endUtc: '2026-10-10T06:59:21Z',
+        endReason: 'completed',
+        exposures: 0,
+        running: false,
+      },
+    ],
+    segments: [
+      {
+        blockId: BL,
+        projectId: LDN,
+        filter: 'LUMINOS',
+        startUtc: '2026-10-10T01:38:02Z',
+        endUtc: '2026-10-10T02:01:53Z',
+        saved: 20,
+        failed: 0,
+        exposureS: 60,
+      },
+      {
+        blockId: BL,
+        projectId: LDN,
+        filter: 'GREEN',
+        startUtc: '2026-10-10T02:04:12Z',
+        endUtc: '2026-10-10T02:13:56Z',
+        saved: 3,
+        failed: 0,
+        exposureS: 180,
+      },
+      {
+        blockId: BL,
+        projectId: LDN,
+        filter: 'GREEN',
+        startUtc: '2026-10-10T02:29:24Z',
+        endUtc: '2026-10-10T02:32:24Z',
+        saved: 1,
+        failed: 0,
+        exposureS: 180,
+      },
+    ],
+    events: [
+      {
+        kind: 'af',
+        atUtc: '2026-10-10T02:04:12Z',
+        blockId: BL,
+        projectId: LDN,
+        code: null,
+        filter: 'GREEN',
+        durationS: 111,
+        revision: null,
+      },
+      {
+        kind: 'flip',
+        atUtc: '2026-10-10T02:28:38Z',
+        blockId: BL,
+        projectId: LDN,
+        code: null,
+        filter: null,
+        durationS: 214,
+        revision: null,
+      },
+      {
+        kind: 'af',
+        atUtc: '2026-10-10T02:27:56Z',
+        blockId: BL,
+        projectId: LDN,
+        code: null,
+        filter: 'GREEN',
+        durationS: 110,
+        revision: null,
+      },
+    ],
+    gaps: [],
+    counters: { saved: 24, skipped: 0, failed: 0 },
+  };
+  const view = () =>
+    actualView({
+      executed: night,
+      stored: null,
+      first: null,
+      nowMs: Date.parse('2026-10-10T12:00:00Z'),
+      running: false,
+      computed: { blocks: [], filterBars: [], protocol: [] },
+      colorOfProject: () => 'x',
+      filterColor: () => 'y',
+      names: new Map([[LDN, 'LDN1228-LRGB']]),
+      gapLabel: () => '',
+      targets: [
+        {
+          id: LDN,
+          raDeg: 314.55,
+          decDeg: 78.56,
+          rotationDeg: 0,
+          panels: [
+            {
+              id: 'panel',
+              raDeg: 314.55,
+              decDeg: 78.56,
+              rotationDeg: 0,
+              lines: [
+                {
+                  id: 'l-l',
+                  filter: 'LUMINOS',
+                  gain: 125,
+                  offset: 50,
+                  binning: 1,
+                  readoutMode: 'Low Noise',
+                },
+                {
+                  id: 'l-g',
+                  filter: 'GREEN',
+                  gain: 125,
+                  offset: 50,
+                  binning: 1,
+                  readoutMode: 'Low Noise',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      sky: (b, e) => ({
+        altDeg: 42.6,
+        moonSepDeg: 90,
+        moonOk: true,
+        requiredSepDeg: null,
+        dark: true,
+        la: false,
+        moonProfile: `${String(b.raDeg)}|${e.exposureLineId ?? ''}`,
+      }),
+    });
+
+  it('Autofokus und Warten als Zeilen, der leere Block mit Grund; Belichtungen mit Details', () => {
+    const rows = view()?.protocol ?? [];
+    const brief = rows.map((r) => [r.cmd, r.atUtc.slice(11, 19), r.filter, r.durationS]);
+    expect(brief).toEqual([
+      ['slew_center', '01:35:00', '', null],
+      ['expose', '01:38:02', 'LUMINOS', null],
+      ['autofocus_hint', '02:02:21', 'GREEN', 111],
+      ['expose', '02:04:12', 'GREEN', null],
+      // Pause bis zum Flip (11 min 8 s – im Plugin-Log WAIT_ENTRY durationS=668).
+      ['wait', '02:13:56', '', 668],
+      ['meridian_flip', '02:25:04', '', 214],
+      ['autofocus_hint', '02:26:06', 'GREEN', 110],
+      ['expose', '02:29:24', 'GREEN', null],
+      ['slew_center', '06:58:34', '', null],
+    ]);
+    const empty = rows.find((r) => r.atUtc.startsWith('2026-10-10T06:58:34'));
+    expect(empty?.actual).toMatchObject({ state: 'done', reason: 'no_exposures' });
+    const lum = rows.find((r) => r.cmd === 'expose' && r.filter === 'LUMINOS');
+    expect(lum).toMatchObject({
+      gain: 125,
+      offset: 50,
+      binning: 1,
+      readoutMode: 'Low Noise',
+      raDeg: 314.55,
+      decDeg: 78.56,
+      rotationDeg: 0,
+      altDeg: 42.6,
+      moonProfile: '314.55|l-l',
+    });
+  });
+
+  it('Pause unter 2 min (Autofokus erklärt den Rest) ergibt keine Warte-Zeile', () => {
+    const rows = view()?.protocol ?? [];
+    expect(rows.filter((r) => r.cmd === 'wait')).toHaveLength(1);
+  });
+});

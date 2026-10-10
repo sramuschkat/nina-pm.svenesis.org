@@ -23,7 +23,7 @@ import { protocolSky } from '@nina-pm/shared';
 import { CHART_SERIES_COUNT } from '@nina-pm/ui-tokens';
 import { equipmentApi, projectsApi, simulationApi, type ProjectView } from '../../api/client';
 import { useEquipmentList } from '../equipment/shared';
-import { actualView, type ActualView } from './actual-view';
+import { actualView, type ActualTarget, type ActualView } from './actual-view';
 import { rigNight, type RigNight } from './rig-night';
 import {
   doneTonight,
@@ -250,6 +250,7 @@ export function useNightPlan(
         (data.input as { scheduler?: { overhead?: { afEveryMin?: number } } } | null)?.scheduler
           ?.overhead?.afEveryMin ?? null,
       flatsAtUtc: result?.plan.flatsNotBeforeUtc ?? null,
+      targets: (data.input as { projects?: readonly ActualTarget[] } | null)?.projects,
       sky:
         site && moonProfiles.data && skyInput(data.input)
           ? protocolSky(data.input, {

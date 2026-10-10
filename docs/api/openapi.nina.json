@@ -1093,6 +1093,11 @@
             "nullable": true,
             "maxLength": 64
           },
+          "filter": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
           "durationS": {
             "type": "number",
             "nullable": true,
@@ -1110,6 +1115,7 @@
           "blockId",
           "projectId",
           "code",
+          "filter",
           "durationS",
           "revision"
         ]

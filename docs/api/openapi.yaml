@@ -8051,6 +8051,11 @@ components:
             - string
             - "null"
           maxLength: 64
+        filter:
+          type:
+            - string
+            - "null"
+          maxLength: 64
         durationS:
           type:
             - number
@@ -8067,6 +8072,7 @@ components:
         - blockId
         - projectId
         - code
+        - filter
         - durationS
         - revision
     ExecutedGap:

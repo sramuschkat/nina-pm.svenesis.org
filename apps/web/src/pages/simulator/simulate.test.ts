@@ -635,6 +635,7 @@ describe('laufende Nacht aus gespeichertem Plan + Ist', () => {
           blockId: B_SKIPPED,
           projectId: pid,
           code: 'center_failed',
+          filter: null,
           durationS: null,
           revision: null,
         },

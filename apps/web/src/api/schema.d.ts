@@ -18827,6 +18827,7 @@ export interface components {
              */
             projectId: string | null;
             code: string | null;
+            filter: string | null;
             durationS: number | null;
             revision: number | null;
         };
