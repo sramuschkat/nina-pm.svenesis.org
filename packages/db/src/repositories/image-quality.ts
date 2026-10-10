@@ -160,7 +160,8 @@ export class ImageQualityRepository extends TenantRepo {
       ])
       .where('c.tenantId', '=', this.ctx.tenantId)
       .where('s.rigId', '=', rigId)
-      // Nacht-Schlüssel ist das lokale Datum des Abends: einen Tag Spielraum, dann greift ix_capture_session.
+      // Nacht-Schlüssel ist das lokale Datum des Abends: einen Tag Spielraum; die Aufnahmen der Sessions über
+      // ix_capture_session (seit Migration 0016 – vorher gab es den Index nicht).
       .where('s.night', '>=', new Date(sinceUtc.getTime() - dayMs).toISOString().slice(0, 10))
       .where('c.frameType', '=', 'light')
       .where('c.result', '=', 'saved')

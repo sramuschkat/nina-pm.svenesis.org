@@ -79,6 +79,14 @@ const services = lazy<ApiServices>(async () => {
   };
 });
 
+// Kaltstart (Performance-Analyse 10.10.2026): billige Aufrufe hatten p50 50–110 ms, aber p95 730–830 ms – der erste
+// Aufruf je Container zahlte SSM, IAM-Token und TLS zu DSQL. Diese Arbeit läuft jetzt schon in der Init-Phase (ESM,
+// top-level await); die Abfrage des Wartungsbanners öffnet dabei die erste Verbindung. Scheitert sie, versucht es
+// die erste Anfrage wie bisher erneut (`lazy` speichert keinen Fehler).
+await services()
+  .then((s) => s.maintenanceBanner())
+  .catch(() => undefined);
+
 // Kein Test-Login im Lambda-Bundle: die Route gibt es nur in src/local.ts (TK 17, security-auth.md).
 export const handler = handle(
   createApp({

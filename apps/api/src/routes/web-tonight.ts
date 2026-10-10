@@ -157,11 +157,11 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
     const projects = list.map((d) => projectView(d));
     const now = svc.now();
     const siteOf = new Map(sites.map((s) => [s.id, s]));
-    const out: View['rigs'] = [];
-    for (const rig of rigs) {
-      if (rigId && rig.id !== rigId) continue;
+    // Rigs parallel (Performance-Analyse 10.10.2026): vorher nacheinander, je Rig mehrere Abfragen und die Astronomie
+    // der Nacht; die Reihenfolge der Antwort bleibt die der Rigs.
+    const oneRig = async (rig: (typeof rigs)[number]): Promise<View['rigs'][number] | null> => {
       const site = siteOf.get(rig.siteId);
-      if (!site) continue;
+      if (!site) return null;
       const around = siteNights(site, now, undefined, 2);
       let current = currentNightRow(around, isoUtc(now)).night;
       // Morgen nach dem Fensterende: läuft die Session der alten Nacht noch (Flats, Rest eines Transits), bleibt sie die
@@ -229,7 +229,7 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
       const storedNight = stored.nights.find((n) => n.night === night);
       const rigInstances = instances.filter((i) => i.rigId === rig.id && i.status === 'active');
       const planned = tonightProjects(projects, rig.id, night, storedNight);
-      out.push({
+      return {
         rigId: rig.id,
         rigName: rig.name,
         siteId: site.id,
@@ -298,8 +298,11 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
           rig.imageQuality ?? IMAGE_QUALITY_DEFAULTS,
           now,
         ),
-      });
-    }
+      };
+    };
+    const out = (
+      await Promise.all(rigs.filter((rig) => !rigId || rig.id === rigId).map(oneRig))
+    ).filter((r): r is View['rigs'][number] => r !== null);
     c.header('cache-control', 'no-store');
     return c.json({ generatedAt: isoUtc(now), rigs: out } satisfies View, 200);
   });
