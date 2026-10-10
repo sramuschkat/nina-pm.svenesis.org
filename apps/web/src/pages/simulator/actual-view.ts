@@ -3,6 +3,9 @@
  * letzten gespeicherten Planrevision (kräftig, Entscheidung 1 vom 07.10.2026) – bei Was-wäre-wenn bzw. ohne
  * gespeicherten Plan aus der Rechnung ab jetzt. Dazu Lücken mit Grund, der Ursprungsplan als Umriss und Protokollzeilen
  * mit Spalte „Ist“. Rein (keine Uhr): `nowMs` kommt von der Seite. Dieselben Regeln wie die Fenster im Plugin (AP-53b).
+ * Rig-Nacht 09./10.10.2026: Liegt das Rig zurück, entfallen verschobene Belichtungen, die nicht mehr bis Blockende + 60 s
+ * fertig werden (wie `Playback.LateGraceMax` im Plugin), statt im Folgeblock zu landen; ein geplanter Autofokus kurz nach
+ * einem Autofokus entfällt wie im Plugin (`AF_SKIPPED reason=recent`) und verschiebt nichts; die Flats stehen als Zeile.
  */
 import type { ExecutedNight, SimProtocolRow, SimSkyFields, StoredPlan } from '@nina-pm/shared';
 import type {
@@ -14,6 +17,9 @@ import type {
 import { openStoredBlocks } from './rig-night';
 
 export type ActualState = 'done' | 'saved' | 'skipped' | 'failed' | 'running' | 'planned' | 'gap';
+
+/** Verzug, den das Plugin am Blockende noch mitnimmt (`Playback.LateGraceMax`, AP-71). */
+export const LATE_GRACE_S = 60;
 
 /** Spalte „Ist“: Zustand, Grund (Code), Anzahl (Abschnitt bzw. zusammengefasste Blöcke). */
 export interface ActualCell {
@@ -59,6 +65,10 @@ export interface ActualViewInput {
   readonly gapLabel: (kind: ChartGap['kind'], reason: string | null, count: number) => string;
   /** Höhe, Mondabstand, Dunkelheit und LA je Zeile des gespeicherten Plans (`protocolSky`); ohne leer. */
   readonly sky?: (block: StoredBlock, entry: StoredEntry) => SimSkyFields;
+  /** Autofokus-Takt des Rigs in Minuten (`scheduler.overhead.afEveryMin`); `null`/0 = kein Takt. */
+  readonly afEveryMin?: number | null | undefined;
+  /** Frühester Beginn der Flats der Nacht (`flatsNotBeforeUtc` der Rechnung); ohne keine Zeile. */
+  readonly flatsAtUtc?: string | null | undefined;
 }
 
 const sec = (iso: string) => Date.parse(iso) / 1000;
@@ -189,6 +199,119 @@ export function rigBehind(
   if (!next || lastEnd > nowS) return null;
   const delayS = lastEnd - sec(next.atUtc);
   return delayS > 0 ? { seq: next.seq, delayS } : null;
+}
+
+/** Ende des letzten Autofokus der Nacht (Ereignis `af`, Zeit = Ende); ohne `null`. */
+export function lastAutofocus(ex: ExecutedNight | null): number | null {
+  const af = (ex?.events ?? []).filter((e) => e.kind === 'af').map((e) => sec(e.atUtc));
+  return af.length > 0 ? Math.max(...af) : null;
+}
+
+/** Kommender Eintrag eines gespeicherten Blocks mit Zeit nach dem Verzug und Zustand der Spalte „Ist“. */
+export interface UpcomingEntry {
+  readonly entry: StoredEntry;
+  readonly at: number;
+  readonly to: number;
+  /** Zeit gegenüber dem Plan verschoben (Rig liegt zurück). */
+  readonly shifted: boolean;
+  readonly state: 'planned' | 'skipped';
+  readonly reason: string | null;
+  readonly count: number | null;
+}
+
+/**
+ * Kommende Einträge eines Blocks nach den Regeln des Plugins (AP-71, `Playback`):
+ * - Liegt das Rig zurück (`behind`), rückt alles ab der laufenden Belichtung um den Verzug nach hinten; das Blockende
+ *   bleibt fest.
+ * - Ein `autofocus_hint` innerhalb von `afEveryMin / 2` nach dem letzten Autofokus entfällt (`af_recent`); seine Dauer
+ *   geht vom Verzug ab (nie unter 0) – wie die Gutschrift im Plugin.
+ * - Eine verschobene Belichtung, die nicht mehr bis Blockende + `LATE_GRACE_S` fertig wird, entfällt mit allen
+ *   späteren Einträgen außer „Ende“; stattdessen je Filter eine Zeile „passt nicht mehr in den Block“ am Blockende.
+ */
+export function upcomingEntries(
+  block: StoredBlock,
+  behind: { readonly seq: number; readonly delayS: number } | null,
+  lastAfS: number | null,
+  afEveryMin: number,
+): UpcomingEntry[] {
+  const endS = sec(block.endUtc);
+  let shift = behind ? behind.delayS : 0;
+  const items: UpcomingEntry[] = [];
+  const dropped = new Map<string, { entry: StoredEntry; n: number }>();
+  let overflow = false;
+  for (const e of block.entries) {
+    if (behind && e.seq < behind.seq) continue;
+    if (e.cmd === 'end') {
+      items.push({
+        entry: e,
+        at: sec(e.atUtc),
+        to: sec(e.atUtc),
+        shifted: false,
+        state: 'planned',
+        reason: null,
+        count: null,
+      });
+      continue;
+    }
+    const at = sec(e.atUtc) + shift;
+    const len = isExpose(e.cmd) ? Math.max(e.exposureS ?? 0, e.durationS ?? 0) : (e.durationS ?? 0);
+    const to = e.cmd === 'expose_series' ? sec(e.untilUtc ?? block.endUtc) : at + len;
+    if (overflow) {
+      if (e.cmd === 'expose') {
+        const k = e.filter ?? '';
+        dropped.set(k, { entry: dropped.get(k)?.entry ?? e, n: (dropped.get(k)?.n ?? 0) + 1 });
+      }
+      continue;
+    }
+    if (
+      e.cmd === 'autofocus_hint' &&
+      afEveryMin > 0 &&
+      lastAfS !== null &&
+      at - lastAfS < (afEveryMin * 60) / 2
+    ) {
+      items.push({
+        entry: e,
+        at,
+        to: at,
+        shifted: shift > 0,
+        state: 'skipped',
+        reason: 'af_recent',
+        count: null,
+      });
+      shift = Math.max(0, shift - (e.durationS ?? 0));
+      continue;
+    }
+    if (shift > 0 && e.cmd === 'expose' && to > endS + LATE_GRACE_S && e.seq !== behind?.seq) {
+      overflow = true;
+      dropped.set(e.filter ?? '', { entry: e, n: 1 });
+      continue;
+    }
+    items.push({
+      entry: e,
+      at,
+      to,
+      shifted: shift > 0,
+      state: 'planned',
+      reason: null,
+      count: null,
+    });
+  }
+  if (!overflow) return items;
+  // Nach der letzten noch passenden Belichtung entfallen auch Dither, Autofokus und Warten.
+  const lastExpose = items.reduce((n, it, k) => (isExpose(it.entry.cmd) ? k : n), -1);
+  const kept = items.filter((it, k) => k <= lastExpose || it.entry.cmd === 'end');
+  const notes: UpcomingEntry[] = [...dropped.values()].map(({ entry, n }) => ({
+    entry,
+    at: endS,
+    to: endS,
+    shifted: true,
+    state: 'skipped',
+    reason: 'block_end',
+    count: n,
+  }));
+  // Vor „Ende“ einsortieren: gleiche Zeit, Reihenfolge der Liste.
+  const end = kept.findIndex((it) => it.entry.cmd === 'end');
+  return end < 0 ? [...kept, ...notes] : [...kept.slice(0, end), ...notes, ...kept.slice(end)];
 }
 
 export function actualView(i: ActualViewInput): ActualView | null {
@@ -346,6 +469,7 @@ export function actualView(i: ActualViewInput): ActualView | null {
         (i.stored.blocks as unknown as StoredBlock[]).map((b) => [b.id, b] as const),
       );
       let runningSeen = false;
+      const lastAutofocusS = lastAutofocus(ex);
       for (const b of open as unknown as StoredBlock[]) {
         const from = Math.max(sec(b.startUtc), nowS);
         blocks.push({
@@ -362,33 +486,25 @@ export function actualView(i: ActualViewInput): ActualView | null {
         // gekürzten Block – sie steht als „läuft“ mit ihrer Planzeit; die Nr. zählt sie mit (wie das Plugin-Fenster).
         const raw = rawById.get(b.id) ?? b;
         const behind = rigBehind(raw, ex, nowS);
-        for (const e of raw.entries) {
-          // Rig liegt zurück (Sammelliste 08.10.2026, Punkt 6): laufend ist die nächste Belichtung nach den gespeicherten
-          // bzw. fehlgeschlagenen des Blocks, ab dem Ende der letzten Aufnahme; Späteres um denselben Verzug verschoben.
-          // Vorher stand die Zeile mit ihrer Planzeit da (SII 2 um 01:00:53, tatsächlich ≈ 01:09:40).
-          if (behind && e.seq < behind.seq) continue;
-          const shift = behind && e.cmd !== 'end' ? behind.delayS : 0; // das Blockende bleibt fest
-          const at = sec(e.atUtc) + shift;
-          const len = isExpose(e.cmd)
-            ? Math.max(e.exposureS ?? 0, e.durationS ?? 0)
-            : (e.durationS ?? 0);
-          const to = e.cmd === 'expose_series' ? sec(e.untilUtc ?? b.endUtc) : at + len;
+        for (const it of upcomingEntries(raw, behind, lastAutofocusS, i.afEveryMin ?? 0)) {
+          const e = it.entry;
           const isRunning = behind
             ? e.seq === behind.seq
-            : !runningSeen && e.cmd !== 'end' && at < nowS && to > nowS;
-          if (!behind && at < nowS && e.cmd !== 'end' && !isRunning) continue;
+            : !runningSeen && e.cmd !== 'end' && it.at < nowS && it.to > nowS;
+          if (!behind && it.at < nowS && e.cmd !== 'end' && !isRunning) continue;
           if (isRunning) runningSeen = true;
+          const counted = e.cmd === 'expose' && it.state === 'planned';
           rows.push({
             ...row({
               key: `${b.id}:${String(e.seq)}`,
               blockId: b.id,
               projectId: b.projectId,
               cmd: e.cmd,
-              atUtc: shift > 0 ? new Date(at * 1000).toISOString() : e.atUtc,
+              atUtc: it.shifted ? new Date(it.at * 1000).toISOString() : e.atUtc,
               untilUtc: e.untilUtc ?? null,
               durationS: e.durationS ?? null,
               projectName: name(b.projectId),
-              no: e.cmd === 'expose' ? count(lineKey(b.projectId, e.filter), 1) : null,
+              no: counted ? count(lineKey(b.projectId, e.filter), 1) : null,
               filter: e.filter ?? '',
               exposureS: e.exposureS ?? null,
               gain: e.gain ?? null,
@@ -402,9 +518,9 @@ export function actualView(i: ActualViewInput): ActualView | null {
               ...(i.sky ? i.sky(b, e) : {}),
             }),
             actual: {
-              state: isRunning ? 'running' : 'planned',
-              reason: null,
-              count: null,
+              state: isRunning ? 'running' : it.state,
+              reason: it.reason,
+              count: it.count,
               past: false,
             },
           });
@@ -426,6 +542,13 @@ export function actualView(i: ActualViewInput): ActualView | null {
           });
     }
   }
+
+  // Flats als Zeile wie im Plugin-Fenster (Rig-Nacht 09./10.10.2026: das Web endete mit dem letzten Blockende).
+  if (i.running && i.flatsAtUtc && sec(i.flatsAtUtc) >= nowS)
+    rows.push({
+      ...row({ key: 'flats', cmd: 'flats', atUtc: i.flatsAtUtc }),
+      actual: { state: 'planned', reason: null, count: null, past: false },
+    });
 
   const outline: OutlineBlock[] = ((i.first?.blocks ?? []) as unknown as StoredBlock[]).map(
     (b) => ({

@@ -496,8 +496,13 @@ describe('simulate', () => {
     const future = r.protocol.filter((x) => x.actual?.state === 'planned');
     expect(future.length).toBeGreaterThan(0);
     expect(future.every((x) => Date.parse(x.atUtc) >= nowMs)).toBe(true);
-    // Höhe und Mond auch für die Zeilen des gespeicherten Plans.
-    expect(future.every((x) => x.altDeg !== null && x.moonSepDeg !== null)).toBe(true);
+    // Höhe und Mond auch für die Zeilen des gespeicherten Plans; die Flats-Zeile (10.10.2026) hat kein Ziel.
+    expect(future.some((x) => x.cmd === 'flats')).toBe(true);
+    expect(
+      future
+        .filter((x) => x.cmd !== 'flats')
+        .every((x) => x.altDeg !== null && x.moonSepDeg !== null),
+    ).toBe(true);
     expect(r.actual?.outline.length).toBe(whole.plan.blocks.length);
     expect(r.source.stored).toMatchObject({ revision: 3, stale: true, staleCause: 'targets' });
     expect(r.actual?.counters).toEqual({ saved: 2, skipped: 0, failed: 0 });
