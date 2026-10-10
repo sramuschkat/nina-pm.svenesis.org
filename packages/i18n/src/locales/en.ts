@@ -1641,7 +1641,7 @@ export const en: Messages = {
       flatsSection: 'Flats',
       qualitySection: 'Image grading',
       qualityHint:
-        'The limits determine the share of good lights (session quality); nothing is rejected. Empty field = limit off. HFR and stars relative to the median of the same project and filter (from 10 images).',
+        'The limits decide which lights count as good or conspicuous (session quality) – for all projects of this rig and retroactively; nothing is rejected. HFR and stars compared with the median of the same project and filter (from 10 lights), guiding and clouds (weather device) as a fixed limit. Empty field = check off.',
       qualityHfr: 'HFR above median by more than',
       qualityStars: 'Stars below … of median',
       qualityRms: 'Guiding RMS above',
