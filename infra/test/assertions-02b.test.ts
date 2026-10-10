@@ -241,6 +241,8 @@ describe('Assertion 8 und Routen: Drosselung nach iam.md §9', () => {
         .flatMap((tpl) => resources(tpl, 'AWS::Lambda::Function'))
         .find(([, f]) => f.Properties.FunctionName === name)?.[1];
     expect(fn(config.lambdas.api.functionName)?.Properties.ReservedConcurrentExecutions).toBe(50);
+    // Ein ganzer vCPU für die api (Performance 10.10.2026).
+    expect(fn(config.lambdas.api.functionName)?.Properties.MemorySize).toBe(1769);
     expect(fn(config.lambdas.worker.functionName)?.Properties.ReservedConcurrentExecutions).toBe(5);
     expect(
       fn(config.lambdas.opsCli.functionName)?.Properties.ReservedConcurrentExecutions,
