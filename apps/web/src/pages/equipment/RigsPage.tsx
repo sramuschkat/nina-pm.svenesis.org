@@ -10,17 +10,7 @@
  * Scheduler-Einstellungen; Filterrad und NINA haben eigene Aktionen). Gespeichert wird mit `If-Match`
  * (`settingsVersion`, 412 bei parallelem Speichern).
  */
-import {
-  flatsAutoModes,
-  flatsSources,
-  imageScale,
-  playbackModes,
-  RigInput,
-  SchedulerSettings,
-  IMAGE_QUALITY_DEFAULTS,
-  strategies,
-  telescopeDerived,
-} from '@nina-pm/shared';
+import { imageScale, RigInput, telescopeDerived } from '@nina-pm/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,8 +32,6 @@ import {
   NewButton,
   NumberField,
   PickList,
-  problemCode,
-  SaveButton,
   SaveError,
   SelectField,
   serverFieldErrors,
@@ -63,7 +51,7 @@ import { rebaseDraft } from '../../lib/draft-rebase';
 import { FilterWheelSection } from './FilterWheelSection';
 import { FocusOffsets } from './FocusOffsets';
 import { MeasuredOverheads } from './MeasuredOverheads';
-import { SORT_CHAIN_LABEL, SortChainEditor } from './SortChainEditor';
+import { SORT_CHAIN_LABEL } from './SortChainEditor';
 import type { SortChainKey } from '@nina-pm/shared';
 
 interface RigDraft {
@@ -82,8 +70,6 @@ interface RigDraft {
   notes: string;
 }
 
-type Scheduler = RigView['scheduler'];
-
 /** Reiter der Rig-Seite (AP-26b). */
 export type RigTab = 'general' | 'equipment' | 'scheduler' | 'filterWheel' | 'nina';
 const RIG_TABS: readonly RigTab[] = ['general', 'equipment', 'scheduler', 'filterWheel', 'nina'];
@@ -92,7 +78,6 @@ const RIG_TABS: readonly RigTab[] = ['general', 'equipment', 'scheduler', 'filte
 const RIG_FORM_IDS = {
   general: 'rig-general-form',
   equipment: 'rig-equipment-form',
-  scheduler: 'rig-scheduler-form',
 } as const;
 
 /** Felder des Rig-Entwurfs auf dem Reiter *Ausrüstung*; alle übrigen liegen auf *Allgemein*. */
@@ -686,10 +671,6 @@ export function RigsPage() {
 // ---- Scheduler-Einstellungen ---------------------------------------------------------------------
 
 /**
- * Scheduler-Einstellungen eines Rigs (eigener Endpunkt, `rig.settings.write`). Der Knopf *Speichern*
- * steht im Kopf der Rig-Karte und sendet dieses Formular über `formId`.
- */
-/**
  * Reiter *Scheduler* am Rig (AP-26i, Entscheidung Sven 26.09.2026): die Einstellungen werden nur noch im
  * Nacht-Simulator bearbeitet, wo man ihre Wirkung sofort sieht. Hier eine kompakte Zusammenfassung mit Link.
  */
@@ -760,418 +741,5 @@ function SchedulerSummary({ rig }: { rig: RigView }) {
         ))}
       </dl>
     </section>
-  );
-}
-
-export function SchedulerForm({
-  rig,
-  canWrite,
-  formId = RIG_FORM_IDS.scheduler,
-  showSave = true,
-}: {
-  rig: RigView;
-  canWrite: boolean;
-  formId?: string;
-  /** Eigener *Speichern*-Knopf im Kopf (Simulator, AP-26i). */
-  showSave?: boolean;
-}) {
-  const { t } = useTranslation();
-  const client = useQueryClient();
-  const [draft, setDraft] = useState<Scheduler>(rig.scheduler);
-  const [base, setBase] = useState({ id: rig.id, version: rig.settingsVersion });
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [saved, setSaved] = useState(false);
-  // Anderes Rig bzw. neue Version vom Server: Entwurf übernehmen.
-  if (base.id !== rig.id || base.version !== rig.settingsVersion) {
-    setBase({ id: rig.id, version: rig.settingsVersion });
-    setDraft(rig.scheduler);
-    setErrors({});
-  }
-  const save = useMutation({
-    mutationFn: (body: Scheduler) =>
-      equipmentApi.schedulerSettings(rig.id, body, rig.settingsVersion),
-    onSuccess: async () => {
-      setSaved(true);
-      await client.invalidateQueries({ queryKey: equipmentKey('rigs') });
-    },
-  });
-  const fieldError = useFieldError({ ...serverFieldErrors(save.error), ...errors });
-  const disabled = !canWrite;
-  const set = <K extends keyof Scheduler>(key: K, value: Scheduler[K]) => {
-    setSaved(false);
-    setDraft((d) => ({ ...d, [key]: value }));
-  };
-  const setOverhead = (key: keyof Scheduler['overhead'], value: number | null) =>
-    set('overhead', { ...draft.overhead, [key]: value } as Scheduler['overhead']);
-  // Bildbewertung (AP-72b): leeres Feld = Grenzwert aus.
-  const quality = draft.imageQuality ?? IMAGE_QUALITY_DEFAULTS;
-  const setQuality = <K extends keyof typeof quality>(key: K, value: (typeof quality)[K]) =>
-    set('imageQuality', { ...quality, [key]: value });
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const result = validate(SchedulerSettings, draft);
-    if (!result.ok) return setErrors(result.errors);
-    setErrors({});
-    // flip-rotation.md §1: maxAfter ≥ after – der Hinweis steht schon am Feld, der Server prüft erneut.
-    if (draft.flipMaxAfterMeridianMin < draft.flipAfterMeridianMin) return;
-    save.mutate(result.data as Scheduler);
-  };
-  const flipInvalid = draft.flipMaxAfterMeridianMin < draft.flipAfterMeridianMin;
-  const code = save.error ? problemCode(save.error) : null;
-  return (
-    <form
-      id={formId}
-      className={`${styles.flat} ${sched.form}`}
-      onSubmit={submit}
-      aria-labelledby="scheduler-title"
-    >
-      <div className={sched.head}>
-        <h3 id="scheduler-title">{t('rigs.scheduler.title')}</h3>
-        <span className={styles.muted}>{t('rigs.scheduler.syncHint')}</span>
-        <span className={sched.spacer} />
-        {saved ? (
-          <span className={styles.success} role="status">
-            {t('equipment.saved')}
-          </span>
-        ) : null}
-        {canWrite && showSave ? <SaveButton disabled={save.isPending} /> : null}
-      </div>
-      <SaveError
-        error={
-          code === 'resource.version_conflict' ||
-          code === 'rig.sort_chain_invalid' ||
-          code === 'rig.flip_settings_invalid'
-            ? null
-            : save.error
-        }
-      />
-      {code === 'resource.version_conflict' ? (
-        <div className={styles.warning} role="alert">
-          <p>{t('common.conflict')}</p>
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => {
-              save.reset();
-              void client.invalidateQueries({ queryKey: equipmentKey('rigs') });
-            }}
-          >
-            {t('rigs.reload')}
-          </button>
-        </div>
-      ) : null}
-      {/* Sechs kompakte Abschnitte nebeneinander (AP-26i, Wunsch Sven 26.09.2026). */}
-      <div className={sched.grid}>
-        <section className={sched.box} aria-labelledby="scheduler-strategy">
-          <h4 id="scheduler-strategy">{t('rigs.scheduler.strategySection')}</h4>
-          <SelectField
-            label={t('rigs.scheduler.strategy')}
-            value={draft.strategy}
-            onChange={(v) => set('strategy', v)}
-            options={strategies.map((s) => ({ value: s, label: t(`rigs.strategy.${s}`) }))}
-            disabled={disabled}
-          />
-          <SelectField
-            label={t('rigs.scheduler.playback')}
-            value={draft.playback}
-            onChange={(v) => set('playback', v)}
-            options={playbackModes.map((s) => ({ value: s, label: t(`rigs.playback.${s}`) }))}
-            disabled={disabled}
-          />
-          <NumberField
-            label={t('rigs.scheduler.overshoot')}
-            unit="%"
-            value={draft.overshootPct}
-            onChange={(v) => set('overshootPct', v ?? 0)}
-            error={fieldError('overshootPct')}
-            disabled={disabled}
-          />
-          <CheckField
-            label={t('rigs.scheduler.bonus')}
-            checked={draft.bonusEnabled}
-            onChange={(v) => set('bonusEnabled', v)}
-            disabled={disabled}
-          />
-          <CheckField
-            label={t('rigs.scheduler.mosaicIndependent')}
-            checked={draft.mosaicPanelsIndependent}
-            onChange={(v) => set('mosaicPanelsIndependent', v)}
-            disabled={disabled}
-          />
-        </section>
-        <section className={`${sched.box} ${sched.wide}`} aria-labelledby="scheduler-sort">
-          <h4 id="scheduler-sort">{t('rigs.scheduler.sortChain')}</h4>
-          <SortChainEditor
-            value={draft.sortChain}
-            onChange={(v) => set('sortChain', v)}
-            disabled={disabled}
-          />
-          {code === 'rig.sort_chain_invalid' ? (
-            <span className={styles.fieldError}>{t('errors.rig.sortChainInvalid')}</span>
-          ) : null}
-        </section>
-        <section className={sched.box} aria-labelledby="scheduler-exposure">
-          <h4 id="scheduler-exposure">{t('rigs.scheduler.exposureSection')}</h4>
-          <div className={sched.pair}>
-            <CheckField
-              label={t('rigs.scheduler.dither')}
-              checked={draft.ditherEnabled}
-              onChange={(v) => set('ditherEnabled', v)}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.ditherEvery')}
-              step={1}
-              value={draft.ditherEvery}
-              onChange={(v) => set('ditherEvery', v ?? 1)}
-              error={fieldError('ditherEvery')}
-              disabled={disabled || !draft.ditherEnabled}
-            />
-          </div>
-          <CheckField
-            label={t('rigs.scheduler.filterSwitch')}
-            checked={draft.filterSwitchEnabled}
-            onChange={(v) => set('filterSwitchEnabled', v)}
-            disabled={disabled}
-          />
-          <div className={sched.pair}>
-            <NumberField
-              label={t('rigs.scheduler.filterSwitchEvery')}
-              step={1}
-              value={draft.filterSwitchEvery}
-              onChange={(v) => set('filterSwitchEvery', v ?? 1)}
-              error={fieldError('filterSwitchEvery')}
-              disabled={disabled || !draft.filterSwitchEnabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.filterSwitchTolerance')}
-              unit="%"
-              value={draft.filterSwitchTolerancePct}
-              onChange={(v) => set('filterSwitchTolerancePct', v ?? 0)}
-              error={fieldError('filterSwitchTolerancePct')}
-              disabled={disabled || !draft.filterSwitchEnabled}
-            />
-          </div>
-        </section>
-        <section className={sched.box} aria-labelledby="scheduler-quality">
-          <h4 id="scheduler-quality">{t('rigs.scheduler.qualitySection')}</h4>
-          {/* AP-77: kein Modus mehr – die Grenzwerte gehen nur in die Anteile der Session-Qualität ein. */}
-          <p className={styles.muted}>{t('rigs.scheduler.qualityHint')}</p>
-          <div className={sched.pair}>
-            <NumberField
-              label={t('rigs.scheduler.qualityHfr')}
-              unit="%"
-              value={quality.hfrPct}
-              onChange={(v) => setQuality('hfrPct', v)}
-              error={fieldError('imageQuality.hfrPct')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.qualityStars')}
-              unit="%"
-              value={quality.starsPct}
-              onChange={(v) => setQuality('starsPct', v)}
-              error={fieldError('imageQuality.starsPct')}
-              disabled={disabled}
-            />
-          </div>
-          <div className={sched.pair}>
-            <NumberField
-              label={t('rigs.scheduler.qualityRms')}
-              unit="″"
-              value={quality.rmsArcsec}
-              onChange={(v) => setQuality('rmsArcsec', v)}
-              error={fieldError('imageQuality.rmsArcsec')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.qualityCloud')}
-              unit="%"
-              value={quality.cloudPct}
-              onChange={(v) => setQuality('cloudPct', v)}
-              error={fieldError('imageQuality.cloudPct')}
-              disabled={disabled}
-            />
-          </div>
-        </section>
-        <section className={sched.box} aria-labelledby="scheduler-flats">
-          <h4 id="scheduler-flats">{t('rigs.scheduler.flatsSection')}</h4>
-          <CheckField
-            label={t('rigs.scheduler.flats')}
-            checked={draft.flatsEnabled}
-            onChange={(v) => set('flatsEnabled', v)}
-            disabled={disabled}
-          />
-          <SelectField
-            label={t('rigs.scheduler.flatsSource')}
-            value={draft.flatsSource}
-            onChange={(v) => set('flatsSource', v)}
-            options={flatsSources.map((s) => ({ value: s, label: t(`rigs.flatsSource.${s}`) }))}
-            hint={t(`rigs.flatsSourceHint.${draft.flatsSource}`)}
-            disabled={disabled || !draft.flatsEnabled}
-          />
-          <CheckField
-            label={t('rigs.scheduler.flatsFullSet')}
-            checked={draft.flatsFullSet}
-            onChange={(v) => set('flatsFullSet', v)}
-            disabled={disabled || !draft.flatsEnabled}
-          />
-          <div className={sched.pair}>
-            <NumberField
-              label={t('rigs.scheduler.flatCount')}
-              step={1}
-              value={draft.flatCount}
-              onChange={(v) => set('flatCount', v ?? 1)}
-              error={fieldError('flatCount')}
-              disabled={disabled || !draft.flatsEnabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.darkFlatCount')}
-              step={1}
-              value={draft.darkFlatCount}
-              onChange={(v) => set('darkFlatCount', v)}
-              hint={t('rigs.scheduler.darkFlatCountHint')}
-              error={fieldError('darkFlatCount')}
-              disabled={disabled || !draft.flatsEnabled || !draft.darkFlatsEnabled}
-            />
-          </div>
-          <CheckField
-            label={t('rigs.scheduler.darkFlats')}
-            checked={draft.darkFlatsEnabled}
-            onChange={(v) => set('darkFlatsEnabled', v)}
-            disabled={disabled || !draft.flatsEnabled}
-          />
-          {/* Auto-Flats je Projekt (AP-50b): Modus nur mit Flats, Intervall nur zeitbasiert. */}
-          <div className={sched.pair}>
-            <SelectField
-              label={t('rigs.scheduler.flatsAuto')}
-              value={draft.flatsAutoMode}
-              onChange={(v) => set('flatsAutoMode', v)}
-              options={flatsAutoModes.map((m) => ({
-                value: m,
-                label: t(`rigs.flatsAutoMode.${m}`),
-              }))}
-              hint={t(`rigs.flatsAutoHint.${draft.flatsAutoMode}`)}
-              disabled={disabled || !draft.flatsEnabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.flatsAutoInterval')}
-              unit={t('rigs.scheduler.flatsAutoDays')}
-              step={1}
-              value={draft.flatsAutoIntervalDays}
-              onChange={(v) => set('flatsAutoIntervalDays', v ?? 7)}
-              error={fieldError('flatsAutoIntervalDays')}
-              disabled={disabled || !draft.flatsEnabled || draft.flatsAutoMode !== 'time_based'}
-            />
-          </div>
-        </section>
-        <section className={sched.box} aria-labelledby="scheduler-flip">
-          <h4 id="scheduler-flip">{t('rigs.scheduler.flipSection')}</h4>
-          <CheckField
-            label={t('rigs.scheduler.flip')}
-            checked={draft.flipEnabled}
-            onChange={(v) => set('flipEnabled', v)}
-            disabled={disabled}
-          />
-          <div className={sched.pair}>
-            <NumberField
-              label={t('rigs.scheduler.flipAfter')}
-              unit="min"
-              value={draft.flipAfterMeridianMin}
-              onChange={(v) => set('flipAfterMeridianMin', v ?? 0)}
-              error={fieldError('flipAfterMeridianMin')}
-              disabled={disabled || !draft.flipEnabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.flipMaxAfter')}
-              unit="min"
-              value={draft.flipMaxAfterMeridianMin}
-              onChange={(v) => set('flipMaxAfterMeridianMin', v ?? 0)}
-              error={
-                fieldError('flipMaxAfterMeridianMin') ??
-                (flipInvalid || code === 'rig.flip_settings_invalid'
-                  ? t('rigs.scheduler.flipMaxInvalid')
-                  : undefined)
-              }
-              disabled={disabled || !draft.flipEnabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.flipPause')}
-              unit="min"
-              value={draft.flipPauseBeforeMeridianMin}
-              onChange={(v) => set('flipPauseBeforeMeridianMin', v ?? 0)}
-              error={fieldError('flipPauseBeforeMeridianMin')}
-              disabled={disabled || !draft.flipEnabled}
-            />
-            <NumberField
-              label={t('rigs.scheduler.flipDuration')}
-              unit="s"
-              value={draft.flipDurationS}
-              onChange={(v) => set('flipDurationS', v ?? 0)}
-              error={fieldError('flipDurationS')}
-              disabled={disabled || !draft.flipEnabled}
-            />
-          </div>
-        </section>
-        <section className={sched.box} aria-labelledby="scheduler-overhead">
-          <h4 id="scheduler-overhead">{t('rigs.scheduler.overheadSection')}</h4>
-          <div className={sched.pair}>
-            <NumberField
-              label={t('rigs.overhead.slewCenterS')}
-              unit="s"
-              value={draft.overhead.slewCenterS}
-              onChange={(v) => setOverhead('slewCenterS', v)}
-              error={fieldError('overhead.slewCenterS')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.overhead.filterChangeS')}
-              unit="s"
-              value={draft.overhead.filterChangeS}
-              onChange={(v) => setOverhead('filterChangeS', v)}
-              error={fieldError('overhead.filterChangeS')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.overhead.ditherSettleS')}
-              unit="s"
-              value={draft.overhead.ditherSettleS}
-              onChange={(v) => setOverhead('ditherSettleS', v)}
-              error={fieldError('overhead.ditherSettleS')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.overhead.downloadS')}
-              unit="s"
-              value={draft.overhead.downloadS}
-              onChange={(v) => setOverhead('downloadS', v)}
-              error={fieldError('overhead.downloadS')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.overhead.afEveryMin')}
-              unit="min"
-              value={draft.overhead.afEveryMin}
-              onChange={(v) => setOverhead('afEveryMin', v)}
-              error={fieldError('overhead.afEveryMin')}
-              hint={
-                draft.overhead.afEveryMin === 0
-                  ? t('rigs.overhead.afOff')
-                  : t('rigs.overhead.afHint')
-              }
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('rigs.overhead.afDurationS')}
-              unit="s"
-              value={draft.overhead.afDurationS}
-              onChange={(v) => setOverhead('afDurationS', v)}
-              error={fieldError('overhead.afDurationS')}
-              disabled={disabled || draft.overhead.afEveryMin === 0}
-            />
-          </div>
-        </section>
-      </div>
-    </form>
   );
 }

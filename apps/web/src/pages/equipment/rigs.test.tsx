@@ -24,7 +24,8 @@ import { ApiError, AuthProvider } from '../../auth';
 import { confirmPayload, draftRows, slotStatus } from './FilterWheelSection';
 import { FocusOffsets } from './FocusOffsets';
 import { MeasuredOverheads } from './MeasuredOverheads';
-import { RigsPage, rigTabOf, SchedulerForm } from './RigsPage';
+import { RigsPage, rigTabOf } from './RigsPage';
+import { SchedulerForm } from './SchedulerForm';
 import { moveItem, SortChainEditor } from './SortChainEditor';
 
 const state = vi.hoisted(() => ({
@@ -175,7 +176,9 @@ describe('Sortierkette (FA-SCH-03)', () => {
     expect(chain()).toBe('most_remaining,lowest_peak_altitude,setting_soonest');
     fireEvent.click(screen.getByRole('button', { name: '„bald untergehend“ entfernen' }));
     expect(chain()).toBe('most_remaining,lowest_peak_altitude');
-    fireEvent.click(screen.getByRole('button', { name: 'Zieltermin am nächsten' }));
+    fireEvent.change(screen.getByLabelText('Kriterium hinzufügen'), {
+      target: { value: 'due_soonest' },
+    });
     expect(chain()).toBe('most_remaining,lowest_peak_altitude,due_soonest');
     expect(screen.getByRole('button', { name: '„meiste Restarbeit“ nach oben' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Standard wiederherstellen' }));
@@ -228,9 +231,7 @@ describe('Scheduler-Einstellungen', () => {
     fireEvent.change(screen.getByLabelText('maximal Minuten nach Meridian (min)'), {
       target: { value: '3' },
     });
-    expect(
-      screen.getByText('Muss mindestens so groß sein wie „Minuten nach Meridian“.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('„bis“ muss mindestens so groß sein wie „ab“.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await new Promise((r) => setTimeout(r, 0));
     expect(state.scheduler).not.toHaveBeenCalled();
@@ -241,10 +242,48 @@ describe('Scheduler-Einstellungen', () => {
       new ApiError({ status: 412, code: 'resource.version_conflict' }),
     );
     wrap(<Scheduler />);
+    fireEvent.click(screen.getByRole('switch', { name: 'Bonus: freie Zeit füllen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Jemand anderes hat den Datensatz inzwischen geändert');
     expect(within(alert).getByRole('button', { name: 'Neu laden' })).toBeInTheDocument();
+  });
+
+  it('Änderungen: Zähler, Punkt an der Zeile, Verwerfen; ohne Änderung ist Speichern gesperrt', () => {
+    const { container } = wrap(<Scheduler />);
+    const save = screen.getByRole('button', { name: 'Speichern' });
+    expect(save).toBeDisabled();
+    expect(screen.getByText('Alles gespeichert')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Dither alle N Belichtungen'), {
+      target: { value: '3' },
+    });
+    fireEvent.click(screen.getByRole('switch', { name: 'Flip in der Planung' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Nicht gespeicherte Änderungen: 2');
+    expect(container.querySelectorAll('[data-changed]')).toHaveLength(2);
+    expect(save).toBeEnabled();
+    // Flip aus: Fenster bleibt sichtbar, aber gesperrt.
+    expect(screen.getByLabelText('maximal Minuten nach Meridian (min)')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Verwerfen' }));
+    expect(screen.getByText('Alles gespeichert')).toBeInTheDocument();
+    expect(screen.getByLabelText('Dither alle N Belichtungen')).toHaveValue(1);
+    expect(screen.getByRole('switch', { name: 'Flip in der Planung' })).toBeChecked();
+  });
+
+  it('Flats: Quelle als Umschalter, Intervall nur zeitbasiert', () => {
+    wrap(<Scheduler />);
+    const source = screen.getByRole('group', { name: 'Flat-Quelle' });
+    expect(within(source).getByRole('button', { name: 'Himmel' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('switch', { name: 'Automatische Flats' }));
+    fireEvent.click(within(source).getByRole('button', { name: 'Himmel' }));
+    expect(within(source).getByRole('button', { name: 'Himmel' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByLabelText('Intervall (Tage)')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Wie oft je Projekt'), {
+      target: { value: 'time_based' },
+    });
+    expect(screen.getByLabelText('Intervall (Tage)')).toBeEnabled();
   });
 
   it('ohne rig.settings.write: alles gesperrt, keine Sortier-Knöpfe', () => {
@@ -679,6 +718,24 @@ describe('Gemessene Overheads (AP-65, FA-RIG-04b)', () => {
     await screen.findByRole('heading', { name: 'Gemessene Overheads' });
     for (const box of screen.getAllByRole('checkbox'))
       expect((box as HTMLInputElement).disabled).toBe(true);
+  });
+  it('Zeiten für die Planung im Formular: Messung, „wirkt“, „fest“ geht mit Speichern', async () => {
+    state.scheduler.mockResolvedValue({ ...measuredRig, settingsVersion: 5 });
+    const { container } = wrap(<SchedulerForm rig={measuredRig} canWrite />);
+    const table = screen.getByRole('table');
+    const row = (name: string) => within(table).getByRole('row', { name: new RegExp(name) });
+    expect(row('Meridian-Flip').textContent).toContain('1.080 s (18 min)');
+    expect(row('Meridian-Flip').textContent).toContain('wirkt');
+    expect(row('Meridian-Flip').textContent).toContain('weicht stark ab');
+    expect(row('Filterwechsel').textContent).toContain('zu wenige');
+    expect(row('Autofokus-Dauer').textContent).toContain('keine Messung');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Meridian-Flip fest (immer getippt)' }));
+    expect(row('Meridian-Flip').textContent).not.toContain('wirkt');
+    expect(state.scheduler).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(state.scheduler).toHaveBeenCalled());
+    expect(state.scheduler.mock.calls[0]?.[1]).toMatchObject({ overheadFixed: ['flipDurationS'] });
+    await expectNoSeriousA11y(container);
   });
 });
 

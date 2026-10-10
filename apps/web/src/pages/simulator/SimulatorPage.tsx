@@ -33,7 +33,7 @@ import { clock } from '../../components/night-chart/model';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
-import { SchedulerForm } from '../equipment/RigsPage';
+import { SchedulerForm } from '../equipment/SchedulerForm';
 import { NinaTabs } from '../nina/NinaLayout';
 import { MultiNightPanel } from './MultiNightPanel';
 import { UptakeStatus } from '../nina/UptakeStatus';

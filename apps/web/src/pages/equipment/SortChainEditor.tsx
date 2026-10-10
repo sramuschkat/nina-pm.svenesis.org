@@ -1,7 +1,7 @@
 /**
  * Sortierkette per Ziehen (FA-SCH-03, sort-chain.md): geordnete Liste der Schlüssel aus
  * `sortChainKeys`, jeder höchstens einmal; leer ist erlaubt. Tastatur-Alternative: *nach oben* /
- * *nach unten* / *entfernen* je Eintrag und *hinzufügen* aus den übrigen Schlüsseln.
+ * *nach unten* / *entfernen* je Eintrag; *Kriterium hinzufügen* wählt aus den übrigen Schlüsseln.
  */
 import { sortChainKeys, type SortChainKey } from '@nina-pm/shared';
 import { useState } from 'react';
@@ -54,7 +54,6 @@ export function SortChainEditor({
   const Up = uiIcons.up;
   const Down = uiIcons.down;
   const Remove = actionIcons.delete;
-  const Add = actionIcons.add;
   return (
     <div className={styles.listEditor}>
       <ol className={styles.chain} aria-label={t('rigs.scheduler.sortChain')}>
@@ -116,29 +115,35 @@ export function SortChainEditor({
         ))}
       </ol>
       {value.length === 0 ? <p className={styles.muted}>{t('rigs.scheduler.chainEmpty')}</p> : null}
-      {disabled || unused.length === 0 ? null : (
-        <div className={styles.inline}>
-          {unused.map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={styles.button}
-              onClick={() => onChange([...value, key])}
-            >
-              <Add size={ICON_SIZE.table} aria-hidden />
-              {label(key)}
-            </button>
-          ))}
-        </div>
-      )}
       {disabled ? null : (
-        <button
-          type="button"
-          className={styles.linkButton}
-          onClick={() => onChange([...DEFAULT_SORT_CHAIN])}
-        >
-          {t('rigs.scheduler.chainDefault')}
-        </button>
+        <div className={styles.chainTools}>
+          {unused.length > 0 ? (
+            <label className={styles.chainAdd}>
+              {t('rigs.scheduler.chainAdd')}
+              <select
+                className={styles.input}
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) onChange([...value, e.target.value]);
+                }}
+              >
+                <option value="">{t('rigs.scheduler.chainAddPick')}</option>
+                {unused.map((key) => (
+                  <option key={key} value={key}>
+                    {label(key)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={() => onChange([...DEFAULT_SORT_CHAIN])}
+          >
+            {t('rigs.scheduler.chainDefault')}
+          </button>
+        </div>
       )}
     </div>
   );

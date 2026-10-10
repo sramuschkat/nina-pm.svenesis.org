@@ -1,8 +1,366 @@
-/* Scheduler-Einstellungen (AP-26i): sechs kompakte Abschnitte nebeneinander statt zweier langer Spalten –
-   kleine Beschriftungen, Felder 28 px, Zahlenfelder paarweise. Nur noch im Nacht-Simulator bearbeitet. */
+/* Scheduler-Einstellungen (Entwurf 10.10.2026): Karten mit Zeilen – links Name und Erklärung, rechts das Feld.
+   Bei voller Breite drei Spalten (Planung · Ablauf · Flats und Zeiten), schmaler zwei, unter 760 px eine.
+   Nur im Nacht-Simulator bearbeitet (AP-26i). */
 .form {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
   gap: var(--npm-space-3);
 }
+
+/* Kopfleiste: Titel, Stand, Verwerfen/Speichern. Mit ungespeicherten Änderungen klebt sie unter der
+   App-Leiste (52 px, layout.module.css) und ist gelb hinterlegt. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) 0;
+}
+.bar[data-dirty] {
+  position: sticky;
+  top: 52px;
+  z-index: 5;
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border: 1px solid var(--npm-warning);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-warning-bg);
+  box-shadow: var(--npm-shadow);
+}
+.barTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.barTitle h3 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+}
+.barState {
+  font-weight: 600;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+}
+.chip {
+  min-height: 28px;
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: 999px;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--npm-border-strong);
+  background: var(--npm-neutral-bg);
+}
+.chip:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+
+/* Spalten: schmal eine, mittel zwei (Fluss der Karten), breit drei feste Gruppen wie im Entwurf. */
+.columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
+.column {
+  display: contents;
+}
+@container (min-width: 760px) {
+  .columns {
+    display: block;
+    columns: 2;
+    column-gap: var(--npm-space-3);
+  }
+  .slot {
+    break-inside: avoid;
+    margin-bottom: var(--npm-space-3);
+  }
+}
+@container (min-width: 1280px) {
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--npm-space-3);
+    align-items: start;
+  }
+  .column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--npm-space-3);
+    min-width: 0;
+  }
+  .slot {
+    margin-bottom: 0;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  scroll-margin-top: calc(52px + var(--npm-space-6) * 2);
+}
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-3) var(--npm-space-4) var(--npm-space-2);
+  border-bottom: 1px solid var(--npm-border);
+}
+.cardHead h4 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.cardHead span {
+  font-size: var(--npm-font-small);
+}
+
+/* Zeile: Name und Erklärung links, Felder rechts; abhängige Zeilen eingerückt auf leicht abgesetzter Fläche. */
+.row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-2) var(--npm-space-4);
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.row[data-sub] {
+  padding-left: calc(var(--npm-space-4) * 2);
+  background: var(--npm-surface-sub);
+}
+.row[data-sub='2'] {
+  padding-left: calc(var(--npm-space-4) * 3);
+}
+.row[data-error] {
+  background: var(--npm-danger-bg);
+}
+/* Geänderte Zeile: Punkt am linken Rand (ungespeichert). */
+.row[data-changed]::before,
+.block[data-changed]::before,
+.times tr[data-changed] > th::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--npm-warning);
+}
+.rowText {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rowLabel {
+  font-weight: 600;
+}
+.rowHint {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.rowControl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--npm-space-2);
+  margin-left: auto;
+}
+.unit {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  white-space: nowrap;
+}
+.note {
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-4) var(--npm-space-3);
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.block {
+  position: relative;
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
+
+.form .num {
+  width: 5.5rem;
+  text-align: right;
+}
+.form .select {
+  width: auto;
+  min-width: 12rem;
+  max-width: 100%;
+}
+
+/* Schalter: Checkbox mit role="switch". */
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--npm-border-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
+  transition: transform 0.15s;
+}
+.switch:checked {
+  background: var(--npm-button);
+}
+.switch:checked::before {
+  transform: translateX(16px);
+}
+.switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.switch:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--npm-radius);
+  background: var(--npm-neutral-bg);
+}
+.segment {
+  min-height: calc(var(--npm-row-h) - 4px);
+  padding: 0 var(--npm-space-3);
+  border: none;
+  border-radius: calc(var(--npm-radius) - 2px);
+  background: transparent;
+  color: var(--npm-text-light);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.segment[aria-pressed='true'] {
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-weight: 600;
+  box-shadow: var(--npm-shadow);
+}
+.segment:hover:not(:disabled) {
+  color: var(--npm-text);
+}
+.segment:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.segment:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+
+/* Zeiten für die Planung: Schritt | eingetragen | gemessen | fest. */
+.times {
+  width: 100%;
+  border-collapse: collapse;
+}
+.times th,
+.times td {
+  padding: var(--npm-space-2);
+  border-bottom: 1px solid var(--npm-border);
+  text-align: left;
+  vertical-align: middle;
+}
+.times thead th {
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  color: var(--npm-text-light);
+  background: var(--npm-surface-sub);
+}
+.times th:first-child {
+  position: relative;
+  padding-left: var(--npm-space-4);
+}
+.times tbody th {
+  font-weight: 600;
+}
+.times tbody th > span {
+  display: block;
+  font-weight: 400;
+}
+.times td:last-child,
+.times th:last-child {
+  padding-right: var(--npm-space-4);
+}
+.times tr[data-error] {
+  background: var(--npm-danger-bg);
+}
+.times .rowControl {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  margin-left: 0;
+}
+.times .center {
+  text-align: center;
+}
+.measured {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--npm-space-2);
+  font-size: var(--npm-font-small);
+}
+.measuredActive {
+  font-weight: 600;
+}
+.tagOk,
+.tagWarn {
+  padding: 0 var(--npm-space-2);
+  border-radius: 999px;
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  color: var(--npm-text);
+}
+.tagOk {
+  background: var(--npm-success-bg);
+}
+.tagWarn {
+  background: var(--npm-warning-bg);
+}
+
+/* Zusammenfassung am Rig (AP-26i) und gemessene Overheads (AP-65). */
 .head {
   display: flex;
   flex-wrap: wrap;
@@ -16,59 +374,6 @@
 .spacer {
   flex-grow: 1;
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: var(--npm-space-3);
-  align-items: start;
-}
-.box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-2);
-  min-width: 0;
-  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
-  background: var(--npm-surface-sub);
-  font-size: var(--npm-font-small);
-}
-.box h4 {
-  margin: 0;
-  font-size: var(--npm-font-label);
-  font-weight: 700;
-  color: var(--npm-text-light);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-/* Sortierkette: lange Namen – doppelt breit, sobald das Raster mehr als zwei Spalten hat. */
-@media (min-width: 1100px) {
-  .wide {
-    grid-column: span 2;
-  }
-}
-/* Zwei Zahlenfelder nebeneinander. */
-.pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--npm-space-2);
-  align-items: end;
-}
-.box :is(input:not([type='checkbox']):not([type='radio']), select) {
-  min-height: 28px;
-  height: 28px;
-  padding-top: 0;
-  padding-bottom: 0;
-  font-size: var(--npm-font-small);
-}
-.box label,
-.box :is(span, p) {
-  font-size: inherit;
-}
-.box :is(label, span)[class*='label'] {
-  font-size: var(--npm-font-label);
-}
-/* Zusammenfassung am Rig (AP-26i). */
 .summary {
   display: flex;
   flex-direction: column;
