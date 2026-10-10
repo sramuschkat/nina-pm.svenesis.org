@@ -262,19 +262,53 @@ export function searchRegion(index: readonly Indexed[], q: DsoRegionQuery): DsoR
   };
 }
 
-/** Katalog im Speicher der `api` – höchstens 10 min alt (ändert sich nur per `catalog_refresh`). */
+/**
+ * Katalog im Speicher der `api` (ändert sich nur per `catalog_refresh`): nach 10 min prüft ein billiger Stand
+ * (`stamp`: Zeilenzahl und letzte Änderung) statt die 13.600 Zeilen neu zu laden; nur bei geändertem Stand wird neu
+ * gelesen. Gleichzeitige Fehltreffer eines Containers laden einmal (Performance 10.10.2026).
+ */
 export const CATALOG_CACHE_MS = 10 * 60_000;
-let cache: { at: number; index: Indexed[] } | null = null;
+let cache: { at: number; stamp: string | null; index: Indexed[] } | null = null;
+let pending: Promise<Indexed[]> | null = null;
+
+export type CatalogCacheResult = 'hit' | 'revalidated' | 'loaded';
+
+export async function cachedCatalogInfo(
+  load: () => Promise<CatalogRow[]>,
+  now = Date.now(),
+  stamp?: () => Promise<string>,
+): Promise<{ index: Indexed[]; cache: CatalogCacheResult }> {
+  if (cache && now - cache.at < CATALOG_CACHE_MS) return { index: cache.index, cache: 'hit' };
+  if (cache && stamp && cache.stamp !== null) {
+    const current = await stamp();
+    if (current === cache.stamp) {
+      cache = { ...cache, at: now };
+      return { index: cache.index, cache: 'revalidated' };
+    }
+  }
+  pending ??= (async () => {
+    try {
+      // Stand vor dem Laden: ändert sich der Katalog währenddessen, lädt die nächste Prüfung neu.
+      const before = stamp ? await stamp() : null;
+      const index = indexCatalog(await load());
+      cache = { at: now, stamp: before, index };
+      return index;
+    } finally {
+      pending = null;
+    }
+  })();
+  return { index: await pending, cache: 'loaded' };
+}
 
 export async function cachedCatalog(
   load: () => Promise<CatalogRow[]>,
   now = Date.now(),
+  stamp?: () => Promise<string>,
 ): Promise<Indexed[]> {
-  if (cache && now - cache.at < CATALOG_CACHE_MS) return cache.index;
-  cache = { at: now, index: indexCatalog(await load()) };
-  return cache.index;
+  return (await cachedCatalogInfo(load, now, stamp)).index;
 }
 
 export function clearCatalogCache() {
   cache = null;
+  pending = null;
 }

@@ -4,6 +4,7 @@ export { illuminationPct, moonAt, sunAt, type MoonAtSite, type SunAtSite } from 
 export {
   altAz,
   apparentAltitudeDeg,
+  apparentAltitudes,
   bennettRefractionArcmin,
   localApparentSiderealDeg,
   refractionArcmin,
@@ -24,6 +25,7 @@ export { sunApparent, type SunPlace } from './sun';
 export {
   meridianTransitUtc,
   targetApparent,
+  targetApparentAt,
   targetAt,
   type Target,
   type TargetAtSite,

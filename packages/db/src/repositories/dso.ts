@@ -121,6 +121,19 @@ export async function readDsoCatalog(
   }));
 }
 
+/**
+ * Billiger Stand des Katalogs für den Speicher der `api`: Zeilenzahl und letzte Änderung (`catalog_refresh` setzt
+ * `updated_at` jeder geschriebenen Zeile).
+ */
+export async function dsoCatalogStamp(db: Kysely<Database>): Promise<string> {
+  const r = await db
+    .selectFrom('dsoObject')
+    .select((eb) => [eb.fn.countAll<number>().as('n'), eb.fn.max('updatedAt').as('last')])
+    .executeTakeFirstOrThrow();
+  const last = r.last ? new Date(r.last as unknown as string).toISOString() : '';
+  return `${String(r.n)}|${last}`;
+}
+
 export interface DsoCatalogStatus {
   readonly rows: number;
   readonly lastImportAt: Date | null;

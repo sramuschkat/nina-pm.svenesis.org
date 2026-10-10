@@ -246,6 +246,7 @@ export {
 } from './repositories/nina-ingest';
 export {
   DSO_BATCH_SIZE,
+  dsoCatalogStamp,
   dsoCatalogStatus,
   enqueueSystemJob,
   readDsoCatalog,
