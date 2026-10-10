@@ -38,7 +38,12 @@ import {
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
 import { parseSnapshot } from '../sessions/log';
-import { lineQualities, nightConditions, sessionQuality } from '../sessions/night-quality';
+import {
+  lineQualities,
+  nightConditions,
+  sessionQuality,
+  sessionQualityByList,
+} from '../sessions/night-quality';
 import { refsByProject } from '../sessions/project-images';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
@@ -196,15 +201,32 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
   app.openapi(listSessionsRoute, async (c) => {
     const svc = await services();
     const q = c.req.valid('query');
-    const page = await svc.repositories(requireTenant(c).tenant).sessionReview().page({
+    const repos = svc.repositories(requireTenant(c).tenant);
+    const page = await repos.sessionReview().page({
       rigId: q.rigId,
       from: q.from,
       to: q.to,
       limit: q.limit,
       cursor: q.cursor,
     });
+    // Sessionqualität je Session (AP-77) wie im Detail: Bezug je Projekt und Filter, Grenzwerte des Rigs.
+    const [rows, rigs] = await Promise.all([
+      repos.imageQuality().sessionGradeRows(page.items.map((x) => x.id)),
+      repos.equipment().rigs(),
+    ]);
+    const refs = refsByProject(
+      await repos.imageQuality().gradeBasis([...new Set(rows.map((r) => r.projectId))]),
+    );
+    const quality = sessionQualityByList(
+      rows,
+      refs,
+      (rigId) => rigs.find((r) => r.id === rigId)?.imageQuality ?? IMAGE_QUALITY_DEFAULTS,
+    );
     c.header('cache-control', 'no-store');
-    return c.json(page, 200);
+    return c.json(
+      { ...page, items: page.items.map((x) => ({ ...x, quality: quality.get(x.id) ?? null })) },
+      200,
+    );
   });
 
   // Vor `/{id}` registriert: sonst fängt die Detailroute „summary“ als ID ab.

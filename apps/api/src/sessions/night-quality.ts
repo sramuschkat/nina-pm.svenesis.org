@@ -1,12 +1,16 @@
 /**
  * Sessionqualität und Bedingungen im Nacht-Detail (AP-77, S-61). Rein bis auf die Eingaben:
  * - `lineQualities`: je Zeile (Projekt und Filter) Anteile, Gründe, Median/Spanne und Verlauf aus den bewerteten Lights.
+ * - `sessionQualityByList`: Zählung je Session für die Liste „Nächte“.
  * - `nightConditions`: Wolken/SQM aus den Lights, sonst aus dem Wettergerät; Temperatur, Feuchte, Taupunkt aus der
  *   Powerbox, sonst aus dem Wettergerät; Wind aus dem Wettergerät; Seeing und Transparenz aus der Vorhersage.
  */
 import {
   combineQualityCounts,
   GRADE_MIN_REF,
+  imageGrade,
+  qualityCounts,
+  type QualityCounts,
   medianOf,
   qualityStats,
   sessionGrade,
@@ -17,6 +21,7 @@ import {
   type NightLineQuality,
   type NightSessionCapture,
 } from '@nina-pm/shared';
+import { gradeCapture, gradeInputOf } from './project-images';
 
 const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
 
@@ -168,4 +173,34 @@ export function nightConditions(input: {
     single('seeingScore', f?.seeingScore ?? null),
     single('transparencyPct', f?.transparencyPct ?? null),
   ].filter((c): c is NightCondition => c !== null);
+}
+
+/** Sessionqualität je Session für die Liste „Nächte“ (AP-77): dieselbe Bewertung wie im Detail, nur die Zählung. */
+export function sessionQualityByList(
+  rows: readonly {
+    sessionId: string;
+    rigId: string;
+    projectId: string;
+    filter: string;
+    rejected: boolean;
+    metrics: Readonly<Record<string, unknown>>;
+  }[],
+  refs: Map<string, Map<string, GradeRef>>,
+  settingsOf: (rigId: string) => ImageQualitySettings,
+): Map<string, QualityCounts> {
+  const bySession = new Map<string, Parameters<typeof qualityCounts>[0][number][]>();
+  for (const r of rows) {
+    const m = r.metrics as Record<string, unknown>;
+    const input = gradeInputOf(m);
+    const flags = gradeCapture(refs, r.projectId, r.filter, m, settingsOf(r.rigId));
+    const light = {
+      grade: imageGrade(input, flags, { rejected: r.rejected, kept: m.qualityKept === true }),
+      flags,
+      hfr: input.hfr,
+      stars: input.stars,
+      rmsArcsec: input.rmsArcsec,
+    };
+    bySession.set(r.sessionId, [...(bySession.get(r.sessionId) ?? []), light]);
+  }
+  return new Map([...bySession].map(([id, lights]) => [id, qualityCounts(lights)]));
 }

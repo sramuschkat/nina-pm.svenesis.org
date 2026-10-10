@@ -11498,6 +11498,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/NightSessionProject"
+        quality:
+          $ref: "#/components/schemas/QualityCounts"
       required:
         - id
         - rigId
@@ -11517,6 +11519,7 @@ components:
         - efficiency
         - weather
         - projects
+        - quality
     NightSessionEfficiency:
       type:
         - object
@@ -11577,6 +11580,56 @@ components:
         - transit
         - frames
         - filters
+    QualityCounts:
+      type:
+        - object
+        - "null"
+      properties:
+        good:
+          type: integer
+          minimum: 0
+        flagged:
+          type: integer
+          minimum: 0
+        rejected:
+          type: integer
+          minimum: 0
+        none:
+          type: integer
+          minimum: 0
+        sharePct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        reasons:
+          type: object
+          properties:
+            hfr:
+              type: integer
+              minimum: 0
+            stars:
+              type: integer
+              minimum: 0
+            rms:
+              type: integer
+              minimum: 0
+            cloud:
+              type: integer
+              minimum: 0
+          required:
+            - hfr
+            - stars
+            - rms
+            - cloud
+      required:
+        - good
+        - flagged
+        - rejected
+        - none
+        - sharePct
+        - reasons
     NightSessionSummary:
       type: object
       properties:

@@ -150,6 +150,15 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
     expect(online).not.toHaveProperty('reviewed');
     // 2 × 300 s + 330 s (abweichend gemeldet) + 300 s nach dem Lease-Verlust.
     expect(online.integrationS).toBe(1230);
+    // Sessionqualität in der Liste (AP-77) wie im Detail: alle 4 zugeordneten Lights gut.
+    expect(online.quality).toEqual({
+      good: 4,
+      flagged: 0,
+      rejected: 0,
+      none: 0,
+      sharePct: 100,
+      reasons: { hfr: 0, stars: 0, rms: 0, cloud: 0 },
+    });
 
     const detail = await t.web(`/sessions/${online.id as string}`);
     expect(detail.status).toBe(200);

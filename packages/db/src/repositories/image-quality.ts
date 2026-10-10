@@ -244,6 +244,60 @@ export class ImageQualityRepository extends TenantRepo {
    * Lights der Rigs in den Nächten `from…to` für die Sessionqualität (AP-77): gespeichert und zugeordnet, auch verworfene,
    * mit allen Messwerten (`metrics`) zur Bewertung gegen den Bezug des Projekts.
    */
+  /**
+   * Lights der Sessions für die Sessionqualität der Liste „Nächte“ (AP-77): gespeichert und zugeordnet, auch verworfene,
+   * mit den Messwerten zur Bewertung gegen den Bezug des Projekts.
+   */
+  async sessionGradeRows(sessionIds: readonly string[]): Promise<
+    {
+      sessionId: string;
+      rigId: string;
+      projectId: string;
+      filter: string;
+      rejected: boolean;
+      metrics: Record<string, unknown>;
+    }[]
+  > {
+    if (sessionIds.length === 0) return [];
+    const rows = await this.db
+      .selectFrom('capture as c')
+      .innerJoin('session as s', (j) =>
+        j.onRef('s.id', '=', 'c.sessionId').onRef('s.tenantId', '=', 'c.tenantId'),
+      )
+      .select([
+        'c.sessionId',
+        's.rigId',
+        'c.projectId',
+        'c.filterShortName',
+        'c.rejected',
+        'c.metrics',
+      ])
+      .where('c.tenantId', '=', this.ctx.tenantId)
+      .where('c.sessionId', 'in', [...sessionIds])
+      .where('c.frameType', '=', 'light')
+      .where('c.result', '=', 'saved')
+      .where('c.assignment', '=', 'assigned')
+      .limit(ROW_LIMIT)
+      .execute();
+    return rows.flatMap((r) =>
+      r.projectId
+        ? [
+            {
+              sessionId: r.sessionId,
+              rigId: r.rigId,
+              projectId: r.projectId,
+              filter: r.filterShortName,
+              rejected: r.rejected,
+              metrics:
+                (typeof r.metrics === 'string'
+                  ? (JSON.parse(r.metrics) as Record<string, unknown>)
+                  : (r.metrics as Record<string, unknown> | null)) ?? {},
+            },
+          ]
+        : [],
+    );
+  }
+
   async nightGradeRows(
     rigIds: readonly string[],
     fromNight: string,
