@@ -459,21 +459,25 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
   const repos = svc.repositories({ tenantId: p.tenantId });
   const eq = repos.equipment();
   const rig = await eq.rig(p.rigId);
-  const site = rig ? await eq.site(rig.siteId) : undefined;
-  if (!rig || !site) throw new ProblemError('nina.token_invalid');
+  if (!rig) throw new ProblemError('nina.token_invalid');
   const sessions = repos.ninaSession(p.rigId, p.instanceId);
-  const lease = await sessions.heartbeat(
-    {
-      sessionId: hb.sessionId ?? null,
-      offline: hb.state === 'offline',
-      offlineUntil: hb.offlineUntil ? new Date(hb.offlineUntil) : null,
-    },
-    now,
-  );
-  // Optik nur nachschlagen, wenn das Plugin sie meldet (ab 0.4.22).
-  const [telescope, camera] = hb.optics
-    ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
-    : [undefined, undefined];
+  // Unabhängige Abfragen gleichzeitig (Heartbeat jede Minute, Performance Paket A/H); die Lease erst nach
+  // der Rig-Prüfung, damit ein ungültiges Token nichts schreibt.
+  const [site, lease, telescope, camera] = await Promise.all([
+    eq.site(rig.siteId),
+    sessions.heartbeat(
+      {
+        sessionId: hb.sessionId ?? null,
+        offline: hb.state === 'offline',
+        offlineUntil: hb.offlineUntil ? new Date(hb.offlineUntil) : null,
+      },
+      now,
+    ),
+    // Optik nur nachschlagen, wenn das Plugin sie meldet (ab 0.4.22).
+    hb.optics ? eq.telescope(rig.telescopeId) : undefined,
+    hb.optics ? eq.camera(rig.cameraId) : undefined,
+  ]);
+  if (!site) throw new ProblemError('nina.token_invalid');
   const mismatch = settingsMismatch(hb, {
     hasRotator: rig.hasRotator,
     rotationToleranceDeg: rig.rotationToleranceDeg,
@@ -511,47 +515,53 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
       now,
       { refreshMs: REPORTED_WHEEL_REFRESH_MS },
     );
-  if (mismatch.codes.length > 0) {
+  // Die beiden Meldungen oben schreiben die Rig-Zeile (Filterrad gehört zum ETag) und laufen deshalb vorher;
+  // alles Weitere ist voneinander unabhängig.
+  if (mismatch.codes.length > 0)
     logger.warn('alert_nina_settings_mismatch', { rigId: p.rigId, codes: mismatch.codes });
+  const [, , , commands, t] = await Promise.all([
     // Mit Code-Liste; dieselbe Liste höchstens einmal je 24 h, eine geänderte sofort.
-    await alertAdmins(
-      svc,
-      p.tenantId,
-      'alert.nina_settings_mismatch',
-      `${p.instanceId}:${mismatch.codes.join(',')}`,
-      `${rig.name} · ${p.instanceName}: ${mismatch.codes.join(', ')}`,
-      24 * HOUR_MS,
-      { rigId: p.rigId, codes: mismatch.codes.join(',') },
-    );
-  }
-  if ((hb.deadLetters ?? 0) > 0)
-    await alertAdmins(
-      svc,
-      p.tenantId,
-      'alert.plugin_dead_letters',
-      `${p.instanceId}:dead_letters`,
-      `${rig.name} · ${p.instanceName}: ${String(hb.deadLetters)}`,
-      24 * HOUR_MS,
-      { rigId: p.rigId },
-    );
-  await sessions.recordInstanceState(
-    {
-      pluginVersion: hb.pluginVersion,
-      engineVersion: hb.engineVersion,
-      profileLat: hb.profileLocation?.latDeg ?? null,
-      profileLon: hb.profileLocation?.lonDeg ?? null,
-      lastState: { ...hb, mismatchCodes: mismatch.codes, receivedAtUtc: isoUtc(now) },
-    },
-    now,
-  );
-  const commands = await sessions.commands(hb.ackedCommandIds ?? [], now);
-  const { etag } = await targets(svc, p);
-  const fresh = await eq.rig(p.rigId);
+    mismatch.codes.length > 0
+      ? alertAdmins(
+          svc,
+          p.tenantId,
+          'alert.nina_settings_mismatch',
+          `${p.instanceId}:${mismatch.codes.join(',')}`,
+          `${rig.name} · ${p.instanceName}: ${mismatch.codes.join(', ')}`,
+          24 * HOUR_MS,
+          { rigId: p.rigId, codes: mismatch.codes.join(',') },
+        )
+      : undefined,
+    (hb.deadLetters ?? 0) > 0
+      ? alertAdmins(
+          svc,
+          p.tenantId,
+          'alert.plugin_dead_letters',
+          `${p.instanceId}:dead_letters`,
+          `${rig.name} · ${p.instanceName}: ${String(hb.deadLetters)}`,
+          24 * HOUR_MS,
+          { rigId: p.rigId },
+        )
+      : undefined,
+    sessions.recordInstanceState(
+      {
+        pluginVersion: hb.pluginVersion,
+        engineVersion: hb.engineVersion,
+        profileLat: hb.profileLocation?.latDeg ?? null,
+        profileLon: hb.profileLocation?.lonDeg ?? null,
+        lastState: { ...hb, mismatchCodes: mismatch.codes, receivedAtUtc: isoUtc(now) },
+      },
+      now,
+    ),
+    sessions.commands(hb.ackedCommandIds ?? [], now),
+    // ETag und Einstellungsstand aus derselben, nach den Meldungen gelesenen Rig-Zeile wie `GET /targets`.
+    targets(svc, p),
+  ]);
   return {
     serverTimeUtc: isoUtc(now),
     lease: lease ? { untilUtc: isoOrNull(lease.untilUtc), leaseLost: lease.leaseLost } : null,
-    settingsVersion: fresh?.settingsVersion ?? rig.settingsVersion,
-    targetsEtag: etag,
+    settingsVersion: t.settingsVersion,
+    targetsEtag: t.etag,
     commands: commands as { id: string; command: 'refresh_targets' | 'reset_plan' }[],
   };
 }

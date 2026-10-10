@@ -254,6 +254,13 @@ export class ProjectRepository extends TenantRepo {
 
   /** Zeilen mit Aufnahmen: Zähler > 0 oder gemeldete Aufnahmen (auch unbestätigte Meldungen). */
   private async captureInfo(trx: Tx | Kysely, projectId: string) {
+    return this.captureInfoOf(trx, [projectId]);
+  }
+
+  /** Wie `captureInfo`, für mehrere Projekte mit einer Abfrage (Projektliste, Heartbeat). */
+  private async captureInfoOf(trx: Tx | Kysely, projectIds: readonly string[]) {
+    if (projectIds.length === 0)
+      return new Map<string, { lineId: string; integrationS: number; captures: number }>();
     const rows = await sql<{ lineId: string; integrationS: number; captures: number }>`
       SELECT l.id AS "lineId",
              COALESCE((SELECT SUM(n.integration_s) FROM capture_night n
@@ -261,7 +268,9 @@ export class ProjectRepository extends TenantRepo {
              (l.acquired_count + l.bonus_count
               + (SELECT COUNT(*) FROM capture c WHERE c.tenant_id = l.tenant_id AND c.exposure_line_id = l.id))::int AS "captures"
         FROM exposure_line l
-       WHERE l.tenant_id = ${this.tenantId} AND l.project_id = ${projectId}`.execute(trx);
+       WHERE l.tenant_id = ${this.tenantId} AND l.project_id IN (${sql.join(projectIds)})`.execute(
+      trx,
+    );
     return new Map(rows.rows.map((r) => [r.lineId, r]));
   }
 
@@ -272,12 +281,30 @@ export class ProjectRepository extends TenantRepo {
   }
 
   private async detailOf(db: Tx | Kysely, project: ProjectRow): Promise<ProjectDetail> {
-    const [panels, lines, info, favorite, overshootPct, dso] = await Promise.all([
+    return (await this.detailsOf(db, [project]))[0] as ProjectDetail;
+  }
+
+  /**
+   * Details mehrerer Projekte mit je **einer** Abfrage für Panels, Zeilen, Aufnahmen, Favoriten, Rigs und
+   * Katalognamen (statt fünf je Projekt) – die Projektliste lädt so auch für den Heartbeat in zwei Runden.
+   */
+  private async detailsOf(
+    db: Tx | Kysely,
+    projects: readonly ProjectRow[],
+  ): Promise<ProjectDetail[]> {
+    if (projects.length === 0) return [];
+    const ids = projects.map((p) => p.id);
+    const rigIds = [...new Set(projects.map(projectRigId).filter((r): r is string => r !== null))];
+    const dsoIds = [
+      ...new Set(projects.map((p) => p.dsoObjectId).filter((d): d is string => d !== null)),
+    ];
+    const memberId = this.ctx.memberId;
+    const [panels, lines, info, favorites, rigs, dsos] = await Promise.all([
       db
         .selectFrom('projectPanel')
         .selectAll()
         .where('tenantId', '=', this.tenantId)
-        .where('projectId', '=', project.id)
+        .where('projectId', 'in', ids)
         .where('deletedAt', 'is', null)
         .orderBy('panelIndex')
         .execute(),
@@ -285,47 +312,59 @@ export class ProjectRepository extends TenantRepo {
         .selectFrom('exposureLine')
         .selectAll()
         .where('tenantId', '=', this.tenantId)
-        .where('projectId', '=', project.id)
+        .where('projectId', 'in', ids)
         .where('deletedAt', 'is', null)
         .orderBy('orderIndex')
         .orderBy('createdAt')
         .execute(),
-      this.captureInfo(db, project.id),
-      this.ctx.memberId
+      this.captureInfoOf(db, ids),
+      memberId
         ? db
             .selectFrom('favorite')
             .select('projectId')
             .where('tenantId', '=', this.tenantId)
-            .where('userId', '=', this.ctx.memberId)
-            .where('projectId', '=', project.id)
-            .executeTakeFirst()
-        : Promise.resolve(undefined),
-      this.overshootPct(db, project),
-      // Katalog ist systemweit (ohne Mandanten), die Verknüpfung hängt am mandantengebundenen Projekt.
-      project.dsoObjectId
+            .where('userId', '=', memberId)
+            .where('projectId', 'in', ids)
+            .execute()
+        : Promise.resolve([]),
+      rigIds.length > 0
         ? db
-            .selectFrom('dsoObject')
-            .select('primaryId')
-            .where('id', '=', project.dsoObjectId)
-            .executeTakeFirst()
-        : Promise.resolve(undefined),
+            .selectFrom('rig')
+            .select(['id', 'overshootPct'])
+            .where('tenantId', '=', this.tenantId)
+            .where('id', 'in', rigIds)
+            .execute()
+        : Promise.resolve([]),
+      // Katalog ist systemweit (ohne Mandanten), die Verknüpfung hängt am mandantengebundenen Projekt.
+      dsoIds.length > 0
+        ? db.selectFrom('dsoObject').select(['id', 'primaryId']).where('id', 'in', dsoIds).execute()
+        : Promise.resolve([]),
     ]);
-    return {
-      project,
-      favorite: favorite !== undefined,
-      overshootPct,
-      dsoPrimaryId: dso?.primaryId ?? null,
-      panels: panels.map((panel) => ({
-        ...panel,
-        lines: lines
-          .filter((l) => l.panelId === panel.id)
-          .map((l) => ({
-            ...l,
-            hasCaptures: (info.get(l.id)?.captures ?? 0) > 0,
-            integrationS: info.get(l.id)?.integrationS ?? 0,
+    const favorite = new Set(favorites.map((f) => f.projectId));
+    const overshoot = new Map(rigs.map((r) => [r.id, r.overshootPct] as const));
+    const primary = new Map(dsos.map((d) => [d.id, d.primaryId] as const));
+    return projects.map((project) => {
+      const rigId = projectRigId(project);
+      return {
+        project,
+        favorite: favorite.has(project.id),
+        overshootPct: rigId === null ? 0 : (overshoot.get(rigId) ?? 0),
+        dsoPrimaryId:
+          project.dsoObjectId === null ? null : (primary.get(project.dsoObjectId) ?? null),
+        panels: panels
+          .filter((panel) => panel.projectId === project.id)
+          .map((panel) => ({
+            ...panel,
+            lines: lines
+              .filter((l) => l.projectId === project.id && l.panelId === panel.id)
+              .map((l) => ({
+                ...l,
+                hasCaptures: (info.get(l.id)?.captures ?? 0) > 0,
+                integrationS: info.get(l.id)?.integrationS ?? 0,
+              })),
           })),
-      })),
-    };
+      };
+    });
   }
 
   /** Projektliste (TK 7.2) mit Fortschritt; gelöschte nur mit `deleted` (Ansicht „Gelöscht“). */
@@ -354,26 +393,24 @@ export class ProjectRepository extends TenantRepo {
       );
     const projects = await q.orderBy('priority').orderBy('name').execute();
     const creators = [...new Set(projects.map((p) => p.createdBy))];
-    const names = new Map(
+    const [users, comments, details] = await Promise.all([
       creators.length === 0
-        ? []
-        : (
-            await this.db
-              .selectFrom('appUser')
-              .select(['id', 'displayName'])
-              .where('tenantId', '=', this.tenantId)
-              .where('id', 'in', creators)
-              .execute()
-          ).map((u) => [u.id, u.displayName] as const),
-    );
-    const comments = await this.commentCounts(projects.map((p) => p.id));
-    return Promise.all(
-      projects.map(async (p) => ({
-        ...(await this.detailOf(this.db, p)),
-        createdByName: names.get(p.createdBy) ?? '',
-        commentCount: comments.get(p.id) ?? 0,
-      })),
-    );
+        ? Promise.resolve([])
+        : this.db
+            .selectFrom('appUser')
+            .select(['id', 'displayName'])
+            .where('tenantId', '=', this.tenantId)
+            .where('id', 'in', creators)
+            .execute(),
+      this.commentCounts(projects.map((p) => p.id)),
+      this.detailsOf(this.db, projects),
+    ]);
+    const names = new Map(users.map((u) => [u.id, u.displayName] as const));
+    return details.map((d) => ({
+      ...d,
+      createdByName: names.get(d.project.createdBy) ?? '',
+      commentCount: comments.get(d.project.id) ?? 0,
+    }));
   }
 
   // ---- Projekt ------------------------------------------------------------------------------------

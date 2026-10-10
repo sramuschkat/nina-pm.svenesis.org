@@ -458,3 +458,84 @@ describe('An NINA ausgeliefert (S-41, FA-NIN-22)', () => {
     ]);
   });
 });
+
+describe('Heartbeat (Performance, gleichzeitige Abfragen)', () => {
+  it('ETag und Einstellungsstand wie GET /targets, auch nach Änderung; Projekte mit eigenen Zeilen', async () => {
+    const t = await setup();
+    const inst = await t.createInstance('A');
+    // Zweites Projekt mit zwei Zeilen: die gesammelten Abfragen ordnen Panels und Zeilen dem richtigen zu.
+    const second = await t.web('/projects', {
+      method: 'POST',
+      body: {
+        id: id(),
+        name: 'IC 1805',
+        rigId: t.rig.id,
+        targetName: 'IC 1805',
+        raDeg: 38.2,
+        decDeg: 61.5,
+      },
+    });
+    const pid2 = second.body.id as string;
+    const panel2 = (second.body.panels as { id: string }[])[0]?.id as string;
+    const filters = (await t.eq.filters()) as { id: string }[];
+    for (const [exposureS, plannedCount] of [
+      [180, 10],
+      [600, 5],
+    ] as const)
+      await t.web(`/projects/${pid2}/lines`, {
+        method: 'POST',
+        body: {
+          id: id(),
+          panelId: panel2,
+          filterId: filters[0]?.id,
+          exposureS,
+          plannedCount,
+          moonMode: 'none',
+        },
+      });
+    await s.pg.admin.query(
+      "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = requested_rig_id WHERE id = $1",
+      [pid2],
+    );
+    const beat = () =>
+      t.call(inst.token, '/heartbeat', {
+        method: 'POST',
+        body: { state: 'idle', pluginVersion: '1.2.0', engineVersion: '0.6.0' },
+      });
+    const targets = async () => {
+      const res = await s.request('/api/nina/v1/targets', {
+        headers: { authorization: `Bearer ${inst.token}` },
+      });
+      return { etag: res.headers.get('etag'), body: (await res.json()) as Body };
+    };
+    const boot = async () => (await t.call(inst.token, '/bootstrap')).body.rig as Body;
+
+    const first = await beat();
+    expect(first.status).toBe(200);
+    const before = await targets();
+    expect(first.body.targetsEtag).toBe(before.etag);
+    expect(first.body.settingsVersion).toBe((await boot()).settingsVersion);
+    const lines = (before.body.projects as Body[]).map((p) => [
+      p.name,
+      (p.panels as Body[]).map((x) => (x.lines as Body[]).map((l) => l.exposureS)),
+    ]);
+    expect(lines).toEqual(
+      expect.arrayContaining([
+        ['NGC 281', [[300]]],
+        ['IC 1805', [[180, 600]]],
+      ]),
+    );
+
+    // Zeile ändern und Rig-Einstellung ändern → neuer ETag und neuer Stand, wieder gleich wie /targets.
+    await s.pg.admin.query('UPDATE exposure_line SET planned_count = 41 WHERE id = $1', [t.lineId]);
+    await t.eq.updateScheduler(t.rig.id, SCHEDULER, s.clock.now());
+    const next = await beat();
+    const after = await targets();
+    expect(after.etag).not.toBe(before.etag);
+    expect(next.body.targetsEtag).toBe(after.etag);
+    expect(next.body.settingsVersion as number).toBeGreaterThan(
+      first.body.settingsVersion as number,
+    );
+    expect(next.body.settingsVersion).toBe((await boot()).settingsVersion);
+  });
+});
