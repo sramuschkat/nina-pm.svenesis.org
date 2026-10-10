@@ -67,6 +67,13 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     /** Mondkalender: heutige Nacht (Rahmen) und die besten Nächte (Stern). */
     today: '#e67e22',
     star: '#b9770e',
+    /**
+     * Qualitätsleiste (AP-77): gut, auffällig, verworfen – mit Helligkeitsunterschied (gut dunkel, auffällig hell,
+     * verworfen gestreift) und immer mit Text, nie nur Farbe.
+     */
+    'quality-good': '#1e7e4f',
+    'quality-flagged': '#d9a21b',
+    'quality-rejected': '#b3261e',
   },
   dark: {
     primary: '#0b1621',
@@ -110,6 +117,9 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'plot-3': '#199e70',
     today: '#f39c12',
     star: '#f5b041',
+    'quality-good': '#3fa36b',
+    'quality-flagged': '#f0c35a',
+    'quality-rejected': '#e0675d',
   },
 };
 

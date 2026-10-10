@@ -707,13 +707,12 @@ export type NightSessionKpis = Schemas['NightSessionKpis'];
 export type NightSessionReason = Schemas['NightSessionReason'];
 export type CaptureRejectResult = Schemas['CaptureRejectResult'];
 
-/** Sessions und Auswertung R1 (AP-15, S-60/S-61): Liste, Detail, Korrektur, geprüft, Zuordnung. */
+/** Sessions und Auswertung R1 (AP-15, S-60/S-61): Liste, Detail, Korrektur, Zuordnung (Prüfen entfällt seit AP-77). */
 export const sessionsApi = {
   /** Nächte seitenweise (AP-64): Zeitraum als Nacht-Schlüssel, Fortsetzung über `cursor`. */
   list: (
     query: {
       rigId?: string;
-      unreviewed?: boolean;
       from?: string;
       to?: string;
       limit?: number;
@@ -722,7 +721,6 @@ export const sessionsApi = {
   ) => {
     const q = new URLSearchParams();
     if (query.rigId) q.set('rigId', query.rigId);
-    if (query.unreviewed) q.set('unreviewed', 'true');
     if (query.from) q.set('from', query.from);
     if (query.to) q.set('to', query.to);
     if (query.limit) q.set('limit', String(query.limit));
@@ -741,11 +739,8 @@ export const sessionsApi = {
     const s = q.toString();
     return apiFetch<NightSessionSummary>(`${V1}/sessions/summary${s ? `?${s}` : ''}`);
   },
-  /** Nur „ungeprüft“ (Startseite, Zu tun): ohne Kennzahlen über alle Aufnahmen. */
-  unreviewed: () =>
-    apiFetch<Pick<NightSessionSummary, 'unreviewed' | 'firstUnreviewed'>>(
-      `${V1}/sessions/unreviewed`,
-    ),
+  /** Nicht zugeordnete Aufnahmen je Nacht und Rig (Startseite, Zu tun; AP-77). */
+  unassigned: () => apiFetch<Schemas['NightSessionUnassigned']>(`${V1}/sessions/unassigned`),
   get: (id: string) => apiFetch<NightSessionDetail>(`${V1}/sessions/${id}`),
   correct: (
     id: string,
@@ -760,8 +755,6 @@ export const sessionsApi = {
       `${V1}/sessions/${id}/corrections`,
       json('POST', body),
     ),
-  review: (id: string, reviewed: boolean) =>
-    apiFetch<undefined>(`${V1}/sessions/${id}/review`, json('PUT', { reviewed })),
   /** Einzelne Aufnahme verwerfen bzw. zurücknehmen (FA-AUS-20; Rechte wie Korrektur). */
   reject: (captureId: string, rejected: boolean, reason: string | null) =>
     apiFetch<CaptureRejectResult>(
@@ -786,20 +779,11 @@ export const sessionsApi = {
     apiFetch<undefined>(`${V1}/captures/${captureId}/assign`, json('PATCH', { exposureLineId })),
 };
 
-export type SessionLogView = Schemas['SessionLogView'];
-export type SessionLogValues = Schemas['SessionLogValues'];
 export type ClearNightView = Schemas['ClearNightView'];
 export type ClearNightNight = Schemas['ClearNightNight'];
 
-/** Sitzungsprotokoll und Klarnacht-Statistik (AP-30; S-61 *Protokoll*, S-64). */
+/** Klarnacht-Statistik (AP-30; S-64). Das Sitzungsprotokoll entfällt seit AP-77. */
 export const sessionLogApi = {
-  get: (sessionId: string) => apiFetch<SessionLogView>(`${V1}/sessions/${sessionId}/log`),
-  /** Speichern mit `If-Match: "<version>"` (412 `resource.version_conflict`). */
-  save: (sessionId: string, values: SessionLogValues, version: string) =>
-    apiFetch<SessionLogView>(`${V1}/sessions/${sessionId}/log`, {
-      ...json('PUT', values),
-      headers: { 'If-Match': `"${version}"` },
-    }),
   clearNights: (siteId: string, from: string, to: string) =>
     apiFetch<ClearNightView>(
       `${V1}/sites/${siteId}/clear-nights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,

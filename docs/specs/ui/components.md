@@ -287,6 +287,14 @@ Canvas auf dem dunklen Diagrammgrund (`--npm-chart-frame`, Himmel `--npm-sky-bg`
 
 SVG auf dem dunklen Diagrammgrund: je Rig eine Zeile (Name, „Skala bis x h“), je Nacht des Zeitraums ein Balken mit den Stunden gestapelt nach Projekt (Reihenfolge und Farbe vom Aufrufer, gleiche Skala für alle Rigs), darunter eine gemeinsame Mondspur (Beleuchtung als Balken in `--npm-moon-lit`, `MoonIcon` bei Neu- und Vollmond) und die Achse (Monatsanfänge, bei bis zu 62 Nächten jede Woche). Jede Nacht mit Aufnahmen ist ein Link (`role="link"`, Enter/Leertaste) mit Beschriftung „Datum · Rig: h – Nacht öffnen“ und Tooltip je Projekt; Überfahren eines Segments meldet das Projekt (`onHover`), bei `highlight` treten die übrigen Segmente auf 30 % Deckkraft zurück. Eigenschaften: `rows` (`stackRows`), `nights`, `moon`, `marks`, `colorOf`, `nameOf`, `highlight`, `onHover`, `onOpenNight`, `formatNight`, `formatHours`, `label`. Keine Datenabfrage.
 
+### 2.28 `QualityBar` und `QualityText` (Sessionqualität, AP-77)
+
+`components/quality`: Leiste der Anteile **gut | auffällig | verworfen** in `--npm-quality-good` (dunkel), `--npm-quality-flagged` (hell) und `--npm-quality-rejected` (gestreift) – Helligkeitsunterschied plus Muster, nie nur Farbe; `role="img"` mit „gut: n, auffällig: n, verworfen: n“, ohne bewertete Lights ein gestrichelter leerer Rahmen. Größen `sm` (6 px, Filter-Chip und Tabellen) und `md` (10 px, Session-Urteil). `QualityText` daneben: „x % gut“ (abgerundet, 100 % nur wenn alle gut; ohne Auffällige mit Anzahl in Klammern), „· y % ⚠ auffällig (3 HFR, 1 Wolken)“ mit den Gründen nach Häufigkeit, „· y % ✕ verworfen“; ohne bewertete Lights „keine Messwerte“. Eingabe sind die Zählungen (`QualityCounts`: `good`, `flagged`, `rejected`, `none`, `sharePct`, `reasons`). Keine Datenabfrage.
+
+### 2.29 `Sparkline` (Verlaufslinie, AP-77)
+
+SVG (Standard 150 × 28 px) für eine Messgröße über die Nacht: Linie in `--npm-plot-1` (HFR) bzw. `--npm-violet` (Guiding), **Grenze gestrichelt** in `--npm-warning` (`limit`, `null` = keine), auffällige Punkte (`flagged`) als Kreis in `--npm-quality-flagged`. y-Achse aus Werten und Grenze, optional fest (`min`, `max`; Guiding ab 0); x = Aufnahmezeit. Weniger als zwei Werte → „–“. `role="img"` mit `label` vom Aufrufer (z. B. „HFR-Verlauf LUMI: alle innerhalb der Grenze“). Eigenschaften: `points` (`x`, `y`, `flagged`), `limit`, `label`, `tone`, `width`, `height`, `min`, `max`. Keine Datenabfrage.
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |

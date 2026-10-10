@@ -1117,6 +1117,44 @@ async function projectExamples(): Promise<Record<string, Example>> {
         },
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      [`POST ${P}/{id}/submit`]: {
+        url: `${P}/${OD}/submit`,
+        method: 'POST',
+        body: {},
+        resource: odRes,
+        reset: () =>
+          admin().query(
+            "UPDATE project SET approval_status = 'draft', submitter_rank = NULL WHERE id = $1",
+            [OD],
+          ),
+      },
+      [`POST ${P}/{id}/withdraw`]: {
+        url: `${P}/${OS}/withdraw`,
+        method: 'POST',
+        resource: osRes,
+        reset: () => submitted(OS),
+      },
+      [`POST ${P}/{id}/approve`]: {
+        url: `${P}/${S}/approve`,
+        method: 'POST',
+        body: { rigId: common.rigId, status: 'active' },
+        resource: sRes,
+        reset: () => submitted(S),
+      },
+      [`POST ${P}/{id}/return`]: {
+        url: `${P}/${S}/return`,
+        method: 'POST',
+        body: { comment: 'Bitte überarbeiten' },
+        resource: sRes,
+        reset: () => submitted(S),
+      },
+      [`POST ${P}/{id}/reject`]: {
+        url: `${P}/${S}/reject`,
+        method: 'POST',
+        body: { comment: 'Außerhalb der Saison' },
+        resource: sRes,
+        reset: () => submitted(S),
+      },
       'GET /api/web/v1/queue': { url: '/api/web/v1/queue' },
       'GET /api/web/v1/nina-instances': { url: '/api/web/v1/nina-instances' },
       'POST /api/web/v1/nina-instances': {

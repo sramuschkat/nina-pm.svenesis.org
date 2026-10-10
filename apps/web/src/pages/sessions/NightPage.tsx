@@ -1,21 +1,31 @@
 /**
- * S-61 Nacht (AP-64; FA-AUS-01…09, FA-AUS-12, FA-AUS-14, FA-AUS-20, FA-AUS-22; NT-03, NT-E2, NT-E3): eine Nacht eines
- * Rigs **im Bereich** Auswertung (`/auswertung/naechte/{rigId}/{night}`) – Link „← Nächte“ (mit dem Filter des Bereichs)
- * statt Brotkrumen. Mehrere Sessions der Nacht: Auswahl „Ganze Nacht | Session 1 · 20:00–01:10 | …“ (`?session=`);
- * Grafik, Kennzahlen, Aufnahmen und Verlauf gelten für die Auswahl, Soll/Ist und Prüfen bleiben je Session (Entscheidung
- * Sven 07.10.2026). Drei Reiter:
- * 1. **Übersicht**: Prüf-Banner, solange die Nacht ungeprüft ist (Prüfliste aus den Daten: ohne Zuordnung → zuordnen,
- *    Ist < Soll → Grund erfassen, Lücken > 10 min → ansehen; am Ende „Als geprüft markieren“), Kennzahlenleiste, Nachtgrafik
- *    mit Ist (`NightChart` wie Simulator und „Heute Nacht“), Ergebnis je Projekt mit Filter-Chips und „Details“ (Soll/Ist
- *    je Zeile mit Korrektur; Verworfen/Bonus nur bei Werten > 0).
- * 2. **Aufnahmen**: Typ-Chips mit Anzahl, CSV, HFR- und Sterne-Verlauf (FA-AUS-08), Tabelle mit 7 Spalten, Kennzeichen als
- *    Symbol am Ergebnis, Aktionen über „⋯“; die Flats-Übersicht als Kopfzeile beim Chip „Flats“.
- * 3. **Verlauf & Notizen**: Ereignisse als Zeitachse (Standortzeit mit Kürzel) neben dem Sitzungsprotokoll.
+ * S-61 Nacht (AP-64, AP-77; FA-AUS-01…06, FA-AUS-09, FA-AUS-12, FA-AUS-20, FA-AUS-22, FA-AUS-23, FA-AUS-25; NT-03, NT-E2,
+ * NT-E3): eine Nacht eines Rigs **im Bereich** Auswertung (`/auswertung/naechte/{rigId}/{night}`) – Link „← Nächte“ (mit
+ * dem Filter des Bereichs) statt Brotkrumen. Mehrere Sessions der Nacht: Auswahl „Ganze Nacht | Session 1 · 20:00–01:10 |
+ * …“ (`?session=`); Qualität, Grafik, Kennzahlen und Bedingungen gelten für die Auswahl, Soll/Ist und die Qualität je
+ * Projekt bleiben je Session (Entscheidung Sven 07.10.2026).
+ *
+ * Seit AP-77 (Entscheidung Sven 10.10.2026) **ohne Reiter** und **ohne Prüfen**, nur die Übersicht:
+ * 1. **Session-Qualität** als Urteil (Anteil guter Lights: sehr gut ≥ 95 %, gut ≥ 85 %, mäßig ≥ 70 %, sonst schlecht).
+ * 2. Hinweise: Warnungen und Fehler der Nacht, nicht zugeordnete Aufnahmen mit *Zuordnen* (sie zählen erst danach).
+ * 3. Kennzahlenleiste, Zeile **Bedingungen** (Lights, Telemetrie, Vorhersage), Nachtgrafik mit Ist, Qualitätskurve.
+ * 4. **Ergebnis je Projekt** je Session: Filter-Chips mit Ist/Soll und Qualitätsleiste; „Details“ mit Tabelle je Filter
+ *    (Anteile, HFR, Sterne, Guiding, Verläufe mit Grenzlinie) und Soll/Ist mit Korrektur.
+ * 5. Eingeklappt: Flats und „Alle Ereignisse (n)“. Die CSV der Nacht steht im Kopf.
  * Soll = erster Plan der Session ohne Bonus, Ist = Aufnahmen dieser Session (Entscheidung Sven 07.10.2026).
  */
-import { formatNightKey, formatTzAbbr, formatZonedTime, rejectReasons } from '@nina-pm/shared';
+import {
+  formatNightKey,
+  formatTzAbbr,
+  formatZonedTime,
+  qualityStats,
+  rejectReasons,
+  sessionGrade,
+  shareLabelPct,
+  type ConditionMetric,
+} from '@nina-pm/shared';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router';
 import {
@@ -33,9 +43,9 @@ import { actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
+import { QualityBar, QualityText, Sparkline, reasonText } from '../../components/quality';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Tabs } from '../../components/Tabs';
 import { Person, useMemberNames } from '../../lib/member';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
@@ -43,50 +53,49 @@ import { EVALUATION_PATHS, filterSearch, nightWeekday, parseFilter } from './eva
 import { MetricsChart } from './MetricsChart';
 import { useNightActual } from './night-actual';
 import {
-  captureCounts,
-  captureMatches,
-  CAPTURE_TYPES,
   gapsWithin,
-  median,
   mergeDetails,
   nightFacts,
+  nightWarnings,
   projectResults,
-  reviewChecklist,
-  type CaptureType,
   type NightGap,
   type ProjectResult,
-  type ReviewItem,
 } from './night-model';
-import { SessionLogPanel } from './SessionLogPanel';
 import styles from './evaluation.module.css';
 
-type Tab = 'overview' | 'captures' | 'history';
-/** Reiter in der Adresse (deutsch): `?ansicht=aufnahmen` usw. */
-const TAB_PARAM: Record<Tab, string> = {
-  overview: 'uebersicht',
-  captures: 'aufnahmen',
-  history: 'verlauf',
-};
-const TABS: readonly Tab[] = ['overview', 'captures', 'history'];
-
 export const hours = (s: number) => (s / 3600).toFixed(1);
+
+type NightLineQuality = NonNullable<NightSessionDetail['quality']>['lines'][number];
+
+/** Bewertete Lights (gespeichert, zugeordnet, mit Bewertung) für die Summe der Auswahl. */
+const gradedLights = (captures: readonly NightSessionCapture[]) =>
+  captures.flatMap((c) =>
+    c.grade
+      ? [
+          {
+            grade: c.grade,
+            flags: c.flags ?? [],
+            hfr: c.hfr,
+            stars: c.stars,
+            rmsArcsec: c.quality?.rmsArcsec ?? null,
+          },
+        ]
+      : [],
+  );
 
 export function NightPage() {
   const { t, i18n } = useTranslation();
   const { rigId = '', night = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const back = `${EVALUATION_PATHS.nights}${filterSearch(parseFilter(params))}`;
-  const tab =
-    (Object.entries(TAB_PARAM).find(([, v]) => v === params.get('ansicht'))?.[0] as
-      Tab | undefined) ?? 'overview';
   const setParam = (key: string, value: string | null) => {
     const p = new URLSearchParams(params);
     if (value === null) p.delete(key);
     else p.set(key, value);
     setParams(p, { replace: true });
   };
-  const setTab = (next: Tab) => setParam('ansicht', next === 'overview' ? null : TAB_PARAM[next]);
   const client = useQueryClient();
+  const nameOf = useMemberNames();
   // Eine Seite je Nacht und Rig (Entscheidung Sven 07.10.2026): alle Sessions der Nacht, je Session das Detail.
   const list = useQuery({
     queryKey: ['sessions', 'night', rigId, night],
@@ -108,9 +117,10 @@ export function NightPage() {
   const merged = shown.length > 0 ? mergeDetails(shown) : undefined;
   const actual = useNightActual(rigId && night ? { rigId, night } : null, merged?.events ?? null);
   const refresh = () => client.invalidateQueries({ queryKey: ['sessions'] });
-  const [captureType, setCaptureType] = useState<CaptureType>('all');
   const [cursor, setCursor] = useState<number | null>(null);
-  const chartRef = useRef<HTMLElement>(null);
+  const [assigning, setAssigning] = useState(false);
+  const assignRef = useRef<HTMLDivElement>(null);
+  const canAssign = useCan('session.review');
 
   const failed = list.error ?? details.find((d) => d.isError)?.error;
   if (failed)
@@ -142,7 +152,6 @@ export function NightPage() {
   const s = merged.session;
   const zone = s.siteTimeZone;
   const time = (at: string) => `${formatZonedTime(at, zone)} ${formatTzAbbr(at, zone)}`;
-  const counts = captureCounts(merged.captures);
   const many = loaded.length > 1;
   const sessionLabel = (d: NightSessionDetail) => {
     const i = loaded.indexOf(d);
@@ -153,11 +162,13 @@ export function NightPage() {
       ? t('evaluation.night.sessionN', { n: i + 1, range })
       : t('evaluation.night.sessionOne', { range });
   };
-  const showGap = (fromUtc: number) => {
-    setTab('overview');
-    setCursor(fromUtc);
-    chartRef.current?.scrollIntoView({ block: 'center' });
-    chartRef.current?.focus();
+  const unassigned = merged.captures.filter(
+    (c) => c.frameType === 'light' && c.assignment === 'unassigned',
+  );
+  const lights = merged.captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
+  const openAssign = () => {
+    setAssigning(true);
+    requestAnimationFrame(() => assignRef.current?.scrollIntoView?.({ block: 'start' }));
   };
   return (
     <div className={styles.page}>
@@ -175,14 +186,21 @@ export function NightPage() {
               {time(s.startedAt)} – {s.endedAt ? time(s.endedAt) : t('sessions.running')}
             </span>
             {many ? <span>{t('evaluation.nights.sessions', { count: loaded.length })}</span> : null}
-            <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
-              {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-            </span>
           </>
+        }
+        actions={
+          <button
+            type="button"
+            className={styles.button}
+            disabled={merged.captures.length === 0}
+            onClick={() => downloadCsv(merged, merged.captures, zone, nameOf)}
+          >
+            {t('evaluation.night.csv')}
+          </button>
         }
       />
       {many ? (
-        // Auswahl der Session (Standard: ganze Nacht für Grafik, Kennzahlen, Aufnahmen und Verlauf).
+        // Auswahl der Session (Standard: ganze Nacht für Qualität, Grafik, Kennzahlen und Bedingungen).
         <div className={styles.typeChips} role="group" aria-label={t('evaluation.night.choose')}>
           <button
             type="button"
@@ -205,161 +223,269 @@ export function NightPage() {
           ))}
         </div>
       ) : null}
-      <Tabs
-        label={t('evaluation.night.tabs')}
-        tabs={TABS.map((k) => ({
-          key: k,
-          label: t(`evaluation.night.tab.${k}`),
-          ...(k === 'captures'
-            ? { badge: <span className={styles.tabCount}>{counts.all}</span> }
-            : {}),
-        }))}
-        value={tab}
-        onChange={setTab}
-        panelClassName={styles.tabPanel}
-        panels={{
-          overview: (
-            <>
-              <FactsBar
-                detail={merged}
-                gaps={
-                  actual.gaps && selected ? gapsWithin(actual.gaps, selected.session) : actual.gaps
-                }
-              />
-              <section
-                ref={chartRef}
-                tabIndex={-1}
-                className={styles.chartCard}
-                aria-label={t('evaluation.night.chart')}
-              >
-                <div className={styles.cardHead}>
-                  <h2 className={styles.sectionTitle}>{t('evaluation.night.chart')}</h2>
-                  <span className={styles.muted}>
-                    {t('evaluation.night.chartHint', { zone: formatTzAbbr(s.startedAt, zone) })}
-                  </span>
-                </div>
-                {actual.chart ? (
-                  <NightChart
-                    {...actual.chart}
-                    variant="plan"
-                    cursorUtc={cursor}
-                    onCursorChange={setCursor}
-                    height={260}
-                    state="ready"
-                  />
-                ) : actual.isError ? (
-                  <p className={styles.muted}>{t('evaluation.night.chartError')}</p>
-                ) : (
-                  <p className={styles.muted} role="status">
-                    {t('evaluation.night.chartPending')}
-                  </p>
-                )}
-              </section>
-              {/* Soll/Ist und Prüfen je Session (sessionbezogen). */}
-              {shown.map((d) => (
-                <SessionBlock
-                  key={d.session.id}
-                  detail={d}
-                  label={sessionLabel(d)}
-                  gaps={gapsWithin(actual.gaps ?? [], d.session)}
-                  onRefresh={refresh}
-                  onAssign={() => {
-                    setCaptureType('unassigned');
-                    setTab('captures');
-                  }}
-                  onGap={showGap}
-                />
-              ))}
-            </>
-          ),
-          captures: (
-            <Captures
-              detail={merged}
-              type={captureType}
-              onType={setCaptureType}
-              gaps={actual.gaps ?? []}
-              onChanged={refresh}
-            />
-          ),
-          history: (
-            <div className={styles.historyGrid}>
-              <EventTimeline detail={merged} />
-              <div className={styles.logs}>
-                {shown.map((d) => (
-                  <section
-                    key={d.session.id}
-                    className={styles.subCard}
-                    aria-label={
-                      many
-                        ? `${t('sessions.log.title')} – ${sessionLabel(d)}`
-                        : t('sessions.log.title')
-                    }
-                  >
-                    {many ? <p className={styles.muted}>{sessionLabel(d)}</p> : null}
-                    <SessionLogPanel sessionId={d.session.id} siteTimeZone={zone} />
-                  </section>
-                ))}
-              </div>
-            </div>
-          ),
-        }}
+      <QualitySummary captures={merged.captures} />
+      <Notices
+        detail={merged}
+        unassigned={unassigned.length}
+        canAssign={canAssign}
+        onAssign={openAssign}
       />
+      {assigning && unassigned.length > 0 ? (
+        <div ref={assignRef} className={styles.subCard}>
+          <AssignList
+            captures={unassigned}
+            detail={merged}
+            onDone={() => setAssigning(false)}
+            onChanged={refresh}
+          />
+        </div>
+      ) : null}
+      <FactsBar
+        detail={merged}
+        gaps={actual.gaps && selected ? gapsWithin(actual.gaps, selected.session) : actual.gaps}
+      />
+      <Conditions conditions={merged.conditions ?? []} />
+      <section tabIndex={-1} className={styles.chartCard} aria-label={t('evaluation.night.chart')}>
+        <div className={styles.cardHead}>
+          <h2 className={styles.sectionTitle}>{t('evaluation.night.chart')}</h2>
+          <span className={styles.muted}>
+            {t('evaluation.night.chartHint', { zone: formatTzAbbr(s.startedAt, zone) })}
+          </span>
+        </div>
+        {actual.chart ? (
+          <NightChart
+            {...actual.chart}
+            variant="plan"
+            cursorUtc={cursor}
+            onCursorChange={setCursor}
+            height={260}
+            state="ready"
+          />
+        ) : actual.isError ? (
+          <p className={styles.muted}>{t('evaluation.night.chartError')}</p>
+        ) : (
+          <p className={styles.muted} role="status">
+            {t('evaluation.night.chartPending')}
+          </p>
+        )}
+      </section>
+      {/* Ergebnis je Projekt mit Qualität, Soll/Ist und Korrektur je Session (sessionbezogen). */}
+      {shown.map((d) => (
+        <SessionBlock key={d.session.id} detail={d} label={sessionLabel(d)} />
+      ))}
+      {lights.some((c) => c.hfr !== null) ? (
+        <QualityCurve detail={merged} gaps={actual.gaps ?? []} />
+      ) : null}
+      {merged.flats.length > 0 ? (
+        <details className={styles.deviations}>
+          <summary>{t('evaluation.captures.flatsSummary')}</summary>
+          <FlatsHeader detail={merged} />
+        </details>
+      ) : null}
+      <details className={styles.deviations}>
+        <summary>{t('evaluation.night.allEvents', { count: merged.events.length })}</summary>
+        <EventTimeline detail={merged} />
+      </details>
     </div>
   );
 }
 
+// ---- Qualität und Hinweise ----
+
+/** Urteil der Auswahl (ganze Nacht bzw. Session) aus allen bewerteten Lights. */
+function QualitySummary({ captures }: { captures: readonly NightSessionCapture[] }) {
+  const { t, i18n } = useTranslation();
+  const headingId = useId();
+  const stats = qualityStats(gradedLights(captures));
+  const grade = sessionGrade(stats.sharePct);
+  const graded = stats.good + stats.flagged + stats.rejected;
+  const n = (x: number, d: number) =>
+    x.toLocaleString(i18n.language, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const parts = [
+    t('evaluation.quality.lights', { good: stats.good, count: graded }),
+    t('evaluation.quality.flaggedCount', { count: stats.flagged }),
+    ...(stats.rejected > 0
+      ? [t('evaluation.quality.rejectedCount', { count: stats.rejected })]
+      : []),
+    ...(stats.hfr
+      ? [t('evaluation.quality.hfrRange', { min: n(stats.hfr.min, 2), max: n(stats.hfr.max, 2) })]
+      : []),
+    ...(stats.rmsArcsec
+      ? [t('evaluation.quality.rms', { rms: n(stats.rmsArcsec.median, 1) })]
+      : []),
+  ];
+  return (
+    <section
+      className={styles.qualitySummary}
+      aria-labelledby={headingId}
+      data-grade={grade ?? 'none'}
+    >
+      <span className={styles.qualityPct}>
+        {stats.sharePct === null ? '–' : `${String(shareLabelPct(stats.sharePct))} %`}
+      </span>
+      <div className={styles.qualityBody}>
+        <h2 id={headingId} className={styles.qualityTitle}>
+          {grade
+            ? t('evaluation.quality.title', { grade: t(`evaluation.quality.grade.${grade}`) })
+            : t('evaluation.quality.titleNone')}
+        </h2>
+        <span className={styles.muted}>
+          {grade ? parts.join(' · ') : t('evaluation.quality.noneHint')}
+        </span>
+      </div>
+      <div className={styles.qualityBar}>
+        <QualityBar counts={stats} size="md" />
+      </div>
+    </section>
+  );
+}
+
 /**
- * Eine Session der Nacht in der Übersicht: Kopfzeile (Zeitraum, NINA-Instanz, geprüft, ⋯ mit Prüfung zurücknehmen bzw.
- * Nachtbericht erneut senden), Prüf-Banner, solange sie ungeprüft ist, und Ergebnis je Projekt (Soll/Ist je Session).
+ * Hinweise der Nacht (nur wenn es welche gibt): Warnungen und Fehler, Aufnahmen mit Temperatur- bzw.
+ * Einstellungsabweichung (NT-E2/E3, bisher Symbol im Reiter Aufnahmen), nicht zugeordnete Aufnahmen mit *Zuordnen*.
  */
-function SessionBlock({
-  detail: d,
-  label,
-  gaps,
-  onRefresh,
+function Notices({
+  detail,
+  unassigned,
+  canAssign,
   onAssign,
-  onGap,
 }: {
   detail: NightSessionDetail;
-  label: string;
-  gaps: readonly NightGap[];
-  onRefresh: () => Promise<unknown>;
+  unassigned: number;
+  canAssign: boolean;
   onAssign: () => void;
-  onGap: (fromUtc: number) => void;
 }) {
+  const { t, i18n } = useTranslation();
+  const w = nightWarnings(detail.events);
+  const Warn = actionIcons.warning;
+  const kind = (k: string) =>
+    i18n.exists(`sessions.events.kind.${k}`) ? t(`sessions.events.kind.${k}`) : k;
+  const lights = detail.captures.filter((c) => c.frameType === 'light');
+  const temperature = lights.filter((c) => c.temperatureDeviation).length;
+  const settings = lights.filter((c) => c.settingsDeviation).length;
+  if (w.kinds.length === 0 && unassigned === 0 && temperature === 0 && settings === 0) return null;
+  return (
+    <div className={styles.notices}>
+      {w.kinds.length > 0 ? (
+        <p className={styles.notice} data-tone={w.errors > 0 ? 'danger' : 'warning'} role="note">
+          <Warn size={16} aria-hidden="true" />
+          <span>
+            {t('evaluation.night.warnings', { errors: w.errors, warnings: w.warnings })}{' '}
+            <span className={styles.muted}>
+              ({w.kinds.map((k) => `${kind(k.kind)} ${String(k.count)}`).join(', ')})
+            </span>
+          </span>
+        </p>
+      ) : null}
+      {temperature > 0 || settings > 0 ? (
+        <p className={styles.notice} data-tone="warning" role="note">
+          <Warn size={16} aria-hidden="true" />
+          <span>{t('evaluation.night.deviating', { temperature, settings })}</span>
+        </p>
+      ) : null}
+      {unassigned > 0 ? (
+        <p className={styles.notice} data-tone="warning" role="note">
+          <Warn size={16} aria-hidden="true" />
+          <span>{t('evaluation.night.unassigned', { count: unassigned })}</span>
+          {canAssign ? (
+            <button type="button" className={styles.linkButton} onClick={onAssign}>
+              {t('evaluation.night.assign')}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const CONDITION_DIGITS: Record<ConditionMetric, number> = {
+  cloudPct: 0,
+  sqm: 2,
+  temperatureC: 1,
+  humidityPct: 0,
+  dewPointC: 1,
+  windMs: 1,
+  seeingScore: 0,
+  transparencyPct: 0,
+};
+
+/** Zeile „Bedingungen“ (AP-77): Median mit Spanne, Quelle als Hinweis; fehlende Größen entfallen. */
+function Conditions({ conditions }: { conditions: NonNullable<NightSessionDetail['conditions']> }) {
+  const { t, i18n } = useTranslation();
+  if (conditions.length === 0) return null;
+  const scale = (m: ConditionMetric, v: number) => (m === 'seeingScore' ? v * 100 : v);
+  const n = (m: ConditionMetric, v: number) =>
+    scale(m, v).toLocaleString(i18n.language, {
+      minimumFractionDigits: CONDITION_DIGITS[m],
+      maximumFractionDigits: CONDITION_DIGITS[m],
+    });
+  return (
+    <section className={styles.conditions} aria-label={t('evaluation.conditions.title')}>
+      <span className={styles.factLabel}>{t('evaluation.conditions.title')}</span>
+      <ul className={styles.conditionList}>
+        {conditions.map((c) => {
+          const same = n(c.metric, c.min) === n(c.metric, c.max);
+          const value = t(`evaluation.conditions.unit.${c.metric}`, { v: n(c.metric, c.median) });
+          return (
+            <li
+              key={c.metric}
+              title={t(`evaluation.conditions.source.${c.source}`)}
+              className={styles.condition}
+            >
+              <span className={styles.muted}>{t(`evaluation.conditions.metric.${c.metric}`)}</span>{' '}
+              <strong>{value}</strong>
+              {same ? null : (
+                <span className={styles.muted}>
+                  {' '}
+                  ({n(c.metric, c.min)}–{n(c.metric, c.max)})
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Qualitätskurve der Auswahl (FA-AUS-23, bisher Reiter Aufnahmen). */
+function QualityCurve({ detail, gaps }: { detail: NightSessionDetail; gaps: readonly NightGap[] }) {
+  const { t } = useTranslation();
+  const headingId = useId();
+  return (
+    <section className={styles.subCard} aria-labelledby={headingId}>
+      <div className={styles.cardHead}>
+        <h2 id={headingId} className={styles.sectionTitle}>
+          {t('evaluation.captures.metrics')}
+        </h2>
+      </div>
+      <MetricsChart
+        captures={detail.captures}
+        events={detail.events}
+        gaps={gaps}
+        timeZone={detail.session.siteTimeZone}
+        fromUtc={detail.session.startedAt}
+        toUtc={detail.session.endedAt}
+        scaleArcsecPx={detail.quality?.scaleArcsecPx ?? null}
+        refs={detail.quality?.refs ?? []}
+      />
+    </section>
+  );
+}
+
+/**
+ * Eine Session der Nacht: Kopfzeile (Zeitraum, NINA-Instanz, ⋯ mit Nachtbericht erneut senden) und Ergebnis je Projekt
+ * (Soll/Ist und Qualität je Session).
+ */
+function SessionBlock({ detail: d, label }: { detail: NightSessionDetail; label: string }) {
   const { t } = useTranslation();
   const s = d.session;
-  const canReview = useCan('session.review');
   const canResend = useCan('session.report.resend');
   const resend = useMutation({ mutationFn: () => discordApi.resendReport(s.id) });
-  const review = useMutation({
-    mutationFn: (reviewed: boolean) => sessionsApi.review(s.id, reviewed),
-    onSettled: onRefresh,
-  });
   const [openProject, setOpenProject] = useState<string | null>(null);
   const [correctLine, setCorrectLine] = useState<string | null>(null);
-  const items = reviewChecklist(d, gaps);
-  const banner = !s.reviewed && items.length > 0;
-  const menu: ActionMenuItem[] = [
-    ...(canReview && !s.reviewed && !banner
-      ? [
-          {
-            key: 'review',
-            label: t('sessions.detail.markReviewed'),
-            onSelect: () => review.mutate(true),
-          },
-        ]
-      : []),
-    ...(canReview && s.reviewed
-      ? [
-          {
-            key: 'unreview',
-            label: t('sessions.detail.unmarkReviewed'),
-            onSelect: () => review.mutate(false),
-          },
-        ]
-      : []),
-    ...(canResend && s.status !== 'running'
+  const menu: ActionMenuItem[] =
+    canResend && s.status !== 'running'
       ? [
           {
             key: 'resend',
@@ -367,14 +493,7 @@ function SessionBlock({
             onSelect: () => resend.mutate(),
           },
         ]
-      : []),
-  ];
-  const openCorrection = (lineId: string) => {
-    const row = d.rows.find((r) => r.exposureLineId === lineId);
-    if (!row) return;
-    setOpenProject(row.projectId);
-    setCorrectLine(row.canCorrect ? lineId : null);
-  };
+      : [];
   return (
     <>
       <div className={styles.sessionHead}>
@@ -388,9 +507,6 @@ function SessionBlock({
           </span>
         ) : null}
         {s.createdOffline ? <span className={styles.badge}>{t('sessions.offline')}</span> : null}
-        <span className={s.reviewed ? styles.badgeOk : styles.badgeWarn}>
-          {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-        </span>
         {menu.length > 0 ? (
           <span className={styles.sessionMenu}>
             <ActionMenu
@@ -400,7 +516,6 @@ function SessionBlock({
           </span>
         ) : null}
       </div>
-      {review.error ? <ProblemMessage code={problemCode(review.error)} /> : null}
       {resend.error ? <ProblemMessage code={problemCode(resend.error)} /> : null}
       {resend.data ? (
         <p role="status" className={resend.data.channels > 0 ? styles.badgeOk : styles.badgeWarn}>
@@ -408,18 +523,6 @@ function SessionBlock({
             ? t('sessions.detail.resendQueued', { count: resend.data.channels })
             : t('sessions.detail.resendNoChannel')}
         </p>
-      ) : null}
-      {banner ? (
-        <ReviewBanner
-          items={items}
-          zone={s.siteTimeZone}
-          canReview={canReview}
-          pending={review.isPending}
-          onReview={() => review.mutate(true)}
-          onAssign={onAssign}
-          onCorrect={openCorrection}
-          onGap={onGap}
-        />
       ) : null}
       <ProjectResults
         detail={d}
@@ -432,122 +535,6 @@ function SessionBlock({
         onCorrect={setCorrectLine}
       />
     </>
-  );
-}
-
-// ---- Übersicht ----
-
-function ReviewBanner({
-  items,
-  zone,
-  canReview,
-  pending,
-  onReview,
-  onAssign,
-  onCorrect,
-  onGap,
-}: {
-  items: readonly ReviewItem[];
-  zone: string;
-  canReview: boolean;
-  pending: boolean;
-  onReview: () => void;
-  onAssign: () => void;
-  onCorrect: (lineId: string) => void;
-  onGap: (fromUtc: number) => void;
-}) {
-  const { t } = useTranslation();
-  const headingId = useId();
-  const open = items.filter((i) => !i.ok).length;
-  const Ok = uiIcons.ok;
-  const Warn = actionIcons.warning;
-  const hm = (sec: number) => {
-    const at = new Date(sec * 1000).toISOString();
-    return formatZonedTime(at, zone);
-  };
-  return (
-    <section className={styles.banner} aria-labelledby={headingId}>
-      <div className={styles.bannerBody}>
-        <h2 id={headingId} className={styles.bannerTitle}>
-          {open > 0
-            ? t('evaluation.review.title', { count: open })
-            : t('evaluation.review.titleDone')}
-        </h2>
-        <ul className={styles.checklist}>
-          {items.map((i) => (
-            <li
-              key={`${i.kind}-${'lineId' in i ? i.lineId : 'fromUtc' in i ? String(i.fromUtc) : ''}`}
-            >
-              {i.ok ? (
-                <Ok size={16} className={styles.okIcon} aria-label={t('evaluation.review.ok')} />
-              ) : (
-                <Warn
-                  size={16}
-                  className={styles.warnIcon}
-                  aria-label={t('evaluation.review.open')}
-                />
-              )}
-              {i.kind === 'assigned' ? (
-                <span>{t('evaluation.review.assigned', { count: i.count })}</span>
-              ) : i.kind === 'unassigned' ? (
-                <>
-                  <span>{t('evaluation.review.unassigned', { count: i.count })}</span>
-                  <button type="button" className={styles.linkButton} onClick={onAssign}>
-                    {t('evaluation.review.assign')}
-                  </button>
-                </>
-              ) : i.kind === 'short' ? (
-                <>
-                  <span>
-                    {t('evaluation.review.short', {
-                      project: i.projectName,
-                      filter: i.filter,
-                      acquired: i.acquired,
-                      planned: i.planned,
-                    })}
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.linkButton}
-                    onClick={() => onCorrect(i.lineId)}
-                  >
-                    {t('evaluation.review.reason')}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span>
-                    {t('evaluation.review.gap', {
-                      min: Math.round((i.toUtc - i.fromUtc) / 60),
-                      kind: t(`simulator.gap.${i.gapKind}`, { count: i.count }),
-                      from: hm(i.fromUtc),
-                      to: hm(i.toUtc),
-                    })}
-                  </span>
-                  <button
-                    type="button"
-                    className={styles.linkButton}
-                    onClick={() => onGap(i.fromUtc)}
-                  >
-                    {t('evaluation.review.show')}
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-      {canReview ? (
-        <button
-          type="button"
-          className={styles.buttonPrimary}
-          disabled={pending}
-          onClick={onReview}
-        >
-          {t('sessions.detail.markReviewed')}
-        </button>
-      ) : null}
-    </section>
   );
 }
 
@@ -591,6 +578,14 @@ function FactsBar({
   );
 }
 
+/** Qualität einer Zeile der Session (Server, AP-77) zum Filter-Chip. */
+const lineQualityOf = (
+  lines: readonly NightLineQuality[],
+  projectId: string,
+  lineId: string,
+): NightLineQuality | undefined =>
+  lines.find((l) => l.projectId === projectId && l.exposureLineId === lineId);
+
 function ProjectResults({
   detail,
   open,
@@ -609,6 +604,7 @@ function ProjectResults({
   const colorOf = (short: string) =>
     (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
   const results = projectResults(detail.rows);
+  const lines = detail.quality?.lines ?? [];
   const zone = detail.session.siteTimeZone;
   const hm = (at: string) => formatZonedTime(at, zone);
   const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
@@ -621,7 +617,9 @@ function ProjectResults({
         <h2 id={headingId} className={styles.sectionTitle}>
           {t('evaluation.night.results')}
         </h2>
-        <span className={styles.muted}>{t('sessions.plan.definition')}</span>
+        <span className={styles.muted}>
+          {t('sessions.plan.definition')} · {t('evaluation.quality.definition')}
+        </span>
       </div>
       {results.length === 0 ? (
         <p className={styles.muted}>{t('sessions.plan.empty')}</p>
@@ -630,6 +628,7 @@ function ProjectResults({
           {results.map((p) => {
             const expanded = open === p.projectId;
             const detailsId = `details-${p.projectId}`;
+            const mine = lines.filter((l) => l.projectId === p.projectId);
             return (
               <li key={p.projectId} className={styles.result}>
                 <div className={styles.resultRow}>
@@ -641,39 +640,49 @@ function ProjectResults({
                     className={styles.filterChips}
                     aria-label={t('evaluation.night.filtersOf', { name: p.projectName })}
                   >
-                    {p.filters.map((f) => (
-                      <li
-                        key={f.lineId}
-                        className={styles.filterChip}
-                        data-ok={f.ok === null ? undefined : String(f.ok)}
-                      >
-                        <FilterChip shortName={f.filter} color={colorOf(f.filter)} size="sm" />
-                        <span>
-                          {f.series
-                            ? t('evaluation.night.series', {
-                                from: hm(f.series.fromUtc),
-                                to: hm(f.series.untilUtc),
-                                n: f.acquired.toLocaleString(i18n.language),
-                              })
-                            : f.planned === null
-                              ? String(f.acquired)
-                              : `${String(f.acquired)}/${String(f.planned)}`}
-                        </span>
-                        {f.ok === true ? (
-                          <Ok
-                            size={14}
-                            className={styles.okIcon}
-                            aria-label={t('evaluation.review.ok')}
-                          />
-                        ) : f.ok === false ? (
-                          <Warn
-                            size={14}
-                            className={styles.warnIcon}
-                            aria-label={t('evaluation.review.open')}
-                          />
-                        ) : null}
-                      </li>
-                    ))}
+                    {p.filters.map((f) => {
+                      const q = lineQualityOf(lines, p.projectId, f.lineId);
+                      return (
+                        <li key={f.lineId} className={styles.filterQuality}>
+                          <span
+                            className={styles.filterChip}
+                            data-ok={f.ok === null ? undefined : String(f.ok)}
+                          >
+                            <FilterChip shortName={f.filter} color={colorOf(f.filter)} size="sm" />
+                            <span>
+                              {f.series
+                                ? t('evaluation.night.series', {
+                                    from: hm(f.series.fromUtc),
+                                    to: hm(f.series.untilUtc),
+                                    n: f.acquired.toLocaleString(i18n.language),
+                                  })
+                                : f.planned === null
+                                  ? String(f.acquired)
+                                  : `${String(f.acquired)}/${String(f.planned)}`}
+                            </span>
+                            {f.ok === true ? (
+                              <Ok
+                                size={14}
+                                className={styles.okIcon}
+                                aria-label={t('evaluation.night.planReached')}
+                              />
+                            ) : f.ok === false ? (
+                              <Warn
+                                size={14}
+                                className={styles.warnIcon}
+                                aria-label={t('evaluation.night.planMissed')}
+                              />
+                            ) : null}
+                          </span>
+                          {q ? (
+                            <>
+                              <QualityBar counts={q} />
+                              <QualityText counts={q} />
+                            </>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                   <span className={styles.resultHours}>
                     {t('sessions.hours', { h: n(p.integrationS / 3600) })}
@@ -690,6 +699,13 @@ function ProjectResults({
                 </div>
                 {expanded ? (
                   <div id={detailsId} className={styles.resultDetails}>
+                    {mine.length > 0 ? (
+                      <LineQualityTable
+                        lines={mine}
+                        projectName={p.projectName}
+                        colorOf={colorOf}
+                      />
+                    ) : null}
                     <ProjectDetails
                       detail={detail}
                       project={p}
@@ -707,6 +723,167 @@ function ProjectResults({
     </section>
   );
 }
+
+/** Bildqualität je Filter eines Projekts (AP-77, Entwurf „Aufgeklappt“): Anteile, Median/Spanne, Verläufe mit Grenze. */
+function LineQualityTable({
+  lines,
+  projectName,
+  colorOf,
+}: {
+  lines: readonly NightLineQuality[];
+  projectName: string;
+  colorOf: (short: string) => string;
+}) {
+  const { t, i18n } = useTranslation();
+  const n = (x: number, d: number) =>
+    x.toLocaleString(i18n.language, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const spread = (s: NightLineQuality['hfr'], d: number, unit: (v: string) => string): ReactNode =>
+    s ? (
+      <>
+        {unit(n(s.median, d))}{' '}
+        <span className={styles.muted}>
+          {n(s.min, d)}–{n(s.max, d)}
+        </span>
+      </>
+    ) : (
+      '–'
+    );
+  const columns: DataColumn<NightLineQuality>[] = [
+    {
+      id: 'filter',
+      header: t('sessions.plan.col.filter'),
+      sortValue: (l) => l.filter,
+      cell: (l) => <FilterChip shortName={l.filter} color={colorOf(l.filter)} size="sm" />,
+    },
+    {
+      id: 'lights',
+      header: t('evaluation.quality.col.lights'),
+      align: 'end',
+      sortValue: (l) => l.good + l.flagged + l.rejected + l.none,
+      cell: (l) => l.good + l.flagged + l.rejected + l.none,
+    },
+    {
+      id: 'share',
+      header: t('evaluation.quality.col.share'),
+      sortValue: (l) => l.sharePct ?? -1,
+      cell: (l) => (
+        <span className={styles.shareCell}>
+          <QualityBar counts={l} />
+          <QualityText counts={l} showCount={false} />
+        </span>
+      ),
+    },
+    {
+      id: 'hfr',
+      header: t('evaluation.quality.col.hfr'),
+      priority: 2,
+      nowrap: true,
+      sortValue: (l) => l.hfr?.median ?? -1,
+      cell: (l) => spread(l.hfr, 2, (v) => t('evaluation.quality.px', { v })),
+    },
+    {
+      id: 'stars',
+      header: t('evaluation.quality.col.stars'),
+      priority: 3,
+      nowrap: true,
+      sortValue: (l) => l.stars?.median ?? -1,
+      cell: (l) => spread(l.stars, 0, (v) => v),
+    },
+    {
+      id: 'rms',
+      header: t('evaluation.quality.col.rms'),
+      priority: 2,
+      nowrap: true,
+      sortValue: (l) => l.rmsArcsec?.median ?? -1,
+      cell: (l) => spread(l.rmsArcsec, 2, (v) => t('evaluation.quality.arcsec', { v })),
+    },
+    {
+      id: 'hfrTrend',
+      header: t('evaluation.quality.col.hfrTrend'),
+      priority: 3,
+      cell: (l) => (
+        <Sparkline
+          tone="hfr"
+          points={l.series.map((p) => ({ x: Date.parse(p.atUtc), y: p.hfr, flagged: p.flagged }))}
+          limit={l.hfrLimit}
+          label={t('evaluation.quality.hfrTrend', {
+            filter: l.filter,
+            reasons: reasonText(l.reasons, t) || t('evaluation.quality.allGood'),
+          })}
+        />
+      ),
+    },
+    {
+      id: 'rmsTrend',
+      header: t('evaluation.quality.col.rmsTrend'),
+      priority: 3,
+      cell: (l) => (
+        <Sparkline
+          tone="rms"
+          points={l.series.map((p) => ({
+            x: Date.parse(p.atUtc),
+            y: p.rmsArcsec,
+            flagged: p.flagged,
+          }))}
+          limit={l.rmsLimit}
+          min={0}
+          label={t('evaluation.quality.rmsTrend', { filter: l.filter })}
+        />
+      ),
+    },
+  ];
+  return (
+    <div className={styles.lineQuality}>
+      <h3 className={styles.formTitle}>{t('evaluation.quality.perFilter')}</h3>
+      <DataTable
+        columns={columns}
+        rows={lines}
+        rowKey={(l) => l.exposureLineId ?? l.filter}
+        rowLabel={(l) => `${projectName} · ${l.filter}`}
+        label={t('evaluation.quality.tableOf', { name: projectName })}
+      />
+      <p className={styles.muted}>{t('evaluation.quality.legend')}</p>
+    </div>
+  );
+}
+
+/** Nicht zugeordnete Lights der Auswahl zuordnen (FA-AUS-22, Admin): je Aufnahme ein Formular. */
+function AssignList({
+  captures,
+  detail,
+  onDone,
+  onChanged,
+}: {
+  captures: readonly NightSessionCapture[];
+  detail: NightSessionDetail;
+  onDone: () => void;
+  onChanged: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <div className={styles.cardHead}>
+        <h2 className={styles.sectionTitle}>
+          {t('evaluation.night.assignTitle', { count: captures.length })}
+        </h2>
+        <button type="button" className={styles.button} onClick={onDone}>
+          {t('evaluation.night.assignClose')}
+        </button>
+      </div>
+      {captures.map((c) => (
+        <AssignForm
+          key={c.id}
+          capture={c}
+          detail={detail}
+          onDone={() => undefined}
+          onChanged={onChanged}
+        />
+      ))}
+    </>
+  );
+}
+
+// ---- Deviations, Soll/Ist, Korrektur ----
 
 /** Soll/Ist je Zeile eines Projekts mit Korrektur (bisheriger Reiter Soll/Ist); Verworfen/Bonus nur bei Werten > 0. */
 function ProjectDetails({
@@ -1066,302 +1243,7 @@ function CorrectionForm({
   );
 }
 
-// ---- Aufnahmen ----
-
-/** Ergebnis mit Kennzeichen als Symbol (NT-E2/E3), verworfen mit Grund, Bonus, ohne Zuordnung. */
-function ResultCell({ c }: { c: NightSessionCapture }) {
-  const { t } = useTranslation();
-  const flags = [
-    c.temperatureDeviation ? t('sessions.captures.temperatureDeviation') : null,
-    c.settingsDeviation ? t('sessions.captures.settingsDeviation') : null,
-  ].filter((x): x is string => x !== null);
-  const Warn = actionIcons.warning;
-  return (
-    <span className={styles.resultCell}>
-      {c.rejected ? (
-        <span className={styles.badgeDanger}>
-          {c.rejectReason
-            ? t('sessions.captures.rejectedWith', {
-                reason: t(`sessions.correction.reasons.${c.rejectReason}`),
-              })
-            : t('sessions.captures.rejected')}
-        </span>
-      ) : (
-        <span>{t(`sessions.captures.result.${c.result}`)}</span>
-      )}
-      {c.isBonus ? <span className={styles.badge}>{t('sessions.captures.bonus')}</span> : null}
-      {c.assignment === 'unassigned' ? (
-        <span className={styles.badgeWarn}>{t('sessions.captures.unassignedFlag')}</span>
-      ) : null}
-      {c.grade === 'flagged' && c.projectId ? (
-        // Bildbewertung (AP-72b): Vorschlag im Reiter „Bilder“ des Projekts ansehen und entscheiden.
-        <Link className={styles.badgeWarn} to={`/projekte/${c.projectId}?bild=${c.id}`}>
-          {t('sessions.captures.flagged', {
-            reason: (c.flags ?? []).map((f) => t(`images.metric.${f.metric}`)).join(', '),
-          })}
-        </Link>
-      ) : null}
-      {flags.length > 0 ? (
-        <span
-          className={styles.flagIcon}
-          title={flags.join(' · ')}
-          role="img"
-          aria-label={flags.join(' · ')}
-        >
-          <Warn size={16} aria-hidden="true" />
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function Captures({
-  detail,
-  type,
-  onType,
-  gaps,
-  onChanged,
-}: {
-  detail: NightSessionDetail;
-  type: CaptureType;
-  onType: (t: CaptureType) => void;
-  gaps: readonly NightGap[];
-  onChanged: () => Promise<unknown>;
-}) {
-  const { t, i18n } = useTranslation();
-  const nameOf = useMemberNames();
-  const canAssign = useCan('session.review');
-  const zone = detail.session.siteTimeZone;
-  const [rejecting, setRejecting] = useState<NightSessionCapture | null>(null);
-  const [assigning, setAssigning] = useState<NightSessionCapture | null>(null);
-  const counts = captureCounts(detail.captures);
-  const list = detail.captures.filter((c) => captureMatches(c, type));
-  const correctable = new Set(detail.rows.filter((r) => r.canCorrect).map((r) => r.projectId));
-  const undo = useMutation({
-    mutationFn: (id: string) => sessionsApi.reject(id, false, null),
-    onSettled: onChanged,
-  });
-  const menu = (c: NightSessionCapture): ActionMenuItem[] => {
-    const items: ActionMenuItem[] = [];
-    const rejectable =
-      c.frameType === 'light' &&
-      c.result === 'saved' &&
-      c.assignment === 'assigned' &&
-      c.projectId !== null &&
-      correctable.has(c.projectId);
-    if (rejectable && !c.rejected)
-      items.push({
-        key: 'reject',
-        label: t('sessions.captures.reject'),
-        onSelect: () => {
-          setAssigning(null);
-          setRejecting(c);
-        },
-      });
-    if (rejectable && c.rejected)
-      items.push({
-        key: 'unreject',
-        label: t('sessions.captures.unreject'),
-        disabled: undo.isPending,
-        onSelect: () => undo.mutate(c.id),
-      });
-    if (canAssign && c.assignment === 'unassigned' && c.frameType === 'light')
-      items.push({
-        key: 'assign',
-        label: t('sessions.captures.assign'),
-        onSelect: () => {
-          setRejecting(null);
-          setAssigning(c);
-        },
-      });
-    return items;
-  };
-  const columns: DataColumn<NightSessionCapture>[] = [
-    {
-      id: 'time',
-      header: t('sessions.captures.col.time'),
-      sortValue: (c) => c.capturedAt,
-      nowrap: true,
-      cell: (c) => <SiteTime atUtc={c.capturedAt} siteTimeZone={zone} />,
-    },
-    {
-      id: 'project',
-      header: t('sessions.captures.col.project'),
-      sortValue: (c) => c.projectName ?? t(`sessions.captures.type.${c.frameType}`),
-      cell: (c) =>
-        c.projectName ? (
-          <span className={styles.projectWithCreator}>
-            {c.projectName}
-            <Person id={c.projectCreatedBy} compact />
-          </span>
-        ) : c.frameType !== 'light' ? (
-          t(`sessions.captures.type.${c.frameType}`)
-        ) : (
-          '–'
-        ),
-    },
-    {
-      id: 'filter',
-      header: t('sessions.captures.col.filter'),
-      sortValue: (c) => c.filterShortName,
-      cell: (c) => (
-        <>
-          {c.filterShortName}
-          {c.filterActual && c.filterActual !== c.filterShortName ? (
-            <span className={styles.muted}> ({c.filterActual})</span>
-          ) : null}
-        </>
-      ),
-    },
-    {
-      id: 'exposure',
-      header: t('sessions.captures.col.exposure'),
-      sortValue: (c) => c.exposureS,
-      priority: 2,
-      align: 'end',
-      nowrap: true,
-      cell: (c) => t('sessions.captures.seconds', { s: c.exposureS }),
-    },
-    {
-      id: 'hfr',
-      header: t('sessions.captures.col.hfr'),
-      sortValue: (c) => c.hfr ?? -1,
-      priority: 3,
-      align: 'end',
-      nowrap: true,
-      cell: (c) =>
-        c.hfr === null ? '–' : t('sessions.captures.hfrPx', { hfr: hfrText(c.hfr, i18n.language) }),
-    },
-    {
-      id: 'stars',
-      header: t('sessions.captures.col.stars'),
-      sortValue: (c) => c.stars ?? -1,
-      priority: 3,
-      align: 'end',
-      cell: (c) => (c.stars === null ? '–' : c.stars.toLocaleString(i18n.language)),
-    },
-    {
-      id: 'result',
-      header: t('sessions.captures.col.result'),
-      sortValue: (c) => (c.rejected ? 'z' : c.result),
-      cell: (c) => <ResultCell c={c} />,
-    },
-    {
-      id: 'action',
-      header: t('sessions.captures.col.action'),
-      headerHidden: true,
-      nowrap: true,
-      cell: (c) => (
-        <ActionMenu
-          size="sm"
-          label={t('evaluation.captures.menu', {
-            time: formatZonedTime(c.capturedAt, zone),
-            filter: c.filterShortName,
-          })}
-          items={menu(c)}
-        />
-      ),
-    },
-  ];
-  const lights = detail.captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
-  const measured = lights.filter((c) => c.hfr !== null);
-  const hfrMedian = median(measured.map((c) => c.hfr as number));
-  const starsMedian = median(lights.flatMap((c) => (c.stars === null ? [] : [c.stars])));
-  return (
-    <>
-      <div className={styles.captureBar}>
-        <div className={styles.typeChips} role="group" aria-label={t('sessions.captures.filter')}>
-          {CAPTURE_TYPES.map((k) => (
-            <button
-              key={k}
-              type="button"
-              className={styles.typeChip}
-              aria-pressed={type === k}
-              onClick={() => onType(k)}
-            >
-              {t(`evaluation.captures.type.${k}`)}{' '}
-              <span className={styles.typeCount}>{counts[k]}</span>
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className={styles.button}
-          disabled={list.length === 0}
-          onClick={() => downloadCsv(detail, list, zone, nameOf)}
-        >
-          {t('sessions.captures.csv')}
-        </button>
-      </div>
-      {type === 'flats' ? <FlatsHeader detail={detail} /> : null}
-      {lights.length > 0 ? (
-        <section className={styles.subCard} aria-label={t('evaluation.captures.metrics')}>
-          <div className={styles.cardHead}>
-            <h2 className={styles.sectionTitle}>{t('evaluation.captures.metrics')}</h2>
-            {hfrMedian === null ? (
-              <span className={styles.muted}>{t('sessions.captures.metricsMissing')}</span>
-            ) : (
-              <span className={styles.muted} data-testid="capture-metrics">
-                {t('sessions.captures.metricsSummary', {
-                  hfr: hfrText(hfrMedian, i18n.language),
-                  stars:
-                    starsMedian === null
-                      ? '–'
-                      : Math.round(starsMedian).toLocaleString(i18n.language),
-                  count: measured.length,
-                })}
-              </span>
-            )}
-          </div>
-          {hfrMedian !== null ? (
-            <MetricsChart
-              captures={detail.captures}
-              events={detail.events}
-              gaps={gaps}
-              timeZone={zone}
-              fromUtc={detail.session.startedAt}
-              toUtc={detail.session.endedAt}
-              scaleArcsecPx={detail.quality?.scaleArcsecPx ?? null}
-              refs={detail.quality?.refs ?? []}
-            />
-          ) : null}
-        </section>
-      ) : null}
-      {rejecting ? (
-        <RejectForm
-          key={rejecting.id}
-          capture={rejecting}
-          zone={zone}
-          onDone={() => setRejecting(null)}
-          onChanged={onChanged}
-        />
-      ) : null}
-      {assigning ? (
-        <AssignForm
-          key={assigning.id}
-          capture={assigning}
-          detail={detail}
-          onDone={() => setAssigning(null)}
-          onChanged={onChanged}
-        />
-      ) : null}
-      {undo.error ? <ProblemMessage code={problemCode(undo.error)} /> : null}
-      {detail.capturesTruncated ? (
-        <p className={styles.muted}>
-          {t('sessions.detail.truncated', { count: detail.captures.length })}
-        </p>
-      ) : null}
-      <DataTable
-        columns={columns}
-        rows={list}
-        rowKey={(c) => c.id}
-        rowLabel={(c) => `${c.projectName ?? '–'} · ${c.filterShortName}`}
-        label={t('evaluation.night.tab.captures')}
-        empty={t('sessions.captures.empty')}
-      />
-    </>
-  );
-}
+// ---- Flats, Zuordnen, CSV ----
 
 /** Kombinationsübersicht der Flats (bisher Reiter Flats): Flats und Dark-Flats Ist/Soll, Belichtung. */
 function FlatsHeader({ detail }: { detail: NightSessionDetail }) {
@@ -1391,76 +1273,6 @@ function FlatsHeader({ detail }: { detail: NightSessionDetail }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-/** Grund wählen und verwerfen (FA-AUS-20); die Zähler folgen der Regel max (FA-AUS-06). */
-function RejectForm({
-  capture,
-  zone,
-  onDone,
-  onChanged,
-}: {
-  capture: NightSessionCapture;
-  zone: string;
-  onDone: () => void;
-  onChanged: () => Promise<unknown>;
-}) {
-  const { t } = useTranslation();
-  const ids = { title: useId(), reason: useId() };
-  const [reason, setReason] = useState('');
-  const save = useMutation({
-    mutationFn: () => sessionsApi.reject(capture.id, true, reason || null),
-    onSuccess: async () => {
-      await onChanged();
-      onDone();
-    },
-  });
-  return (
-    <form
-      className={styles.form}
-      aria-labelledby={ids.title}
-      onSubmit={(e: FormEvent) => {
-        e.preventDefault();
-        save.mutate();
-      }}
-    >
-      <h3 id={ids.title} className={styles.formTitle}>
-        {t('sessions.captures.rejectTitle')}
-      </h3>
-      <p className={styles.muted}>
-        <SiteTime atUtc={capture.capturedAt} siteTimeZone={zone} /> · {capture.projectName ?? '–'} ·{' '}
-        {capture.filterShortName} · {t('sessions.captures.seconds', { s: capture.exposureS })}
-        {capture.isBonus ? ` · ${t('sessions.captures.bonus')}` : ''}
-      </p>
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor={ids.reason}>{t('sessions.correction.reason')}</label>
-          <select
-            id={ids.reason}
-            className={styles.select}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          >
-            <option value="">{t('sessions.correction.noReason')}</option>
-            {rejectReasons.map((r) => (
-              <option key={r} value={r}>
-                {t(`sessions.correction.reasons.${r}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className={styles.formActions}>
-        <button type="submit" className={styles.buttonPrimary} disabled={save.isPending}>
-          {t('sessions.captures.rejectSubmit')}
-        </button>
-        <button type="button" className={styles.button} onClick={onDone}>
-          {t('sessions.correction.cancel')}
-        </button>
-      </div>
-      {save.error ? <ProblemMessage code={problemCode(save.error)} /> : null}
-    </form>
   );
 }
 
@@ -1541,7 +1353,7 @@ function AssignForm({
   );
 }
 
-/** CSV der angezeigten Aufnahmen (FA-AUS-12), Zeiten in UTC und Standortzeit. */
+/** CSV der Nacht (FA-AUS-12): alle Aufnahmen der Auswahl, Zeiten in UTC und Standortzeit, Qualität je Light (AP-77). */
 function downloadCsv(
   detail: NightSessionDetail,
   list: readonly NightSessionCapture[],
@@ -1583,6 +1395,9 @@ function downloadCsv(
     'fileName',
     'hfr',
     'stars',
+    'guidingRmsArcsec',
+    'quality',
+    'qualityReasons',
   ];
   const rows = list.map((c) =>
     [
@@ -1607,6 +1422,9 @@ function downloadCsv(
       c.fileName,
       c.hfr,
       c.stars,
+      c.quality?.rmsArcsec ?? null,
+      c.grade === 'kept' ? 'ok' : (c.grade ?? null),
+      (c.flags ?? []).map((f) => f.metric).join(','),
     ]
       .map(cell)
       .join(';'),
@@ -1622,12 +1440,7 @@ function downloadCsv(
   URL.revokeObjectURL(url);
 }
 
-/** HFR mit zwei Nachkommastellen in der Sprache der Oberfläche. */
-function hfrText(hfr: number, lang: string): string {
-  return hfr.toLocaleString(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-// ---- Verlauf & Notizen ----
+// ---- Alle Ereignisse ----
 
 function EventTimeline({ detail }: { detail: NightSessionDetail }) {
   const { t, i18n } = useTranslation();

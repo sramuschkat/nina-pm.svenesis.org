@@ -49,7 +49,6 @@ const session = (n: number, over: Partial<NightSession> = {}): NightSession => (
   endedAt: `2026-09-${String(11 + n)}T09:00:00Z`,
   sessionEndUtc: null,
   createdOffline: false,
-  reviewed: false,
   ninaInstanceName: null,
   frames: 10,
   bonusFrames: 0,

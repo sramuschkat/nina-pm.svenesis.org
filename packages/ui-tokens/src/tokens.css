@@ -172,6 +172,9 @@
   --npm-plot-3: #14946a;
   --npm-today: #e67e22;
   --npm-star: #b9770e;
+  --npm-quality-good: #1e7e4f;
+  --npm-quality-flagged: #d9a21b;
+  --npm-quality-rejected: #b3261e;
   --npm-row-h: 32px;
   --npm-font-scale: 1;
   --npm-space-scale: 1;
@@ -234,6 +237,9 @@
   --npm-plot-3: #199e70;
   --npm-today: #f39c12;
   --npm-star: #f5b041;
+  --npm-quality-good: #3fa36b;
+  --npm-quality-flagged: #f0c35a;
+  --npm-quality-rejected: #e0675d;
   --npm-shadow: none;
   color-scheme: dark;
 }

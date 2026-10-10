@@ -1,6 +1,6 @@
 /**
  * AP-64: Auswertung neu – Reiterwechsel Nächte | Projekte | Standort-Statistik mit erhaltenem Filter, alte Pfade leiten
- * um, Nacht öffnen, Prüfliste abarbeiten und als geprüft markieren, Aufnahmen nach Typ filtern, Kalender-Klick öffnet
+ * um, Nacht öffnen (Session-Qualität, nicht zugeordnete Aufnahme zuordnen, Ereignisse), Kalender-Klick öffnet
  * die Nacht; axe hell/dunkel ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen, Lage per
  * `boundingBox` gemessen (Karten, Kacheln, Kalender liegen im Fenster und nebeneinander, wo sie sollen).
  */
@@ -80,7 +80,7 @@ test('alte Pfade leiten um', async ({ page }) => {
   await expect(page).toHaveURL('/#naechste-naechte');
 });
 
-test('Nacht öffnen, Prüfliste abarbeiten, als geprüft markieren; Aufnahmen nach Typ; Kalender öffnet die Nacht', async ({
+test('Nacht öffnen: Session-Qualität, nicht zugeordnete Aufnahme zuordnen, Ereignisse; Kalender öffnet die Nacht', async ({
   browser,
   baseURL,
 }) => {
@@ -93,61 +93,40 @@ test('Nacht öffnen, Prüfliste abarbeiten, als geprüft markieren; Aufnahmen na
   await admin.goto(`/auswertung/naechte?rig=${rigId}`);
   const card = admin.getByRole('article', { name: new RegExp(rigName) });
   await expect(card).toHaveCount(1);
-  await expect(card.getByText('ungeprüft')).toBeVisible();
+  // Prüfen entfällt (AP-77): statt „ungeprüft“ der Hinweis auf nicht zugeordnete Aufnahmen.
+  await expect(card.getByText('ungeprüft')).toHaveCount(0);
+  await expect(card.getByText('nicht zugeordnet: 1')).toBeVisible();
   await expect(card.getByText('2 Sessions')).toBeVisible();
   await card.getByRole('link', { name: /öffnen$/ }).click();
   await expect(admin.getByRole('heading', { level: 1, name: new RegExp(rigName) })).toBeVisible();
-  // Zwei Sessions in der Nacht: Auswahl, Standard ganze Nacht; Prüfen je Session.
+  // Zwei Sessions in der Nacht: Auswahl, Standard ganze Nacht; Ergebnis je Session.
   const choose = admin.getByRole('group', { name: 'Session wählen' });
   await expect(choose.getByRole('button', { name: 'Ganze Nacht' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await expect(admin.getByRole('region', { name: /Nacht prüfen/ })).toHaveCount(2);
+  await expect(admin.getByRole('region', { name: 'Ergebnis je Projekt' })).toHaveCount(2);
   await choose.getByRole('button', { name: /^Session 2/ }).click();
   await expect(admin).toHaveURL(/session=[0-9a-f-]{36}/);
-
-  // Prüfliste: Aufnahme ohne Zuordnung → zuordnen (über ⋯ je Zeile).
-  const banner = admin.getByRole('region', { name: /Nacht prüfen/ });
-  await expect(banner.getByText('Aufnahmen ohne Zuordnung: 1')).toBeVisible();
-  await banner.getByRole('button', { name: 'zuordnen' }).click();
-  await expect(admin).toHaveURL(/ansicht=aufnahmen/);
-  const table = admin.getByRole('table', { name: 'Aufnahmen' });
-  await expect(table.getByRole('row')).toHaveCount(2);
-  await table.getByRole('button', { name: /^Aktionen zur Aufnahme/ }).click();
-  await admin.getByRole('menuitem', { name: 'Zuordnen' }).click();
-  const form = admin.getByRole('form', { name: 'Nicht zugeordnete Aufnahmen' });
-  await form.getByLabel(/Zeile für/).selectOption({ index: 1 });
-  await form.getByRole('button', { name: 'Zuordnen' }).click();
-  await expect(admin.getByRole('button', { name: /^Ohne Zuordnung 0/ })).toBeVisible();
-
-  // Aufnahmen nach Typ: Anzahl im Chip = Zeilen der Tabelle.
-  const chips = admin.getByRole('group', { name: 'Anzeigen' });
-  for (const name of ['Lights', 'Flats', 'Alle']) {
-    const chip = chips.getByRole('button', { name: new RegExp(`^${name} \\d+$`) });
-    await chip.click();
-    await expect(chip).toHaveAttribute('aria-pressed', 'true');
-    const count = Number((await chip.textContent())?.replace(/\D+/g, ''));
-    if (count > 0) await expect(table.getByRole('row')).toHaveCount(count + 1);
-  }
-  await expectNoSerious(admin, 'Nacht Aufnahmen');
-
-  // Zurück zur Übersicht: die Zuordnung ist erledigt, die Nacht wird als geprüft markiert.
-  await admin.getByRole('tab', { name: 'Übersicht' }).click();
-  await expect(banner.getByText(/einem Projekt zugeordnet/)).toBeVisible();
+  await expect(admin.getByRole('region', { name: 'Ergebnis je Projekt' })).toHaveCount(1);
   await expect(
     admin.getByRole('region', { name: 'Ergebnis je Projekt' }).getByText(projectName),
   ).toBeVisible();
-  await expectNoSerious(admin, 'Nacht Übersicht');
-  await banner.getByRole('button', { name: 'Als geprüft markieren' }).click();
-  await expect(banner).toHaveCount(0);
-  // Kopf (gewählte Session) und Session-Zeile zeigen „geprüft“.
-  await expect(admin.getByText('geprüft', { exact: true })).toHaveCount(2);
+  await expect(admin.getByRole('region', { name: /^Session-Qualität/ })).toBeVisible();
 
-  // Verlauf & Notizen: Ereignisse als Zeitachse neben dem Protokoll.
-  await admin.getByRole('tab', { name: 'Verlauf & Notizen' }).click();
+  // Hinweis „nicht zugeordnet“ → Zuordnen in der Übersicht.
+  await expect(admin.getByText(/^Aufnahmen nicht zugeordnet: 1/)).toBeVisible();
+  await admin.getByRole('button', { name: 'Zuordnen', exact: true }).click();
+  const form = admin.getByRole('form', { name: 'Nicht zugeordnete Aufnahmen' });
+  await form.getByLabel(/Zeile für/).selectOption({ index: 1 });
+  await form.getByRole('button', { name: 'Zuordnen' }).click();
+  await expect(admin.getByText(/^Aufnahmen nicht zugeordnet/)).toHaveCount(0);
+  await expectNoSerious(admin, 'Nacht Übersicht');
+
+  // Alle Ereignisse eingeklappt am Ende.
+  await admin.getByText(/^Alle Ereignisse \(\d+\)$/).click();
   await expect(admin.getByRole('region', { name: 'Ereignisse' })).toContainText('CDT');
-  await expect(admin.getByRole('heading', { name: 'Sitzungsprotokoll' })).toBeVisible();
+  await expect(admin.getByRole('heading', { name: 'Sitzungsprotokoll' })).toHaveCount(0);
 
   // Kalender-Klick öffnet die Nacht.
   const sessions = (await (
@@ -204,13 +183,13 @@ for (const width of [768, 2400]) {
     await page.goto('/auswertung/naechte?zeitraum=365');
     await expect(page.getByRole('heading', { level: 1, name: 'Auswertung' })).toBeVisible();
     expect(await overflow(page), `Nächte @ ${String(width)}`).toBeLessThanOrEqual(0);
-    // Kacheln: vier nebeneinander (breit) bzw. zwei je Zeile (schmal), alle im Fenster.
+    // Kacheln (seit AP-77 drei, ohne „Ungeprüft“): nebeneinander (breit) bzw. zwei je Zeile (schmal), alle im Fenster.
     const tiles = page.getByRole('region', { name: 'Kennzahlen' }).locator(':scope > *');
-    await expect(tiles).toHaveCount(4);
-    const boxes = await Promise.all([0, 1, 2, 3].map(async (i) => tiles.nth(i).boundingBox()));
+    await expect(tiles).toHaveCount(3);
+    const boxes = await Promise.all([0, 1, 2].map(async (i) => tiles.nth(i).boundingBox()));
     for (const b of boxes) expect((b?.x ?? 0) + (b?.width ?? 0)).toBeLessThanOrEqual(width);
     const sameRow = (a: number, b: number) => Math.abs((boxes[a]?.y ?? 0) - (boxes[b]?.y ?? 0)) < 2;
-    expect(sameRow(0, 3), `Kacheln in einer Zeile @ ${String(width)}`).toBe(width >= 1280);
+    expect(sameRow(0, 2), `Kacheln in einer Zeile @ ${String(width)}`).toBe(width >= 1280);
     expect(sameRow(0, 1)).toBe(true);
     // Karten der Nächte: so breit wie der Inhalt, nicht über den Rand.
     const card = page.getByRole('article').first();

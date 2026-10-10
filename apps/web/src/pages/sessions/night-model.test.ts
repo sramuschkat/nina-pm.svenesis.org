@@ -1,7 +1,7 @@
 /**
- * AP-64: Auswertung einer Nacht aus Session-Daten – Prüfliste des Prüf-Banners (keine Punkte → kein Banner; ohne
- * Zuordnung, Ist < Soll, Lücke > 10 min), Projekt-Chips und Effizienz der Nächte-Liste (Transit als Serie), Ergebnis je
- * Projekt, Aufnahmen-Typen, Zeitraum und Filter in der Adresse.
+ * AP-64/AP-77: Auswertung einer Nacht aus Session-Daten – Hinweise (Warnungen und Fehler), Projekt-Chips und Effizienz
+ * der Nächte-Liste (Transit als Serie), Ergebnis je Projekt, Kennzahlen, Bedingungen mehrerer Sessions, Zeitraum und
+ * Filter in der Adresse.
  */
 import { describe, expect, it } from 'vitest';
 import type {
@@ -13,16 +13,16 @@ import type {
 } from '../../api/client';
 import { filterSearch, parseFilter, periodRange } from './evaluation';
 import {
-  captureCounts,
   efficiencyBar,
   gapsWithin,
   groupNights,
+  mergeConditions,
   mergeDetails,
   metricPoints,
   nightFacts,
+  nightWarnings,
   projectChips,
   projectResults,
-  reviewChecklist,
   weatherTone,
 } from './night-model';
 
@@ -76,73 +76,48 @@ const capture = (over: Partial<NightSessionCapture> = {}): NightSessionCapture =
   ...over,
 });
 
-describe('Prüfliste (Prüf-Banner)', () => {
-  it('keine Punkte → leere Liste (kein Banner)', () => {
-    expect(reviewChecklist({ captures: [], rows: [] }, [])).toEqual([]);
-    // Nur Flats, Soll erreicht, nur Flip-Lücke: nichts zu prüfen.
+describe('Hinweise der Nacht (AP-77)', () => {
+  const ev = (kind: string, n: number) => ({
+    id: ID(90 + n),
+    occurredAt: '2026-10-07T03:00:00Z',
+    kind,
+    message: null,
+    durationS: null,
+  });
+  it('Fehler zuerst, dann Warnungen in fester Reihenfolge; übrige Ereignisse zählen nicht', () => {
     expect(
-      reviewChecklist({ captures: [capture({ frameType: 'flat' })], rows: [row()] }, [
-        { fromUtc: 0, toUtc: 1800, kind: 'flip' },
+      nightWarnings([
+        ev('af', 1),
+        ev('lease_lost', 2),
+        ev('error', 3),
+        ev('warning', 4),
+        ev('warning', 5),
       ]),
-    ).toEqual([]);
-  });
-
-  it('alle Lights zugeordnet → ein erledigter Punkt', () => {
-    expect(
-      reviewChecklist({ captures: [capture(), capture({ id: ID(31) })], rows: [] }, []),
-    ).toEqual([{ kind: 'assigned', ok: true, count: 2 }]);
-  });
-
-  it('ohne Zuordnung, Ist < Soll und Lücke > 10 min mit Grund', () => {
-    const items = reviewChecklist(
-      {
-        captures: [capture(), capture({ id: ID(31), assignment: 'unassigned', projectId: null })],
-        rows: [
-          row(),
-          row({ exposureLineId: ID(21), filterShortName: 'SII', planned: 6, acquired: 1 }),
-          // Transit-Serie und Zeilen ohne Soll sind keine Prüfpunkte.
-          row({
-            exposureLineId: ID(22),
-            planned: 0,
-            plannedSeries: { fromUtc: '2026-10-07T01:11:00Z', untilUtc: '2026-10-07T05:54:00Z' },
-            acquired: 558,
-          }),
-          row({ exposureLineId: ID(23), planned: null, acquired: 3 }),
-        ],
-      },
-      [
-        { fromUtc: 1000, toUtc: 1000 + 1200, kind: 'idle', reason: null },
-        { fromUtc: 5000, toUtc: 5000 + 300, kind: 'idle' },
-        { fromUtc: 9000, toUtc: 9000 + 1260, kind: 'flip' },
+    ).toEqual({
+      errors: 1,
+      warnings: 3,
+      kinds: [
+        { kind: 'error', count: 1 },
+        { kind: 'warning', count: 2 },
+        { kind: 'lease_lost', count: 1 },
       ],
-    );
-    expect(items).toEqual([
-      { kind: 'unassigned', ok: false, count: 1 },
-      {
-        kind: 'short',
-        ok: false,
-        lineId: ID(21),
-        projectName: 'IC 1795',
-        filter: 'SII',
-        acquired: 1,
-        planned: 6,
-      },
-      {
-        kind: 'gap',
-        ok: false,
-        gapKind: 'idle',
-        reason: null,
-        count: 1,
-        fromUtc: 1000,
-        toUtc: 2200,
-      },
-    ]);
+    });
+    expect(nightWarnings([ev('af', 1)])).toEqual({ errors: 0, warnings: 0, kinds: [] });
   });
 
-  it('genau 10 min ist keine Lücke für die Prüfliste, 10 min 1 s schon', () => {
-    const gap = (s: number) => [{ fromUtc: 0, toUtc: s, kind: 'safety' }];
-    expect(reviewChecklist({ captures: [], rows: [] }, gap(600))).toEqual([]);
-    expect(reviewChecklist({ captures: [], rows: [] }, gap(601))).toHaveLength(1);
+  it('Bedingungen mehrerer Sessions: Spanne über alle, Quelle der ersten', () => {
+    expect(
+      mergeConditions([
+        [{ metric: 'cloudPct', source: 'captures', median: 2, min: 0, max: 10 }],
+        [
+          { metric: 'cloudPct', source: 'telemetry', median: 6, min: 1, max: 40 },
+          { metric: 'windMs', source: 'telemetry', median: 3, min: 1, max: 5 },
+        ],
+      ]),
+    ).toEqual([
+      { metric: 'cloudPct', source: 'captures', median: 4, min: 0, max: 40 },
+      { metric: 'windMs', source: 'telemetry', median: 3, min: 1, max: 5 },
+    ]);
   });
 });
 
@@ -292,7 +267,7 @@ describe('Ergebnis je Projekt, Kennzahlen, Aufnahmen', () => {
     });
   });
 
-  it('Typ-Chips zählen; Flats mit Dark-Flats; HFR-Reihe nur gespeicherte Lights mit Messwert', () => {
+  it('HFR-Reihe nur gespeicherte Lights mit Messwert', () => {
     const list = [
       capture(),
       capture({ id: ID(31), frameType: 'flat', hfr: null, stars: null }),
@@ -300,15 +275,6 @@ describe('Ergebnis je Projekt, Kennzahlen, Aufnahmen', () => {
       capture({ id: ID(33), temperatureDeviation: true, rejected: true }),
       capture({ id: ID(34), assignment: 'unassigned', hfr: null, stars: null }),
     ];
-    expect(captureCounts(list)).toEqual({
-      all: 5,
-      lights: 3,
-      flats: 2,
-      deviations: 1,
-      unassigned: 1,
-      flagged: 0,
-      rejected: 1,
-    });
     expect(metricPoints(list)).toHaveLength(2);
   });
 });
@@ -351,7 +317,6 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
     endedAt: '2026-10-07T06:10:00Z',
     sessionEndUtc: null,
     createdOffline: false,
-    reviewed: true,
     ninaInstanceName: 'PC',
     frames: 10,
     bonusFrames: 0,
@@ -372,13 +337,12 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
     ...over,
   });
 
-  it('zwei Sessions einer Nacht → eine Gruppe mit Summen; ungeprüft, solange eine ungeprüft ist', () => {
+  it('zwei Sessions einer Nacht → eine Gruppe mit Summen', () => {
     const groups = groupNights([
       item({
         id: ID(2),
         startedAt: '2026-10-07T06:15:00Z',
         endedAt: '2026-10-07T11:52:00Z',
-        reviewed: false,
         efficiency: { exposureS: 12_000, usableDarkS: 18_000, pct: 66.7 },
         weather: { ratingIndex: 4, nightMean: 0.9 },
         projects: [
@@ -407,7 +371,6 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
     const g = groups[0] as (typeof groups)[number];
     expect(g.sessions.map((x) => x.id)).toEqual([ID(1), ID(2)]);
     expect([g.startedAt, g.endedAt]).toEqual(['2026-10-07T01:00:00Z', '2026-10-07T11:52:00Z']);
-    expect(g.reviewed).toBe(false);
     expect(g.efficiency).toEqual({ exposureS: 18_000, usableDarkS: 36_000, pct: 50 });
     expect(g.weather).toEqual({ ratingIndex: 4, nightMean: 0.9 });
     expect(g.integrationS).toBe(12_000);
@@ -424,7 +387,6 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
         ],
       },
     ]);
-    expect(groups[1]?.reviewed).toBe(true);
   });
 
   it('läuft eine Session noch, ist das Ende offen; ganze Nacht aus zwei Details, Lücken je Session', () => {
@@ -434,11 +396,10 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
       endedAt: null,
       status: 'running',
     });
-    const d = (id: number, at: string, exposureS: number, reviewed: boolean): NightSessionDetail =>
+    const d = (id: number, at: string, exposureS: number): NightSessionDetail =>
       ({
         session: {
-          ...item({ id: ID(id), startedAt: at, reviewed }),
-          reviewedBy: null,
+          ...item({ id: ID(id), startedAt: at }),
           planRevision: 1,
           darknessEndUtc: null,
         },
@@ -463,12 +424,11 @@ describe('Eine Karte je Nacht und Rig (Entscheidung Sven 07.10.2026)', () => {
         reasons: [],
       }) as NightSessionDetail;
     const m = mergeDetails([
-      d(1, '2026-10-07T01:00:00Z', 5000, true),
-      d(2, '2026-10-07T06:00:00Z', 3000, false),
+      d(1, '2026-10-07T01:00:00Z', 5000),
+      d(2, '2026-10-07T06:00:00Z', 3000),
     ]);
     expect(m.captures.map((c) => c.id)).toEqual([ID(31), ID(32)]);
     expect(m.rows).toHaveLength(1);
-    expect(m.session.reviewed).toBe(false);
     expect(m.kpis).toMatchObject({ exposureS: 8000, usableDarkS: 20_000, efficiencyPct: 40 });
     const gaps = [
       {
