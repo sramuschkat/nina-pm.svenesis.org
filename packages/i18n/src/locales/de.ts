@@ -2458,8 +2458,6 @@ export const de = {
       empty: 'Keine Nächte mit Session im Zeitraum.',
       more: 'Weitere Nächte laden',
       cardLabel: 'Nacht {{night}} · {{rig}}',
-      weather: 'Vorhersage: {{rating}} · {{pct}} %',
-      noWeather: 'ohne Vorhersage',
       quality: 'Qualität {{grade}} · {{pct}} %',
       eff: '{{exposure}} von {{dark}} h · {{pct}} %',
       effNoDark: '{{exposure}} h belichtet · keine Dunkelzeit im Plan',
@@ -2593,8 +2591,7 @@ export const de = {
       rejectedCount: '{{count}} verworfen',
       hfrRange: 'HFR {{min}}–{{max}} px',
       rms: 'Guiding Ø {{rms}}″',
-      definition:
-        'Qualität: Anteil der Lights innerhalb der Grenzen des Rigs (Bezug: nicht verworfene Lights der letzten 30 Nächte)',
+      definition: 'Qualität = Anteil der Lights in den Grenzen des Rigs',
       perFilter: 'Bildqualität je Filter',
       tableOf: 'Bildqualität je Filter von {{name}}',
       col: {

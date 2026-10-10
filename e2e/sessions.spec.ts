@@ -70,6 +70,8 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   if (!curve || !qualityCard) throw new Error('Qualitätskurve oder Karte nicht sichtbar');
   expect(curve.x).toBeGreaterThanOrEqual(qualityCard.x);
   expect(curve.x + curve.width).toBeLessThanOrEqual(qualityCard.x + qualityCard.width + 1);
+  // Und sie nutzt die Breite der Karte (10.10.2026: eine Klassen-Kollision hatte sie schmal gemacht).
+  expect(curve.width).toBeGreaterThan(qualityCard.width * 0.8);
   await expectNoSerious(admin, 'S-61 Übersicht');
 
   // Qualität je Filter in den Details: Tabelle innerhalb der Karte „Ergebnis je Projekt“ (Lage gemessen).
