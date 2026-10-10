@@ -229,61 +229,68 @@ export class SessionLogRepository extends TenantRepo {
 
   /** Statistik-Einträge und Sessions der Rigs des Standorts im Zeitraum (Nacht-Schlüssel, inklusive). */
   async clearNightData(siteId: string, from: string, to: string) {
-    const stats = await this.db
-      .selectFrom('siteNightStat')
-      .select(['night', 'usable', 'usableHours', 'source'])
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('siteId', '=', siteId)
-      .where('night', '>=', from)
-      .where('night', '<=', to)
-      .execute();
-    const sessions = await this.db
-      .selectFrom('session as s')
-      .innerJoin('rig as r', (j) =>
-        j.onRef('r.id', '=', 's.rigId').onRef('r.tenantId', '=', 's.tenantId'),
-      )
-      .leftJoin('sessionLog as l', (j) =>
-        j.onRef('l.sessionId', '=', 's.id').onRef('l.tenantId', '=', 's.tenantId'),
-      )
-      .select((eb) => [
-        's.id',
-        's.night',
-        's.startedAt',
-        's.forecastSnapshot',
-        'l.seeingArcsec',
-        'l.sqm',
-        'l.transparencyPct',
-        eb
-          .selectFrom('capture as c')
-          .select(sql<number>`count(*)`.as('n'))
-          .whereRef('c.sessionId', '=', 's.id')
-          .whereRef('c.tenantId', '=', 's.tenantId')
-          .where('c.frameType', '=', 'light')
-          .as('lights'),
-        eb
-          .selectFrom('capture as c')
-          .select(sql<number>`count(*)`.as('n'))
-          .whereRef('c.sessionId', '=', 's.id')
-          .whereRef('c.tenantId', '=', 's.tenantId')
-          .where('c.frameType', '=', 'light')
-          .where('c.rejected', '=', true)
-          .as('rejected'),
-      ])
-      .where('s.tenantId', '=', this.ctx.tenantId)
-      .where('r.siteId', '=', siteId)
-      .where('s.night', '>=', from)
-      .where('s.night', '<=', to)
-      .orderBy('s.startedAt')
-      .execute();
-    // Vorhersage je Nacht auch ohne Session (AP-64b); der Schnappschuss einer Session hat Vorrang (clearNightView).
-    const forecasts = await this.db
-      .selectFrom('siteNightForecast')
-      .select(['night', 'ratingIndex', 'overallScore'])
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('siteId', '=', siteId)
-      .where('night', '>=', from)
-      .where('night', '<=', to)
-      .execute();
+    // Drei unabhängige Abfragen gleichzeitig; die Lights je Session danach in **einer** gruppierten Abfrage statt zwei
+    // Unterabfragen je Session (Performance 10.10.2026, p95 3,5 s).
+    const [stats, sessions, forecasts] = await Promise.all([
+      this.db
+        .selectFrom('siteNightStat')
+        .select(['night', 'usable', 'usableHours', 'source'])
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('siteId', '=', siteId)
+        .where('night', '>=', from)
+        .where('night', '<=', to)
+        .execute(),
+      this.db
+        .selectFrom('session as s')
+        .innerJoin('rig as r', (j) =>
+          j.onRef('r.id', '=', 's.rigId').onRef('r.tenantId', '=', 's.tenantId'),
+        )
+        .leftJoin('sessionLog as l', (j) =>
+          j.onRef('l.sessionId', '=', 's.id').onRef('l.tenantId', '=', 's.tenantId'),
+        )
+        .select([
+          's.id',
+          's.night',
+          's.startedAt',
+          's.forecastSnapshot',
+          'l.seeingArcsec',
+          'l.sqm',
+          'l.transparencyPct',
+        ])
+        .where('s.tenantId', '=', this.ctx.tenantId)
+        .where('r.siteId', '=', siteId)
+        .where('s.night', '>=', from)
+        .where('s.night', '<=', to)
+        .orderBy('s.startedAt')
+        .execute(),
+      // Vorhersage je Nacht auch ohne Session (AP-64b); der Schnappschuss einer Session hat Vorrang (clearNightView).
+      this.db
+        .selectFrom('siteNightForecast')
+        .select(['night', 'ratingIndex', 'overallScore'])
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('siteId', '=', siteId)
+        .where('night', '>=', from)
+        .where('night', '<=', to)
+        .execute(),
+    ]);
+    const ids = sessions.map((s) => s.id);
+    const counts = new Map(
+      (ids.length === 0
+        ? []
+        : await this.db
+            .selectFrom('capture')
+            .select([
+              'sessionId',
+              sql<number>`count(*)`.as('lights'),
+              sql<number>`sum(CASE WHEN rejected THEN 1 ELSE 0 END)`.as('rejected'),
+            ])
+            .where('tenantId', '=', this.ctx.tenantId)
+            .where('sessionId', 'in', ids)
+            .where('frameType', '=', 'light')
+            .groupBy('sessionId')
+            .execute()
+      ).map((r) => [r.sessionId, r] as const),
+    );
     return {
       stats: stats.map((s) => ({
         night: String(s.night).slice(0, 10),
@@ -299,8 +306,8 @@ export class SessionLogRepository extends TenantRepo {
         seeingArcsec: numOrNull(s.seeingArcsec),
         sqm: numOrNull(s.sqm),
         transparencyPct: numOrNull(s.transparencyPct),
-        lights: Number(s.lights ?? 0),
-        rejected: Number(s.rejected ?? 0),
+        lights: Number(counts.get(s.id)?.lights ?? 0),
+        rejected: Number(counts.get(s.id)?.rejected ?? 0),
       })),
       forecasts: forecasts.map((f): ClearNightForecast => ({
         night: String(f.night).slice(0, 10),

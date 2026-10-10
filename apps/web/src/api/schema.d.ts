@@ -11315,6 +11315,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/sessions/unreviewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite
+         * @description Aktion: `session.read` · FA-AUS-07, S-02, AP-73
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ungeprüft */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NightSessionUnreviewed"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/sessions/{id}": {
         parameters: {
             query?: never;
@@ -20248,6 +20305,21 @@ export interface components {
             lights: number;
             projects: number;
             efficiencyPct: number | null;
+            unreviewed: number;
+            firstUnreviewed: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                rigId: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+            } | null;
+        };
+        NightSessionUnreviewed: {
             unreviewed: number;
             firstUnreviewed: {
                 /**

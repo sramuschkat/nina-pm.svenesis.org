@@ -113,9 +113,10 @@ export function TodoCard({ rig }: { rig: TonightRig }) {
     queryFn: async () => (await sessionsApi.list({ unreviewed: false })).items,
     enabled: canSessions,
   });
+  // Nur „ungeprüft“ – die Zusammenfassung ohne Zeitraum las alle Aufnahmen des Mandanten (Performance 10.10.2026).
   const summary = useQuery({
-    queryKey: ['sessions', 'summary', {}],
-    queryFn: () => sessionsApi.summary(),
+    queryKey: ['sessions', 'unreviewed'],
+    queryFn: () => sessionsApi.unreviewed(),
     enabled: canSessions,
   });
   const queue = useQuery({

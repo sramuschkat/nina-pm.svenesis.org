@@ -30,17 +30,27 @@ export async function nightActual(
   svc: ApiServices,
   ref: RigRef,
   d: RigDataResult,
-  o: { night: string; currentNight: string; now: Date; names: ReadonlyMap<string, string> },
+  o: {
+    night: string;
+    currentNight: string;
+    now: Date;
+    /** Namen der Eingabe; als Promise, damit Ist und Pläne schon laden, während die Eingabe noch entsteht. */
+    names: ReadonlyMap<string, string> | Promise<ReadonlyMap<string, string>>;
+  },
 ): Promise<NightActual> {
   const repo = d.repos.ninaRig(ref.rigId);
-  const [actual, plans] = await Promise.all([repo.nightActual(o.night), repo.serverPlans(o.night)]);
+  const [actual, plans, given] = await Promise.all([
+    repo.nightActual(o.night),
+    repo.serverPlans(o.night),
+    o.names,
+  ]);
 
   // Belichtete Projekte außerhalb der Eingabe (fertig, pausiert, Transit vorbei): Namen nachladen, sonst stehen Ist-Blöcke
   // und „Heute Nacht abgearbeitet“ ohne Namen da (07.10.2026).
   const missing = [...actual.lights, ...actual.events]
     .map((x) => x.projectId)
-    .filter((id): id is string => id !== null && !o.names.has(id));
-  const names = new Map([...o.names, ...(await d.repos.projects().names(missing))]);
+    .filter((id): id is string => id !== null && !given.has(id));
+  const names = new Map([...given, ...(await d.repos.projects().names(missing))]);
 
   const blockKinds = new Map<string, 'regular' | 'transit'>();
   // Geplanter Beginn je Block: Plugin vor 0.4.13 meldet keinen block_start (Anfahren/Autofokus sonst „Leerlauf“).

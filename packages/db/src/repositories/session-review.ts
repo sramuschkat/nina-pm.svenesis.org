@@ -685,6 +685,32 @@ export class SessionReviewRepository extends TenantRepo {
     };
   }
 
+  /**
+   * Ungeprüfte Nächte je Rig über alle Zeit (Startseite): eine Nacht ist ungeprüft, solange eine ihrer Sessions
+   * ungeprüft ist; die neueste zuerst – wie in `summary`, aber nur über die Sessions.
+   */
+  async unreviewed(): Promise<{
+    unreviewed: number;
+    firstUnreviewed: { rigId: string; night: string } | null;
+  }> {
+    const rows = await this.db
+      .selectFrom('session')
+      .select(['rigId', 'night'])
+      .distinct()
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where('reviewed', '=', false)
+      .orderBy('night', 'desc')
+      .orderBy('rigId')
+      .execute();
+    const first = rows[0];
+    return {
+      unreviewed: rows.length,
+      firstUnreviewed: first
+        ? { rigId: first.rigId, night: String(first.night).slice(0, 10) }
+        : null,
+    };
+  }
+
   async byId(id: string): Promise<NightSessionRow | undefined> {
     const r = await this.base().where('s.id', '=', id).executeTakeFirst();
     if (!r) return undefined;

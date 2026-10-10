@@ -28,6 +28,7 @@ import {
   NightSessionQuery,
   NightSessionReviewed,
   NightSessionSummary,
+  NightSessionUnreviewed,
   NightSessionSummaryQuery,
   gradeFlags,
   IMAGE_QUALITY_DEFAULTS,
@@ -81,6 +82,17 @@ export const sessionSummaryRoute = defineRoute(
     tags: ['sessions'],
     request: { query: NightSessionSummaryQuery },
     responses: { 200: { description: 'Kennzahlen', ...json(NightSessionSummary) }, ...denied },
+  },
+);
+
+export const sessionUnreviewedRoute = defineRoute(
+  { action: 'session.read', requirements: ['FA-AUS-07', 'S-02', 'AP-73'] },
+  {
+    method: 'get',
+    path: `${BASE}/unreviewed`,
+    summary: 'Ungeprüfte Nächte (Anzahl, neueste) für „Zu tun“ auf der Startseite',
+    tags: ['sessions'],
+    responses: { 200: { description: 'Ungeprüft', ...json(NightSessionUnreviewed) }, ...denied },
   },
 );
 
@@ -188,6 +200,7 @@ export const reportResendRoute = defineRoute(
 export const SESSION_ROUTES = [
   listSessionsRoute,
   sessionSummaryRoute,
+  sessionUnreviewedRoute,
   sessionDetailRoute,
   sessionCorrectionRoute,
   sessionReviewRoute,
@@ -228,6 +241,14 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
     return c.json(summary, 200);
   });
 
+  // Ebenfalls vor `/{id}` registriert.
+  app.openapi(sessionUnreviewedRoute, async (c) => {
+    const svc = await services();
+    const result = await svc.repositories(requireTenant(c).tenant).sessionReview().unreviewed();
+    c.header('cache-control', 'no-store');
+    return c.json(result, 200);
+  });
+
   app.openapi(sessionDetailRoute, async (c) => {
     const svc = await services();
     const { auth, tenant } = requireTenant(c);
@@ -235,8 +256,25 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
     const detail = await repos
       .sessionReview()
       .detail(c.req.valid('param').id, NIGHT_SESSION_CAPTURE_LIMIT);
+    // Gleichzeitig (Performance 10.10.2026): Einstellungen, Rig mit Optik, Bezugswerte der letzten 30 Nächte und die
+    // Bewertungsbasis je Projekt hängen nur am Detail, nicht aneinander.
+    const eq = repos.equipment();
+    const projectIds = [
+      ...new Set(detail.captures.flatMap((x) => (x.projectId ? [x.projectId] : []))),
+    ];
+    const [tenantSettings, rigOptics, qualityRefs, basis] = await Promise.all([
+      repos.tenant().settings(),
+      eq.rig(detail.session.rigId).then(async (rig) => ({
+        rig,
+        optics: rig
+          ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
+          : ([undefined, undefined] as const),
+      })),
+      repos.imageQuality().refs(detail.session.rigId, detail.session.night),
+      repos.imageQuality().gradeBasis(projectIds),
+    ]);
     // Je Zeile, ob der Aufrufer korrigieren darf – dieselbe Prüfung wie bei Korrektur und Verwerfen unten.
-    const { userCorrections } = (await repos.tenant().settings()).settings;
+    const { userCorrections } = tenantSettings.settings;
     const rows = detail.rows.map((r) => ({
       ...r,
       canCorrect: can(auth, 'session.correct', {
@@ -246,22 +284,16 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
       }),
     }));
     // Bildqualität (AP-72): Pixelmaßstab des Rigs und Bezugswerte der letzten 30 Nächte.
-    const eq = repos.equipment();
-    const rig = await eq.rig(detail.session.rigId);
-    const [telescope, camera] = rig
-      ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
-      : [undefined, undefined];
+    const { rig } = rigOptics;
+    const [telescope, camera] = rigOptics.optics;
     const quality = {
       scaleArcsecPx:
         telescope && camera ? imageScale({ ...telescope, ...camera }).scaleArcsecPx : null,
-      refs: await repos.imageQuality().refs(detail.session.rigId, detail.session.night),
+      refs: qualityRefs,
     };
     // Bildbewertung (AP-72b): je gespeichertem, zugeordnetem Light mit dem Bezug seines Projekts und den Grenzwerten des Rigs.
     const settings = rig?.imageQuality ?? IMAGE_QUALITY_DEFAULTS;
-    const projectIds = [
-      ...new Set(detail.captures.flatMap((x) => (x.projectId ? [x.projectId] : []))),
-    ];
-    const refs = refsByProject(await repos.imageQuality().gradeBasis(projectIds));
+    const refs = refsByProject(basis);
     const captures = detail.captures.map((x) => {
       if (
         x.frameType !== 'light' ||

@@ -141,6 +141,17 @@ export const NightSessionSummary = z
 export type NightSessionSummary = z.infer<typeof NightSessionSummary>;
 
 /**
+ * Nur „ungeprüft“ für die Startseite (Zu tun, AP-73): dieselbe Zählung wie in `NightSessionSummary`, aber ohne die
+ * Kennzahlen über alle Aufnahmen (Performance 10.10.2026 – die Startseite fragte bisher die Zusammenfassung ohne
+ * Zeitraum ab).
+ */
+export const NightSessionUnreviewed = NightSessionSummary.pick({
+  unreviewed: true,
+  firstUnreviewed: true,
+}).meta({ id: 'NightSessionUnreviewed' });
+export type NightSessionUnreviewed = z.infer<typeof NightSessionUnreviewed>;
+
+/**
  * Soll/Ist je Zeile der Session (FA-AUS-03). Entscheidung Sven 07.10.2026: **Soll** = Belichtungen des ersten
  * Plans dieser Session (niedrigste Revision) **ohne Bonus**, **Ist** = gespeicherte Lights **dieser** Session
  * (nicht der ganzen Nacht über mehrere Sessions); Bonus-Aufnahmen nur in *Bonus* und *Bonus verworfen*.
