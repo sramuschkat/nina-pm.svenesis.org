@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * AP-32a: S-40 Bereich *Mehrnacht* (Job starten, Status verfolgen, Streifen je Nacht mit Gewicht, Tabelle je
- * Projekt) und S-33 Auswirkungsvorschau (Anteil des Objekts, andere Projekte ohne → mit); axe.
+ * AP-32a, Neugestaltung 10.10.2026: S-40 Bereich *Mehrnacht* (Job starten, Status verfolgen, Kacheln, Säulen je Nacht mit
+ * Wetter in Worten, Projekt × Nacht mit Fortschritt und Filtern, fertige Projekte in einer Zeile) und S-33
+ * Auswirkungsvorschau (Anteil des Objekts, andere Projekte ohne → mit); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -84,6 +85,18 @@ const multi: MultiSimResult = {
       completesNight: '2026-09-27',
       sharePct: 100,
       filters: [{ filter: 'Ha', need: 60, simulated: 60 }],
+    },
+    {
+      projectId: ID(11),
+      name: 'IC 1795',
+      approvalStatus: 'approved',
+      needFrames: 0,
+      simulatedFrames: 0,
+      hours: 0,
+      nightsUsed: 0,
+      completesNight: null,
+      sharePct: 0,
+      filters: [],
     },
   ],
 };
@@ -169,7 +182,7 @@ beforeEach(() => {
 });
 
 describe('S-40 Mehrnacht', () => {
-  it('startet den Job mit den Einstellungen, zeigt Status und dann Nächte und Projekte; axe', async () => {
+  it('startet den Job, zeigt Kacheln, Säulen je Nacht in Worten und Projekt × Nacht; axe', async () => {
     state.multi.mockResolvedValue({ jobId: ID(99) });
     wrap(
       <MultiNightPanel
@@ -179,15 +192,14 @@ describe('S-40 Mehrnacht', () => {
         site={{ id: ID(600), name: 'Starfront' }}
       />,
     );
+    expect(screen.getByText(/Plant die nächsten Nächte im Voraus/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Zeitraum'), { target: { value: '14' } });
+    fireEvent.click(screen.getByLabelText('Wetter einrechnen'));
+    // Kein Wetterband mehr; bei 14 Nächten der Hinweis zur Reichweite der Vorhersage.
     expect(screen.queryByText('Wetter am Standort Starfront')).toBeNull();
-    fireEvent.click(screen.getByLabelText('Mit Wetter gewichten'));
-    // Mit Wetter: 7-Tage-Farbband des Standorts wie in Ausrüstung → Standorte (Wunsch Sven 02.10.2026).
-    expect(await screen.findByText('Wetter am Standort Starfront')).toBeTruthy();
     expect(
-      screen.getByText('Die Vorhersage reicht 7 Nächte; die übrigen Nächte zählen ungewichtet.'),
+      screen.getByText('Die Vorhersage reicht 7 Nächte; die übrigen Nächte zählen voll.'),
     ).toBeTruthy();
-    expect(state.weather).toHaveBeenCalledWith(ID(600));
     fireEvent.click(screen.getByRole('button', { name: 'Mehrnacht berechnen' }));
     await waitFor(() =>
       expect(state.multi).toHaveBeenCalledWith({
@@ -201,24 +213,56 @@ describe('S-40 Mehrnacht', () => {
     expect(await screen.findByText('Wird berechnet …')).toBeTruthy();
     state.jobStatus = 'done';
     state.result = multi;
-    const strip = await screen.findByRole(
+    const nights = await screen.findByRole(
       'list',
-      { name: 'Belichtete Stunden je Nacht' },
+      { name: 'Nächte im Zeitraum' },
       { timeout: 4000 },
     );
-    const items = within(strip).getAllByRole('listitem');
+    // Kacheln: 3,2 + 6,1 = 9,3 h erwartet von 6,4 + 6,1 = 12,5 h möglich; 0 gute Nächte, eine ohne Vorhersage.
+    const tiles = screen.getByRole('group', { name: 'Kurzfassung' });
+    expect(within(tiles).getByText('9,3 h')).toBeTruthy();
+    expect(within(tiles).getByText('von 12,5 h, wenn alle 2 Nächte klar wären')).toBeTruthy();
+    expect(within(tiles).getByText('keine – ohne Vorhersage: 1')).toBeTruthy();
+    expect(within(tiles).getByText('NGC 281 am So 27./28.09. · schon fertig: 1')).toBeTruthy();
+    const items = within(nights).getAllByRole('listitem');
     expect(items).toHaveLength(2);
-    expect(within(items[0] as HTMLElement).getByText('Gewicht 0,5')).toBeTruthy();
-    expect(within(items[0] as HTMLElement).getByText('Mittel 50 %')).toBeTruthy();
+    expect(await within(items[0] as HTMLElement).findByText('Mittel · 50 %')).toBeTruthy();
+    expect(
+      within(items[0] as HTMLElement).getByText('zählt zu 50 % · 6,4 h, wenn klar'),
+    ).toBeTruthy();
     expect(items[0]).toHaveAccessibleName(
-      '26./27.09.: 3,2 h belichtet von 8 h Dunkelheit, Wetter Mittel 50 %, Gewicht 0,5',
+      'Sa 26./27.09.: 3,2 h erwartet, 6,4 h möglich bei klarer Nacht, 8 h dunkel, Wetter Mittel · 50 %',
     );
-    expect(within(items[1] as HTMLElement).getByText('ohne Vorhersage')).toBeTruthy();
-    const table = screen.getByRole('table', { name: 'Projekte über den Zeitraum' });
+    expect(within(items[1] as HTMLElement).getByText('ohne Vorhersage – zählt voll')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Zur Wettervorhersage' })).toBeTruthy();
+    // Projekt × Nacht: Stunden je Nacht, Fortschritt, fertig; Projekte ohne Bedarf in einer Zeile.
+    const table = screen.getByRole('table', { name: /Projekte über den Zeitraum/ });
     const row = within(table).getByRole('row', { name: /NGC 281/ });
-    expect(row.textContent).toContain('27./28.09.');
-    expect(row.textContent).toContain('9,9 h');
+    expect(row.textContent).toContain('3,2');
+    expect(row.textContent).toContain('6,1');
+    expect(row.textContent).toContain('60 von 60 Frames · 100 %');
+    expect(row.textContent).toContain('fertig So 27./28.09.');
+    expect(screen.getByText('Schon fertig: IC 1795')).toBeTruthy();
+    // Aufklappen: Filter mit Bedarf, erwartet und danach offen.
+    fireEvent.click(within(row).getByRole('button', { name: /NGC 281/ }));
+    const filters = screen.getByRole('table', { name: 'Filter von NGC 281' });
+    expect(within(filters).getByRole('row', { name: /Ha/ }).textContent).toContain('6060');
     await expectNoSeriousA11y();
+  });
+
+  it('ohne Wetter: mögliche Belichtung, Nächte zählen voll', async () => {
+    state.multi.mockResolvedValue({ jobId: ID(97) });
+    state.jobStatus = 'done';
+    state.result = { ...multi, weather: false };
+    wrap(<MultiNightPanel rigId={ID(1)} nightFrom="2026-09-26" withDrafts={false} site={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mehrnacht berechnen' }));
+    const tiles = await screen.findByRole('group', { name: 'Kurzfassung' }, { timeout: 4000 });
+    expect(within(tiles).getByText('Mögliche Belichtung')).toBeTruthy();
+    expect(
+      within(tiles).getByText('Wetter nicht eingerechnet – alle Nächte zählen voll'),
+    ).toBeTruthy();
+    expect(screen.getAllByText('8 h dunkel')).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: 'Zur Wettervorhersage' })).toBeNull();
   });
 
   it('fehlgeschlagener Job zeigt die Fehlermeldung', async () => {

@@ -74,6 +74,16 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'quality-good': '#1e7e4f',
     'quality-flagged': '#d9a21b',
     'quality-rejected': '#b3261e',
+    /**
+     * Projekte in der Mehrnacht-Simulation (S-40, Neugestaltung 10.10.2026): sechs Farben mit Helligkeitsabstand,
+     * zyklisch; immer mit Namen in Legende und Zeile, nie nur Farbe.
+     */
+    'sim-1': '#2a78d6',
+    'sim-2': '#e0602c',
+    'sim-3': '#14946a',
+    'sim-4': '#6a3fb5',
+    'sim-5': '#b9770e',
+    'sim-6': '#c2185b',
   },
   dark: {
     primary: '#0b1621',
@@ -120,6 +130,12 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'quality-good': '#3fa36b',
     'quality-flagged': '#f0c35a',
     'quality-rejected': '#e0675d',
+    'sim-1': '#3987e5',
+    'sim-2': '#d95926',
+    'sim-3': '#199e70',
+    'sim-4': '#c3a6f5',
+    'sim-5': '#f5b041',
+    'sim-6': '#f06292',
   },
 };
 
