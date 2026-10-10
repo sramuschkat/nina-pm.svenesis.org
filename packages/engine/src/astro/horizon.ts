@@ -2,7 +2,7 @@
  * Horizontkoordinaten, Refraktion und Topozentrik (moon.md §Eingaben, TK 8.4, Meeus Kap. 11, 13, 40).
  * Azimut von Nord über Ost. Standorthöhe bleibt bewusst unbenutzt (AST-N13).
  */
-import { asinD, atan2D, cosD, norm360, sinD, tanD } from './angles';
+import { asinD, atan2D, cosD, norm180, norm360, sinD, tanD } from './angles';
 import { nutation } from './nutation';
 import { gmstDeg, jdeFromUnix, jdFromUnix } from './time';
 
@@ -47,6 +47,23 @@ export function refractionArcmin(geometricAltDeg: number): number {
 /** Scheinbare Höhe aus geometrischer Höhe. */
 export function apparentAltitudeDeg(geometricAltDeg: number): number {
   return geometricAltDeg + refractionArcmin(geometricAltDeg) / 60;
+}
+
+/**
+ * Scheinbare Höhen eines Orts (RA/Dec zum Datum) zu mehreren Sternzeiten: **bitgleich** mit
+ * `apparentAltitudeDeg(altAz(norm180(lst − ra), dec, lat).altDeg)` je Sternzeit, aber ohne Azimut und mit den
+ * konstanten Faktoren einmal je Ort – drei statt dreizehn Winkelfunktionen je Zeitpunkt (Objektbrowser:
+ * 13.600 Objekte × ~170 Slotgrenzen, Performance 10.10.2026).
+ */
+export function apparentAltitudes(
+  lstDeg: readonly number[],
+  raDeg: number,
+  decDeg: number,
+  latDeg: number,
+): number[] {
+  const a = sinD(latDeg) * sinD(decDeg);
+  const b = cosD(latDeg) * cosD(decDeg);
+  return lstDeg.map((l) => apparentAltitudeDeg(asinD(a + b * cosD(norm180(l - raDeg)))));
 }
 
 /**

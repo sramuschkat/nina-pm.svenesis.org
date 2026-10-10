@@ -6,7 +6,13 @@
  *   `dso` aus `packages/catalog-data`, `exoclock`/`nasa`/`toi` von der Quelle (AP-40, FA-EXO-04).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { dsoCatalogStatus, enqueueSystemJob, exoCatalogStatus, readDsoCatalog } from '@nina-pm/db';
+import {
+  dsoCatalogStamp,
+  dsoCatalogStatus,
+  enqueueSystemJob,
+  exoCatalogStatus,
+  readDsoCatalog,
+} from '@nina-pm/db';
 import meta from '@nina-pm/catalog-data/openngc/catalog-meta.json' with { type: 'json' };
 import {
   CatalogParam,
@@ -19,7 +25,8 @@ import {
   ProblemError,
 } from '@nina-pm/shared';
 import { cachedNightEvaluator, nightEvaluator, type NightEvaluator } from '../catalog/night';
-import { cachedCatalog, searchDso, searchRegion } from '../catalog/search';
+import { cachedCatalogInfo, searchDso, searchRegion } from '../catalog/search';
+import { logger } from '../lib/logger';
 import { requireTenant } from './tenant';
 import { buildNightTable, siteNights } from '../lib/night-table';
 import type { ApiEnv } from '../lib/env';
@@ -111,13 +118,22 @@ interface Meta {
 }
 const catalogMeta = meta as Meta;
 
+const catalogOf = (svc: ApiServices) =>
+  cachedCatalogInfo(
+    () => readDsoCatalog(svc.db),
+    svc.now().getTime(),
+    () => dsoCatalogStamp(svc.db),
+  );
+
 export function catalogRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
 
   app.openapi(dsoSearchRoute, async (c) => {
     const svc = await services();
     const query = c.req.valid('query');
-    const index = await cachedCatalog(() => readDsoCatalog(svc.db), svc.now().getTime());
+    const t0 = performance.now();
+    const { index, cache } = await catalogOf(svc);
+    const t1 = performance.now();
     let night: NightEvaluator | undefined;
     if (query.siteId) {
       const { tenant } = requireTenant(c);
@@ -160,19 +176,29 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
       throw new ProblemError('validation.failed', [
         { path: 'rigFovArcmin', message: 'Bewertung „Beste der Nacht“ nur mit Rig-Bildfeld' },
       ]);
+    const t2 = performance.now();
+    const result = searchDso(index, query, night, {
+      version: catalogMeta.version,
+      fetchedAt: catalogMeta.fetchedAt,
+    });
+    // Wo die Zeit hingeht (Katalog laden, Nachtkontext, Suche mit Nachtwerten) – Grundlage für weitere Schritte.
+    logger.info('dso_search', {
+      cache,
+      catalogMs: Math.round(t1 - t0),
+      nightMs: Math.round(t2 - t1),
+      searchMs: Math.round(performance.now() - t2),
+      sort: query.sort,
+      night: night !== undefined,
+      q: query.q !== undefined,
+      total: result.total,
+    });
     c.header('cache-control', 'private, max-age=60');
-    return c.json(
-      searchDso(index, query, night, {
-        version: catalogMeta.version,
-        fetchedAt: catalogMeta.fetchedAt,
-      }),
-      200,
-    );
+    return c.json(result, 200);
   });
 
   app.openapi(dsoRegionRoute, async (c) => {
     const svc = await services();
-    const index = await cachedCatalog(() => readDsoCatalog(svc.db), svc.now().getTime());
+    const { index } = await catalogOf(svc);
     c.header('cache-control', 'private, max-age=300');
     return c.json(searchRegion(index, c.req.valid('query')), 200);
   });

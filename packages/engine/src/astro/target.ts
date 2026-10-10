@@ -20,14 +20,27 @@ export interface Target {
 
 /** Scheinbarer Ort zum Datum (ohne Aberration); `jde` in TT. */
 export function targetApparent(target: Target, jde: number): { raDeg: number; decDeg: number } {
-  const mean = precessFromJ2000(target.raJ2000Deg, target.decJ2000Deg, jde);
+  return targetApparentAt(jde)(target);
+}
+
+/**
+ * `targetApparent` für viele Ziele zu **einem** `jde`: Nutation und Schiefe einmal statt je Ziel, Ergebnis
+ * identisch (Objektbrowser: 13.600 Objekte je Nacht, Performance 10.10.2026).
+ */
+export function targetApparentAt(
+  jde: number,
+): (target: Target) => { raDeg: number; decDeg: number } {
   const nu = nutation(jde);
-  const a = mean.raDeg;
-  const d = mean.decDeg;
-  const e = nu.epsDeg;
-  const dRa = (cosD(e) + sinD(e) * sinD(a) * tanD(d)) * nu.dpsiDeg - cosD(a) * tanD(d) * nu.depsDeg;
-  const dDec = sinD(e) * cosD(a) * nu.dpsiDeg + sinD(a) * nu.depsDeg;
-  return { raDeg: norm360(a + dRa), decDeg: d + dDec };
+  const cosE = cosD(nu.epsDeg);
+  const sinE = sinD(nu.epsDeg);
+  return (target) => {
+    const mean = precessFromJ2000(target.raJ2000Deg, target.decJ2000Deg, jde);
+    const a = mean.raDeg;
+    const d = mean.decDeg;
+    const dRa = (cosE + sinE * sinD(a) * tanD(d)) * nu.dpsiDeg - cosD(a) * tanD(d) * nu.depsDeg;
+    const dDec = sinE * cosD(a) * nu.dpsiDeg + sinD(a) * nu.depsDeg;
+    return { raDeg: norm360(a + dRa), decDeg: d + dDec };
+  };
 }
 
 export interface TargetAtSite {

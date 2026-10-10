@@ -4,7 +4,7 @@
  * Suche über Bezeichnung, Alias und Trivialnamen, Filter und Sortierung; Stand und Neuimport in S-82.
  */
 import catalog from '@nina-pm/catalog-data/openngc/dso-objects.json' with { type: 'json' };
-import type { DsoCatalogRow } from '@nina-pm/db';
+import { dsoCatalogStamp, type DsoCatalogRow } from '@nina-pm/db';
 import { COOKIE_NAMES, type DsoList } from '@nina-pm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { clearNightCache } from '../src/catalog/night';
@@ -448,5 +448,17 @@ describe('S-82 Kataloge', () => {
       cookies: systemCookies,
     });
     expect(res.status).toBe(422);
+  });
+});
+
+describe('Katalog-Stand für den Speicher der api (Performance 10.10.2026)', () => {
+  it('Stand bleibt ohne Import gleich und ändert sich mit catalog_refresh', async () => {
+    const a = await dsoCatalogStamp(s.pg.db);
+    expect(a).toMatch(new RegExp(`^${String(file.counts.rows)}\\|`));
+    expect(await dsoCatalogStamp(s.pg.db)).toBe(a);
+    await catalogRefreshHandler({ db: () => Promise.resolve(s.pg.db) })(
+      ctx(new Date(Date.now() + 3_600_000)),
+    );
+    expect(await dsoCatalogStamp(s.pg.db)).not.toBe(a);
   });
 });

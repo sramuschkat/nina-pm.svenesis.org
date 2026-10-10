@@ -10,13 +10,14 @@
 import {
   altAz,
   apparentAltitudeDeg,
+  apparentAltitudes,
   buildNightContext,
   culminationVisibility,
   localApparentSiderealDeg,
   norm180,
   q,
   separationDeg,
-  targetApparent,
+  targetApparentAt,
   TWILIGHT_DEG,
   type NightContext,
   type TimeZoneTransition,
@@ -104,12 +105,20 @@ export function nightEvaluator(input: NightEvaluatorInput): NightEvaluator {
           }))
       : [];
 
-  const placeOf = (row: CatalogRow) =>
-    targetApparent({ raJ2000Deg: row.raDeg, decJ2000Deg: row.decDeg }, ctx.jdeMid);
+  // Ort zum Datum je Objekt einmal (Nachtwerte und Bewertung brauchen ihn beide).
+  const places = new Map<string, { raDeg: number; decDeg: number }>();
+  const apparent = targetApparentAt(ctx.jdeMid);
+  const placeOf = (row: CatalogRow) => {
+    let place = places.get(row.primaryId);
+    if (!place) {
+      place = apparent({ raJ2000Deg: row.raDeg, decJ2000Deg: row.decDeg });
+      places.set(row.primaryId, place);
+    }
+    return place;
+  };
+  // Bitgleich mit `apparentAltitudeDeg(altAz(…).altDeg)` je Slotgrenze, ohne Azimut (Performance 10.10.2026).
   const altitudesOf = (place: { raDeg: number; decDeg: number }) =>
-    lst.map((l) =>
-      apparentAltitudeDeg(altAz(norm180(l - place.raDeg), place.decDeg, ctx.site.latDeg).altDeg),
-    );
+    apparentAltitudes(lst, place.raDeg, place.decDeg, ctx.site.latDeg);
 
   const computeWeighted = (row: CatalogRow, kind: string) => {
     if (darkSlots.length === 0) return null;
