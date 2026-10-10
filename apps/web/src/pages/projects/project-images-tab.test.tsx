@@ -151,6 +151,11 @@ describe('Reiter „Bilder“ (AP-72b)', () => {
     // Grenze 3,952 px × 0,5 ″/px.
     expect(within(side).getByText('HFR 2,1″ · Grenze 1,98″')).toBeTruthy();
     expect(within(side).getByText('2026-10-09/LDN1228/LIGHT/img_1.fits')).toBeTruthy();
+    // „In der Nacht öffnen“ führt über die Session zur Nacht (vorher /auswertung/sitzungen/… → „Nicht gefunden“).
+    expect(within(side).getByRole('link', { name: 'In der Nacht öffnen' })).toHaveAttribute(
+      'href',
+      `/auswertung/naechte/${ID(900)}`,
+    );
     await expectNoSeriousA11y(container);
   });
 
