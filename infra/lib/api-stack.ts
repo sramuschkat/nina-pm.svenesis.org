@@ -57,7 +57,9 @@ export class ApiStack extends Stack {
     this.api = new AppFunction(this, 'Api', {
       ...config.lambdas.api,
       handlerFile: 'api',
-      memorySize: 1024,
+      // 1769 MB = ein ganzer vCPU (Node rechnet in einem Thread): Nachtwerte, Plan und Kaltstart ≈ 1,7× schneller
+      // als mit 1024 MB (Messung `dso_search` 10.10.2026).
+      memorySize: 1769,
       timeout: Duration.seconds(29),
       reservedConcurrentExecutions: config.reservedConcurrency.api,
       dsqlClusterArn: props.dsqlClusterArn,
