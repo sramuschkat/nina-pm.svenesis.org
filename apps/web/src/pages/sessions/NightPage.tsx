@@ -10,7 +10,7 @@
  * 2. Hinweise: Warnungen und Fehler der Nacht, nicht zugeordnete Aufnahmen mit *Zuordnen* (sie zählen erst danach).
  * 3. Kennzahlenleiste, Zeile **Bedingungen** (Lights, Telemetrie, Vorhersage), Nachtgrafik mit Ist, Qualitätskurve.
  * 4. **Ergebnis je Projekt** je Session: Filter-Chips mit Ist/Soll und Qualitätsleiste; „Details“ mit Tabelle je Filter
- *    (Anteile, HFR, Sterne, Guiding, Verläufe mit Grenzlinie) und Soll/Ist mit Korrektur.
+ *    (Anteile, HFR, Sterne, Guiding, Verläufe mit Grenzlinie) und Soll/Ist (ohne Korrektur seit 10.10.2026).
  * 5. Eingeklappt: Flats und „Alle Ereignisse (n)“. Die CSV der Nacht steht im Kopf.
  * Soll = erster Plan der Session ohne Bonus, Ist = Aufnahmen dieser Session (Entscheidung Sven 07.10.2026).
  */
@@ -19,7 +19,6 @@ import {
   formatTzAbbr,
   formatZonedTime,
   qualityStats,
-  rejectReasons,
   sessionGrade,
   shareLabelPct,
   type ConditionMetric,
@@ -483,7 +482,6 @@ function SessionBlock({ detail: d, label }: { detail: NightSessionDetail; label:
   const canResend = useCan('session.report.resend');
   const resend = useMutation({ mutationFn: () => discordApi.resendReport(s.id) });
   const [openProject, setOpenProject] = useState<string | null>(null);
-  const [correctLine, setCorrectLine] = useState<string | null>(null);
   const menu: ActionMenuItem[] =
     canResend && s.status !== 'running'
       ? [
@@ -524,16 +522,7 @@ function SessionBlock({ detail: d, label }: { detail: NightSessionDetail; label:
             : t('sessions.detail.resendNoChannel')}
         </p>
       ) : null}
-      <ProjectResults
-        detail={d}
-        open={openProject}
-        onOpen={(p) => {
-          setOpenProject(p);
-          setCorrectLine(null);
-        }}
-        correctLine={correctLine}
-        onCorrect={setCorrectLine}
-      />
+      <ProjectResults detail={d} open={openProject} onOpen={setOpenProject} />
     </>
   );
 }
@@ -590,14 +579,10 @@ function ProjectResults({
   detail,
   open,
   onOpen,
-  correctLine,
-  onCorrect,
 }: {
   detail: NightSessionDetail;
   open: string | null;
   onOpen: (projectId: string | null) => void;
-  correctLine: string | null;
-  onCorrect: (lineId: string | null) => void;
 }) {
   const { t, i18n } = useTranslation();
   const filters = useEquipmentList('filters');
@@ -706,12 +691,7 @@ function ProjectResults({
                         colorOf={colorOf}
                       />
                     ) : null}
-                    <ProjectDetails
-                      detail={detail}
-                      project={p}
-                      correctLine={correctLine}
-                      onCorrect={onCorrect}
-                    />
+                    <ProjectDetails detail={detail} project={p} />
                   </div>
                 ) : null}
               </li>
@@ -883,25 +863,23 @@ function AssignList({
   );
 }
 
-// ---- Deviations, Soll/Ist, Korrektur ----
+// ---- Deviations, Soll/Ist ----
 
-/** Soll/Ist je Zeile eines Projekts mit Korrektur (bisheriger Reiter Soll/Ist); Verworfen/Bonus nur bei Werten > 0. */
+/**
+ * Soll/Ist je Zeile eines Projekts (bisheriger Reiter Soll/Ist); Verworfen/Bonus nur bei Werten > 0. Seit 10.10.2026
+ * (Sven) ohne *Korrektur* und ohne Spalte *Akzeptiert* – einzelne Frames werden in der Nacht nicht mehr verworfen.
+ */
 function ProjectDetails({
   detail,
   project,
-  correctLine,
-  onCorrect,
 }: {
   detail: NightSessionDetail;
   project: ProjectResult;
-  correctLine: string | null;
-  onCorrect: (lineId: string | null) => void;
 }) {
   const { t } = useTranslation();
   const hasPlan = detail.session.planRevision !== null;
   const zone = detail.session.siteTimeZone;
   const rows = project.rows;
-  const correctable = rows.filter((r) => r.canCorrect);
   const any = (pick: (r: NightSessionLineRow) => number) => rows.some((r) => pick(r) > 0);
   const columns: DataColumn<NightSessionLineRow>[] = [
     {
@@ -938,14 +916,6 @@ function ProjectDetails({
         ]
       : []),
     {
-      id: 'accepted',
-      header: t('sessions.plan.col.accepted'),
-      sortValue: (r) => r.accepted,
-      priority: 2,
-      align: 'end',
-      cell: (r) => r.accepted,
-    },
-    {
       id: 'integration',
       header: t('sessions.plan.col.integration'),
       sortValue: (r) => r.integrationS,
@@ -978,41 +948,15 @@ function ProjectDetails({
           },
         ]
       : []),
-    {
-      id: 'action',
-      header: t('sessions.plan.col.action'),
-      headerHidden: true,
-      cell: (r) =>
-        r.canCorrect ? (
-          <button
-            type="button"
-            className={styles.button}
-            onClick={() => onCorrect(r.exposureLineId)}
-          >
-            {t('sessions.plan.correctRow')}
-          </button>
-        ) : null,
-    },
   ];
   return (
-    <>
-      {correctLine && correctable.some((r) => r.exposureLineId === correctLine) ? (
-        <CorrectionForm
-          key={correctLine}
-          sessionId={detail.session.id}
-          rows={correctable}
-          initialLine={correctLine}
-          onDone={() => onCorrect(null)}
-        />
-      ) : null}
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(r) => r.exposureLineId}
-        rowLabel={(r) => `${r.projectName} · ${r.filterShortName}`}
-        label={t('evaluation.night.planOf', { name: project.projectName })}
-      />
-    </>
+    <DataTable
+      columns={columns}
+      rows={rows}
+      rowKey={(r) => r.exposureLineId}
+      rowLabel={(r) => `${r.projectName} · ${r.filterShortName}`}
+      label={t('evaluation.night.planOf', { name: project.projectName })}
+    />
   );
 }
 
@@ -1096,150 +1040,6 @@ function PlannedCell({
       </span>{' '}
       {row.planned}
     </>
-  );
-}
-
-function CorrectionForm({
-  sessionId,
-  rows,
-  initialLine,
-  onDone,
-}: {
-  sessionId: string;
-  rows: readonly NightSessionLineRow[];
-  initialLine: string;
-  onDone: () => void;
-}) {
-  const { t } = useTranslation();
-  const client = useQueryClient();
-  const ids = {
-    title: useId(),
-    line: useId(),
-    rejected: useId(),
-    min: useId(),
-    reason: useId(),
-    comment: useId(),
-  };
-  const [lineId, setLineId] = useState(initialLine);
-  const row = rows.find((r) => r.exposureLineId === lineId) ?? rows[0];
-  // Die Korrektur gilt je Zeile und Nacht (FA-AUS-06): Untergrenze und Startwert aus den Nachtwerten.
-  const min = row?.night.rejectedIndividual ?? 0;
-  const startValue = (r: NightSessionLineRow | undefined) =>
-    Math.max(r?.night.rejectedIndividual ?? 0, r?.night.rejectedCorrection ?? 0);
-  const [rejected, setRejected] = useState(startValue(row));
-  const [reason, setReason] = useState('');
-  const [comment, setComment] = useState('');
-  const save = useMutation({
-    mutationFn: () =>
-      sessionsApi.correct(sessionId, {
-        exposureLineId: lineId,
-        rejected,
-        reason: reason || null,
-        comment: comment.trim() || null,
-      }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['sessions'] }),
-  });
-  return (
-    <form
-      className={styles.form}
-      aria-labelledby={ids.title}
-      onSubmit={(e: FormEvent) => {
-        e.preventDefault();
-        if (rejected >= min) save.mutate();
-      }}
-    >
-      <h3 id={ids.title} className={styles.formTitle}>
-        {t('sessions.correction.title')}
-      </h3>
-      <p className={styles.muted}>{t('sessions.correction.hint')}</p>
-      <div className={styles.formRow}>
-        {rows.length > 1 ? (
-          <div className={styles.field}>
-            <label htmlFor={ids.line}>{t('sessions.correction.line')}</label>
-            <select
-              id={ids.line}
-              className={styles.select}
-              value={lineId}
-              onChange={(e) => {
-                // Zeilenwechsel: Zahl der neuen Zeile übernehmen, nicht die der vorigen senden (P1-12).
-                const next = e.target.value;
-                setLineId(next);
-                setRejected(startValue(rows.find((r) => r.exposureLineId === next)));
-                save.reset();
-              }}
-            >
-              {rows.map((r) => (
-                <option key={r.exposureLineId} value={r.exposureLineId}>
-                  {r.filterShortName}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-        <div className={styles.field}>
-          <label htmlFor={ids.rejected}>{t('sessions.correction.rejected')}</label>
-          <input
-            id={ids.rejected}
-            type="number"
-            className={styles.select}
-            min={min}
-            max={row?.night.acquired ?? undefined}
-            value={rejected}
-            aria-describedby={ids.min}
-            onChange={(e) => setRejected(Math.max(0, Math.trunc(Number(e.target.value) || 0)))}
-          />
-          <span id={ids.min} className={styles.muted}>
-            {t('sessions.correction.minimum', { min })}
-          </span>
-        </div>
-        <div className={styles.field}>
-          <label htmlFor={ids.reason}>{t('sessions.correction.reason')}</label>
-          <select
-            id={ids.reason}
-            className={styles.select}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          >
-            <option value="">{t('sessions.correction.noReason')}</option>
-            {rejectReasons.map((r) => (
-              <option key={r} value={r}>
-                {t(`sessions.correction.reasons.${r}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.field}>
-          <label htmlFor={ids.comment}>{t('sessions.correction.comment')}</label>
-          <input
-            id={ids.comment}
-            className={styles.select}
-            maxLength={500}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-        </div>
-      </div>
-      <div className={styles.formActions}>
-        <button
-          type="submit"
-          className={styles.buttonPrimary}
-          disabled={save.isPending || rejected < min}
-        >
-          {t('sessions.correction.submit')}
-        </button>
-        <button type="button" className={styles.button} onClick={onDone}>
-          {t('sessions.correction.cancel')}
-        </button>
-      </div>
-      {save.isSuccess ? (
-        <p className={styles.success} role="status">
-          {save.data.projectStatus === 'active'
-            ? t('sessions.correction.reactivated')
-            : t('sessions.correction.saved')}
-        </p>
-      ) : null}
-      {save.error ? <ProblemMessage code={problemCode(save.error)} /> : null}
-    </form>
   );
 }
 
