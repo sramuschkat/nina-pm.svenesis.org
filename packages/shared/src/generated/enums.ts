@@ -9,7 +9,7 @@ export type SuperUserRole = (typeof superUserRoles)[number];
 export const authContexts = ["tenant","system","select"] as const;
 export type AuthContextKind = (typeof authContexts)[number];
 
-export const permissionActions = ["catalog.read","equipment.read","equipment.write","project.read","project.create","project.update","project.delete","project.submit","project.withdraw","project.rank","queue.read","queue.vote","queue.decide","project.status","rig.settings.write","simulation.run","nina.instance.manage","nina.instance.read","session.read","session.correct","session.review","sessionlog.write","transit.result.import","project.note.write","project.note.delete","project.history.read","member.directory","member.manage","member.admin.manage","member.leave","tenant.owner.transfer","tenant.settings","tenant.export","tenant.import","system.manage","system.tenant.owner","changeRequest.create","changeRequest.update","transit.lock","session.report.resend","notification.read","me.preferences","me.favorites","job.read","nina.sync","public"] as const;
+export const permissionActions = ["catalog.read","equipment.read","equipment.write","project.read","project.create","project.update","project.delete","project.submit","project.withdraw","project.rank","queue.read","queue.vote","queue.decide","project.status","rig.settings.write","simulation.run","nina.instance.manage","nina.instance.read","session.read","session.correct","session.review","transit.result.import","project.note.write","project.note.delete","project.history.read","member.directory","member.manage","member.admin.manage","member.leave","tenant.owner.transfer","tenant.settings","tenant.export","tenant.import","system.manage","system.tenant.owner","changeRequest.create","changeRequest.update","transit.lock","session.report.resend","notification.read","me.preferences","me.favorites","job.read","nina.sync","public"] as const;
 export type PermissionAction = (typeof permissionActions)[number];
 
 export const approvalStatuses = ["draft","submitted","approved","returned","rejected"] as const;
@@ -116,9 +116,6 @@ export type RejectReason = (typeof rejectReasons)[number];
 
 export const captureRejectReasons = ["clouds","wind","focus","satellite","guiding","other","auto_quality"] as const;
 export type CaptureRejectReason = (typeof captureRejectReasons)[number];
-
-export const imageQualityModes = ["mark","reject"] as const;
-export type ImageQualityMode = (typeof imageQualityModes)[number];
 
 export const imageGrades = ["ok","flagged","kept","rejected","none"] as const;
 export type ImageGrade = (typeof imageGrades)[number];

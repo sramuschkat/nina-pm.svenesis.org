@@ -1,7 +1,7 @@
 /**
- * Bildbewertung (AP-72b; PGlite): Ansicht „Bilder“ des Projekts mit Bezug und Bewertung, „Behalten“, mehrere verwerfen
- * und zurücknehmen (Zähler „Akzeptiert“ sinkt und steigt wieder), Bewertung im Session-Detail, relativer Bildpfad und
- * automatisches Verwerfen beim Eingang, wenn das Rig auf „verwerfen“ steht.
+ * Bildbewertung (AP-72b, seit AP-77 nur als Anteil; PGlite): Qualität des Projekts je Nacht, Filter und Session, Dateiliste
+ * zum Stacken (alle bzw. gute Lights mit relativem Pfad), Bewertung im Session-Detail; ein gespeicherter Modus
+ * „verwerfen“ wird ignoriert – beim Eingang wird nichts verworfen, die Grenzwerte bleiben.
  */
 import { COOKIE_NAMES } from '@nina-pm/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -97,7 +97,7 @@ async function setup() {
       etag: res.headers.get('etag'),
     };
   };
-  return { tenantId, siteId: site.id, rigId: rig.id, pid, panelId, lineId, web, call };
+  return { tenantId, siteId: site.id, rigId: rig.id, pid, panelId, lineId, web, call, cookies };
 }
 
 type World = Awaited<ReturnType<typeof setup>>;
@@ -191,88 +191,79 @@ async function night(w: World) {
   return { sessionId, nightPlanId, lights };
 }
 
-interface Image {
-  id: string;
-  grade: string;
-  flags: { metric: string }[];
-  rejected: boolean;
-  rejectReason: string | null;
-  kept: boolean;
-  relativePath: string | null;
-  hfrArcsec: number | null;
-}
-const images = async (w: World) => {
-  const r = await w.web(`/projects/${w.pid}/images`);
+const quality = async (w: World) => {
+  const r = await w.web(`/projects/${w.pid}/quality`);
   expect(r.status).toBe(200);
-  return r.body as { items: Image[]; refs: Body[]; settings: Body; canCorrect: boolean };
+  return r.body as {
+    settings: Body;
+    minRef: number;
+    filters: Body[];
+    nights: { night: string; filters: Body[]; total: Body }[];
+    sessions: Body[];
+    total: Body;
+    truncated: boolean;
+  };
 };
-const accepted = async (w: World) => {
-  const p = await w.web(`/projects/${w.pid}`);
-  const line = (
-    p.body.panels as { lines: { id: string; counters: { accepted: number } }[] }[]
-  )[0]?.lines.find((l) => l.id === w.lineId);
-  return line?.counters.accepted;
+const files = async (w: World, good: boolean) => {
+  const res = await s.request(`/api/web/v1/projects/${w.pid}/quality/files?good=${String(good)}`, {
+    cookies: w.cookies,
+  });
+  return { status: res.status, type: res.headers.get('content-type'), text: await res.text() };
 };
 
-describe('Bildbewertung (AP-72b)', () => {
-  it('Bilder des Projekts: Bezug, markiert (HFR, RMS), relativer Pfad, HFR in ″', async () => {
+describe('Bildbewertung als Anteil (AP-72b, AP-77)', () => {
+  it('Qualität des Projekts: Anteile, Gründe, Spannen je Nacht, Filter und Session (AP-77)', async () => {
     const w = await setup();
-    const { lights } = await night(w);
-    const v = await images(w);
-    expect(v.settings).toMatchObject({
-      mode: 'mark',
-      hfrPct: 30,
-      starsPct: 50,
-      rmsArcsec: 1.5,
-      cloudPct: 50,
+    const { sessionId } = await night(w);
+    const v = await quality(w);
+    expect(v.settings).toEqual({ hfrPct: 30, starsPct: 50, rmsArcsec: 1.5, cloudPct: 50 });
+    expect(v.minRef).toBe(10);
+    const counts = {
+      good: 12,
+      flagged: 2,
+      rejected: 0,
+      none: 0,
+      sharePct: 85.7,
+      reasons: { hfr: 1, stars: 0, rms: 1, cloud: 0 },
+    };
+    expect(v.total).toMatchObject({
+      ...counts,
+      hfr: { median: 1.6, min: 1.6, max: 2.4 },
+      rmsArcsec: { median: 0.6, min: 0.6, max: 2 },
     });
-    expect(v.refs).toEqual([
-      expect.objectContaining({ filter: 'Ha', hfr: 1.6, stars: 800, n: 14 }),
+    expect(v.filters).toEqual([expect.objectContaining({ filter: 'Ha', ...counts })]);
+    expect(v.nights).toEqual([
+      {
+        night: NIGHT,
+        filters: [expect.objectContaining({ filter: 'Ha' })],
+        total: expect.objectContaining(counts),
+      },
     ]);
-    expect(v.canCorrect).toBe(true);
-    const flagged = v.items.filter((x) => x.grade === 'flagged');
-    expect(flagged.map((x) => x.flags.map((f) => f.metric).join()).sort()).toEqual(['hfr', 'rms']);
-    const first = v.items.find((x) => x.id === lights[0]?.id);
-    expect(first?.relativePath).toBe('2026-09-18/NGC 281/LIGHT/ngc281_0.fits');
-    expect(first?.hfrArcsec).toBeGreaterThan(0);
+    expect(v.sessions).toEqual([expect.objectContaining({ sessionId, ...counts })]);
+    expect(v.truncated).toBe(false);
   });
 
-  it('Behalten: nicht wieder markiert; zurücknehmen markiert wieder', async () => {
+  it('Dateiliste: alle bzw. nur gute Lights mit relativem Pfad als CSV', async () => {
     const w = await setup();
-    const { lights } = await night(w);
-    const bad = lights[12]?.id as string;
-    expect(
-      (await w.web(`/captures/${bad}/quality`, { method: 'PATCH', body: { kept: true } })).status,
-    ).toBe(200);
-    expect((await images(w)).items.find((x) => x.id === bad)).toMatchObject({
-      grade: 'kept',
-      kept: true,
-    });
-    await w.web(`/captures/${bad}/quality`, { method: 'PATCH', body: { kept: false } });
-    expect((await images(w)).items.find((x) => x.id === bad)?.grade).toBe('flagged');
-  });
-
-  it('Markierte verwerfen: Grund auto_quality, Akzeptiert sinkt; zurücknehmen stellt den Zähler wieder her', async () => {
-    const w = await setup();
-    const { lights } = await night(w);
-    const before = await accepted(w);
-    const ids = [lights[12]?.id, lights[13]?.id] as string[];
-    const r = await w.web(`/projects/${w.pid}/images/reject`, {
-      method: 'POST',
-      body: { captureIds: [...ids, id()], rejected: true },
-    });
-    expect(r.body).toMatchObject({ changed: 2, skipped: 1 });
-    expect(await accepted(w)).toBe((before as number) - 2);
-    const v = await images(w);
-    expect(v.items.filter((x) => x.grade === 'rejected').map((x) => x.rejectReason)).toEqual([
-      'auto_quality',
-      'auto_quality',
-    ]);
-    await w.web(`/projects/${w.pid}/images/reject`, {
-      method: 'POST',
-      body: { captureIds: ids, rejected: false },
-    });
-    expect(await accepted(w)).toBe(before);
+    await night(w);
+    const all = await files(w, false);
+    expect(all.status).toBe(200);
+    expect(all.type).toContain('text/csv');
+    const rows = all.text
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .split('\r\n');
+    expect(rows[0]).toBe(
+      'night;capturedAtUtc;filter;exposureS;quality;reasons;hfr;stars;guidingRmsArcsec;relativePath;fileName',
+    );
+    expect(rows).toHaveLength(15);
+    expect(rows[1]).toContain(
+      ';good;;1.6;800;0.6;2026-09-18/NGC 281/LIGHT/ngc281_0.fits;ngc281_0.fits',
+    );
+    expect(rows.filter((r) => r.includes(';flagged;'))).toHaveLength(2);
+    const good = await files(w, true);
+    expect(good.text.trim().split('\r\n')).toHaveLength(13);
+    expect(good.text).not.toContain(';flagged;');
   });
 
   it('Session-Detail: Bewertung je Light', async () => {
@@ -285,30 +276,26 @@ describe('Bildbewertung (AP-72b)', () => {
     expect(d.captures.find((x) => x.id === lights[1]?.id)?.grade).toBe('ok');
   });
 
-  it('Rig auf „verwerfen“: neue Lights über einem Grenzwert werden beim Eingang verworfen', async () => {
+  it('Gespeicherter Modus „verwerfen“ (vor AP-77) wird ignoriert: nichts verworfen, Grenzwerte bleiben', async () => {
     const w = await setup();
     const { sessionId, nightPlanId } = await night(w);
-    const put = await w.web(`/rigs/${w.rigId}/scheduler-settings`, {
-      method: 'PUT',
-      body: {
-        ...SCHEDULER,
-        imageQuality: { mode: 'reject', hfrPct: 30, starsPct: 50, rmsArcsec: 1.5, cloudPct: 50 },
-      },
-    });
-    expect(put.status).toBe(200);
-    expect((put.body.scheduler as Body).imageQuality).toMatchObject({ mode: 'reject' });
+    await s.pg.admin.query(
+      `UPDATE rig SET overhead = jsonb_set(coalesce(overhead, '{}'::jsonb), '{imageQuality}',
+        '{"mode":"reject","hfrPct":40,"starsPct":50,"rmsArcsec":1.5,"cloudPct":50}'::jsonb) WHERE id = $1`,
+      [w.rigId],
+    );
     const bad = light(w, nightPlanId, 20, { ...good, cloudCoverPct: 80 });
-    const fine = light(w, nightPlanId, 21, good);
     await w.call(`/sessions/${sessionId}/captures`, {
       method: 'POST',
-      body: { captures: [bad, fine] },
+      body: { captures: [bad] },
     });
-    const v = await images(w);
-    expect(v.items.find((x) => x.id === bad.id)).toMatchObject({
-      rejected: true,
-      rejectReason: 'auto_quality',
-    });
-    expect(v.items.find((x) => x.id === fine.id)?.rejected).toBe(false);
+    const [row] = (
+      await s.pg.admin.query('SELECT rejected, reject_reason FROM capture WHERE id = $1', [bad.id])
+    ).rows as { rejected: boolean; reject_reason: string | null }[];
+    expect(row).toEqual({ rejected: false, reject_reason: null });
+    const v = await quality(w);
+    expect(v.settings).toEqual({ hfrPct: 40, starsPct: 50, rmsArcsec: 1.5, cloudPct: 50 });
+    expect(v.total).toMatchObject({ flagged: 3, reasons: { cloud: 1 } });
   });
 
   it('Startseite „Heute“ (AP-73): letzte Aufnahme des Rigs mit Bewertung, Abweichungen je Instanz; älter als 36 h → null', async () => {
@@ -354,6 +341,11 @@ describe('Bildbewertung (AP-72b)', () => {
     const admin = await s.seed.member(identity.id, other, 'admin');
     await s.seed.owner(other, admin);
     const cookies = { [COOKIE_NAMES.session]: await s.seed.session(identity.id, other, 'tenant') };
-    expect((await s.request(`/api/web/v1/projects/${w.pid}/images`, { cookies })).status).toBe(404);
+    expect((await s.request(`/api/web/v1/projects/${w.pid}/quality`, { cookies })).status).toBe(
+      404,
+    );
+    expect(
+      (await s.request(`/api/web/v1/projects/${w.pid}/quality/files`, { cookies })).status,
+    ).toBe(404);
   });
 });

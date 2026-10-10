@@ -205,8 +205,3 @@ export const ClearNightView = z
   })
   .meta({ id: 'ClearNightView' });
 export type ClearNightView = z.infer<typeof ClearNightView>;
-
-/** Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen (FA-AUS-17, Admin). */
-export const ClearNightMark = z
-  .strictObject({ usable: z.literal(false) })
-  .meta({ id: 'ClearNightMark' });

@@ -496,99 +496,47 @@ export const CaptureReject = z
   })
   .meta({ id: 'CaptureReject' });
 
-// ---- Bilder im Projekt (AP-72b, FA-AUS-25) ------------------------------------------------------------
+// ---- Qualität im Projekt (AP-77, FA-AUS-25; ersetzt den Reiter „Bilder“ aus AP-72b) ----------------------
 
-const n = z.number().nullable();
+/** Anteile plus Median und Spanne von HFR (px), Sternen und Guiding-RMS (″) einer Menge Lights. */
+export const QualityStats = QualityCounts.extend({
+  hfr: QualitySpread.nullable(),
+  stars: QualitySpread.nullable(),
+  rmsArcsec: QualitySpread.nullable(),
+}).meta({ id: 'QualityStats' });
+export type QualityStats = z.infer<typeof QualityStats>;
 
-/** Ein Light des Projekts mit Messwerten, Bewertung und Datei (Reiter „Bilder“). */
-export const ProjectImage = z
-  .object({
-    id: Uuid,
-    sessionId: Uuid,
-    night: NightKey,
-    capturedAt: UtcInstant,
-    filter: z.string(),
-    exposureS: z.number().min(0),
-    gain: z.number().int().nullable(),
-    offset: z.number().int().nullable(),
-    binning: z.number().int().nullable(),
-    isBonus: z.boolean(),
-    rejected: z.boolean(),
-    rejectReason: z.enum(captureRejectReasons).nullable(),
-    kept: z.boolean(),
-    grade: z.enum(imageGrades),
-    flags: z.array(ImageFlag),
-    fileName: z.string().nullable(),
-    relativePath: z.string().nullable(),
-    hfr: n,
-    hfrArcsec: n,
-    stars: n,
-    rmsArcsec: n,
-    rmsRaArcsec: n,
-    rmsDecArcsec: n,
-    cloudCoverPct: n,
-    skyQualityMag: n,
-    altitudeDeg: n,
-    airmass: n,
-    focusPosition: n,
-    focuserTemperatureC: n,
-    medianAdu: n,
-    saturatedPct: n,
-    sensorTempC: n,
-    setPointC: n,
-  })
-  .meta({ id: 'ProjectImage' });
-export type ProjectImage = z.infer<typeof ProjectImage>;
+const FilterQuality = QualityStats.extend({ filter: z.string() }).meta({ id: 'FilterQuality' });
 
-export const ProjectImagesView = z
+/**
+ * Reiter „Qualität“ des Projekts (S-31): je Nacht und Filter die Anteile der Lights innerhalb der Grenzen des Rigs
+ * (Matrix Nacht × Filter), Summen je Nacht, je Filter und gesamt, je Session für die Tabelle in *Sessions & Protokoll*.
+ * Bezug wie in der Nacht (nicht verworfene Lights desselben Projekts und Filters, ab 10 Lights).
+ */
+export const ProjectQualityView = z
   .object({
     projectId: Uuid,
     rigId: Uuid.nullable(),
     /** Grenzwerte des Rigs (Startwerte, solange das Projekt kein Rig hat). */
     settings: ImageQualitySettings,
-    /** Pixelmaßstab des Rigs (″/px ungebinnt); HFR″ = HFR · Maßstab · Binning. */
-    scaleArcsecPx: z.number().positive().nullable(),
     /** Ab so vielen Lights im Bezug prüfen HFR und Sterne. */
     minRef: z.number().int(),
-    refs: z.array(
-      z.object({
-        filter: z.string(),
-        hfr: n,
-        hfrArcsec: n,
-        stars: n,
-        rmsArcsec: n,
-        n: z.number().int().min(0),
-      }),
+    /** Filter in der Reihenfolge ihres ersten Lights, je Filter über alle Nächte. */
+    filters: z.array(FilterQuality),
+    /** Nächte, neueste zuerst; je Nacht die Filter mit Lights und die Summe. */
+    nights: z.array(
+      z.object({ night: NightKey, filters: z.array(FilterQuality), total: QualityStats }),
     ),
-    items: z.array(ProjectImage),
+    sessions: z.array(QualityStats.extend({ sessionId: Uuid })),
+    total: QualityStats,
+    /** Mehr Lights als die Obergrenze: Anteile über die neuesten. */
     truncated: z.boolean(),
-    /** Darf der Aufrufer verwerfen und behalten (wie beim manuellen Verwerfen, `session.correct`)? */
-    canCorrect: z.boolean(),
   })
-  .meta({ id: 'ProjectImagesView' });
-export type ProjectImagesView = z.infer<typeof ProjectImagesView>;
+  .meta({ id: 'ProjectQualityView' });
+export type ProjectQualityView = z.infer<typeof ProjectQualityView>;
 
-/** Mehrere Lights des Projekts verwerfen bzw. zurücknehmen (AP-72b, „Markierte verwerfen“). */
-export const ProjectImagesReject = z
-  .strictObject({
-    captureIds: z.array(Uuid).min(1).max(500),
-    rejected: z.boolean(),
-  })
-  .meta({ id: 'ProjectImagesReject' });
-
-export const ProjectImagesRejectResult = z
-  .object({
-    changed: z.number().int().min(0),
-    skipped: z.number().int().min(0),
-    projectStatus: z.string().nullable(),
-  })
-  .meta({ id: 'ProjectImagesRejectResult' });
-
-/** „Behalten“ (AP-72b): Light bestätigt, die Bewertung markiert es nicht wieder. */
-export const CaptureKeep = z.strictObject({ kept: z.boolean() }).meta({ id: 'CaptureKeep' });
-export const CaptureKeepResult = z
-  .object({ captureId: Uuid, kept: z.boolean() })
-  .meta({ id: 'CaptureKeepResult' });
+/** Dateiliste zum Stacken (CSV): alle Lights bzw. nur die guten (`good=true`). */
+export const ProjectQualityFilesQuery = z.object({ good: z.enum(['true', 'false']).optional() });
 
 export const CaptureRejectResult = z
   .object({

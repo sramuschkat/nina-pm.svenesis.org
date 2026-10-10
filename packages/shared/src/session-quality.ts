@@ -5,7 +5,7 @@
  * Messwert zählen nicht. Rein – Server (Nacht-Detail, Projekt) und Oberfläche rechnen dasselbe.
  */
 import type { ImageGrade, ImageGradeMetric, SessionQualityGrade } from './generated/enums';
-import type { QualityCounts, QualitySpread } from './contracts/sessions';
+import type { QualityCounts, QualitySpread, QualityStats } from './contracts/sessions';
 import { medianOf } from './image-quality';
 
 /**
@@ -21,14 +21,6 @@ export interface QualityLight {
   readonly hfr: number | null;
   readonly stars: number | null;
   readonly rmsArcsec: number | null;
-}
-
-/** Zählung (gut, auffällig mit Gründen, verworfen, ohne Messwert; Anteil gut) plus Median und Spanne. */
-export interface QualityStats extends QualityCounts {
-  /** Median und Spanne über die nicht verworfenen Lights mit Messwert. */
-  readonly hfr: QualitySpread | null;
-  readonly stars: QualitySpread | null;
-  readonly rmsArcsec: QualitySpread | null;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;

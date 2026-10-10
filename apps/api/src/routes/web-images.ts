@@ -1,197 +1,113 @@
 /**
- * Bilder im Projekt (AP-72b, FA-AUS-25): Liste der Lights mit Bewertung, mehrere verwerfen bzw. zurücknehmen,
- * „Behalten“. Verwerfen nutzt dieselbe Zählerlogik wie das manuelle Verwerfen (`rejectCapture`, FK 8.4).
+ * Qualität im Projekt (AP-77, FA-AUS-25; ersetzt den Reiter „Bilder“ aus AP-72b): Anteile der Lights innerhalb der
+ * Grenzen des Rigs je Nacht, Filter und Session sowie die Dateiliste zum Stacken als CSV. Einzelne Bilder werden nicht
+ * mehr markiert, behalten oder gesammelt verworfen; verworfen wird nur über Korrekturen (FA-AUS-06/20).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { PROJECT_IMAGE_LIMIT, rejectCapture } from '@nina-pm/db';
+import { PROJECT_IMAGE_LIMIT } from '@nina-pm/db';
 import {
-  can,
-  CaptureKeep,
-  CaptureKeepResult,
   IMAGE_QUALITY_DEFAULTS,
-  imageScale,
   ProblemError,
-  ProjectImagesReject,
-  ProjectImagesRejectResult,
-  ProjectImagesView,
+  ProjectQualityFilesQuery,
+  ProjectQualityView,
   Uuid,
 } from '@nina-pm/shared';
-import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/env';
-import { projectImagesView } from '../sessions/project-images';
+import {
+  gradeProjectLights,
+  projectQualityView,
+  qualityFilesCsv,
+} from '../sessions/project-images';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
 
-const json = <S extends z.ZodType>(schema: S) => ({
-  content: { 'application/json': { schema } },
-});
 const denied = {
   401: problemContent('Nicht angemeldet'),
   403: problemContent('Keine Berechtigung'),
 };
 
-export const projectImagesRoute = defineRoute(
-  { action: 'session.read', requirements: ['FA-AUS-25', 'AP-72b', 'S-31'] },
+export const projectQualityRoute = defineRoute(
+  { action: 'session.read', requirements: ['FA-AUS-25', 'AP-77', 'S-31'] },
   {
     method: 'get',
-    path: '/api/web/v1/projects/{id}/images',
+    path: '/api/web/v1/projects/{id}/quality',
     summary:
-      'Lights des Projekts über alle Nächte mit Messwerten, Bewertung und Datei (Reiter „Bilder“)',
+      'Qualität des Projekts: Anteile guter Lights je Nacht, Filter und Session (Reiter „Qualität“)',
     tags: ['sessions'],
     request: { params: z.object({ id: Uuid }) },
     responses: {
-      200: { description: 'Bilder', ...json(ProjectImagesView) },
+      200: {
+        description: 'Qualität',
+        content: { 'application/json': { schema: ProjectQualityView } },
+      },
       ...denied,
       404: problemContent('resource.not_found'),
     },
   },
 );
 
-export const projectImagesRejectRoute = defineRoute(
-  { action: 'session.correct', requirements: ['FA-AUS-25', 'FA-AUS-20', 'FK 8.4'] },
+export const projectQualityFilesRoute = defineRoute(
+  { action: 'session.read', requirements: ['FA-AUS-25', 'AP-77', 'S-31'] },
   {
-    method: 'post',
-    path: '/api/web/v1/projects/{id}/images/reject',
-    summary: 'Mehrere Lights des Projekts verwerfen (Grund auto_quality) bzw. zurücknehmen',
+    method: 'get',
+    path: '/api/web/v1/projects/{id}/quality/files',
+    summary: 'Dateiliste zum Stacken als CSV: alle bzw. nur gute Lights mit relativem Pfad',
     tags: ['sessions'],
-    request: {
-      params: z.object({ id: Uuid }),
-      body: { ...json(ProjectImagesReject), required: true },
-    },
+    request: { params: z.object({ id: Uuid }), query: ProjectQualityFilesQuery },
     responses: {
-      200: { description: 'Geändert', ...json(ProjectImagesRejectResult) },
+      200: { description: 'CSV', content: { 'text/csv': { schema: z.string() } } },
       ...denied,
       404: problemContent('resource.not_found'),
-      422: problemContent('validation.failed'),
     },
   },
 );
 
-export const captureKeepRoute = defineRoute(
-  { action: 'session.correct', requirements: ['FA-AUS-25'] },
-  {
-    method: 'patch',
-    path: '/api/web/v1/captures/{id}/quality',
-    summary: '„Behalten“: Light bestätigen, die Bildbewertung markiert es nicht wieder',
-    tags: ['sessions'],
-    request: {
-      params: z.object({ id: Uuid }),
-      body: { ...json(CaptureKeep), required: true },
-    },
-    responses: {
-      200: { description: 'Gespeichert', ...json(CaptureKeepResult) },
-      ...denied,
-      404: problemContent('resource.not_found'),
-      409: problemContent('capture.not_rejectable'),
-    },
-  },
-);
-
-export const IMAGE_ROUTES = [
-  projectImagesRoute,
-  projectImagesRejectRoute,
-  captureKeepRoute,
-] as const;
+export const IMAGE_ROUTES = [projectQualityRoute, projectQualityFilesRoute] as const;
 
 export function webImageRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
 
-  /** Darf der Aufrufer im Projekt verwerfen (wie `PATCH /captures/{id}`)? */
-  const mayCorrect = async (c: Context<ApiEnv>, svc: ApiServices, createdBy: string) => {
-    const { auth, tenant } = requireTenant(c);
-    const settings = (await svc.repositories(tenant).tenant().settings()).settings;
-    return can(auth, 'session.correct', {
-      tenantId: tenant.tenantId,
-      createdBy,
-      settings: { userCorrections: settings.userCorrections },
-    });
+  /** Projekt, Grenzwerte seines Rigs und die Lights (neueste zuerst, höchstens `PROJECT_IMAGE_LIMIT`). */
+  const load = async (
+    svc: ApiServices,
+    tenant: ReturnType<typeof requireTenant>['tenant'],
+    id: string,
+  ) => {
+    const repos = svc.repositories(tenant);
+    const project = await repos.projects().meta(id);
+    if (!project) throw new ProblemError('resource.not_found');
+    const [rig, rows] = await Promise.all([
+      project.rigId ? repos.equipment().rig(project.rigId) : Promise.resolve(undefined),
+      repos.imageQuality().projectImages(id),
+    ]);
+    return {
+      rigId: rig?.id ?? null,
+      settings: rig?.imageQuality ?? IMAGE_QUALITY_DEFAULTS,
+      rows: rows.slice(0, PROJECT_IMAGE_LIMIT),
+      truncated: rows.length > PROJECT_IMAGE_LIMIT,
+    };
   };
 
-  app.openapi(projectImagesRoute, async (c) => {
+  app.openapi(projectQualityRoute, async (c) => {
     const svc = await services();
-    const { tenant } = requireTenant(c);
-    const repos = svc.repositories(tenant);
     const projectId = c.req.valid('param').id;
-    const detail = await repos.projects().detail(projectId);
-    if (!detail) throw new ProblemError('resource.not_found');
-    const project = detail.project;
-    const eq = repos.equipment();
-    const rig = project.rigId ? await eq.rig(project.rigId) : undefined;
-    const [telescope, camera] = rig
-      ? await Promise.all([eq.telescope(rig.telescopeId), eq.camera(rig.cameraId)])
-      : [undefined, undefined];
-    const rows = await repos.imageQuality().projectImages(projectId);
+    const data = await load(svc, requireTenant(c).tenant, projectId);
     c.header('cache-control', 'no-store');
-    return c.json(
-      projectImagesView({
-        projectId,
-        rigId: rig?.id ?? null,
-        settings: rig?.imageQuality ?? IMAGE_QUALITY_DEFAULTS,
-        scaleArcsecPx:
-          telescope && camera ? imageScale({ ...telescope, ...camera }).scaleArcsecPx : null,
-        rows: rows.slice(0, PROJECT_IMAGE_LIMIT),
-        truncated: rows.length > PROJECT_IMAGE_LIMIT,
-        canCorrect: await mayCorrect(c, svc, project.createdBy),
-      }),
-      200,
-    );
+    return c.json(projectQualityView({ projectId, ...data }), 200);
   });
 
-  app.openapi(projectImagesRejectRoute, async (c) => {
+  app.openapi(projectQualityFilesRoute, async (c) => {
     const svc = await services();
-    const { tenant } = requireTenant(c);
-    const repos = svc.repositories(tenant);
     const projectId = c.req.valid('param').id;
-    const body = c.req.valid('json');
-    const project = await repos.projects().meta(projectId);
-    if (!project) throw new ProblemError('resource.not_found');
-    if (!(await mayCorrect(c, svc, project.createdBy))) throw new ProblemError('permission.denied');
-    const review = repos.sessionReview();
-    let changed = 0;
-    let skipped = 0;
-    let projectStatus: string | null = null;
-    // Je Aufnahme eine Transaktion (Zeilen-Guard, ≤ 500 je Aufruf); fremde Projekte und nicht verwerfbare zählen als übersprungen.
-    for (const captureId of [...new Set(body.captureIds)]) {
-      const target = await review.rejectTarget(captureId).catch(() => null);
-      if (target?.projectId !== projectId) {
-        skipped++;
-        continue;
-      }
-      try {
-        const r = await rejectCapture(
-          svc.db,
-          {
-            tenantId: tenant.tenantId,
-            userId: tenant.memberId as string,
-            captureId,
-            rejected: body.rejected,
-            reason: body.rejected ? 'auto_quality' : null,
-          },
-          svc.now(),
-        );
-        changed++;
-        projectStatus = r.projectStatus ?? projectStatus;
-      } catch (error) {
-        if (error instanceof ProblemError && error.code === 'capture.not_rejectable') skipped++;
-        else throw error;
-      }
-    }
-    return c.json({ changed, skipped, projectStatus }, 200);
-  });
-
-  app.openapi(captureKeepRoute, async (c) => {
-    const svc = await services();
-    const { tenant } = requireTenant(c);
-    const repos = svc.repositories(tenant);
-    const id = c.req.valid('param').id;
-    const body = c.req.valid('json');
-    const target = await repos.sessionReview().rejectTarget(id);
-    if (!(await mayCorrect(c, svc, target.projectCreatedBy ?? '')))
-      throw new ProblemError('permission.denied');
-    const r = await repos.imageQuality().setKept(id, body.kept);
-    if (!r) throw new ProblemError('capture.not_rejectable');
-    return c.json({ captureId: id, kept: body.kept }, 200);
+    const good = c.req.valid('query').good === 'true';
+    const data = await load(svc, requireTenant(c).tenant, projectId);
+    const csv = qualityFilesCsv(gradeProjectLights(data.rows, data.settings), good);
+    return c.body(csv, 200, {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="project-${projectId}-${good ? 'good' : 'all'}.csv"`,
+      'cache-control': 'no-store',
+    });
   });
 
   return app;

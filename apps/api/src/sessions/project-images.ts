@@ -1,7 +1,7 @@
 /**
- * Bildbewertung (AP-72b, FA-AUS-25): Ansicht „Bilder“ des Projekts, Bewertung je Aufnahme im Session-Detail und
- * automatisches Verwerfen beim Eingang. Bezug je Projekt und Filter = Median der nicht verworfenen Lights des Projekts;
- * Grenzwerte vom Rig (`ImageQualitySettings`).
+ * Bildbewertung (AP-72b, FA-AUS-25; seit AP-77 nur noch als Anteil): Reiter „Qualität“ des Projekts mit Dateiliste,
+ * Bewertung je Aufnahme im Session-Detail. Bezug je Projekt und Filter = Median der nicht verworfenen Lights des
+ * Projekts; Grenzwerte vom Rig (`ImageQualitySettings`).
  */
 import type { ProjectImageRow } from '@nina-pm/db';
 import {
@@ -9,12 +9,12 @@ import {
   gradeFlags,
   gradeRefs,
   imageGrade,
-  medianOf,
+  qualityStats,
   type GradeFlag,
   type GradeRef,
+  type ImageGrade,
   type ImageQualitySettings,
-  type ProjectImage,
-  type ProjectImagesView,
+  type ProjectQualityView,
 } from '@nina-pm/shared';
 
 const num = (m: Record<string, unknown>, key: string): number | null => {
@@ -25,7 +25,6 @@ const positive = (m: Record<string, unknown>, key: string) => {
   const v = num(m, key);
   return v !== null && v > 0 ? v : null;
 };
-const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
 
 /** Messwerte der Bewertung aus `capture.metrics`. */
 export function gradeInputOf(m: Record<string, unknown>) {
@@ -37,17 +36,22 @@ export function gradeInputOf(m: Record<string, unknown>) {
   };
 }
 
-export function projectImagesView(input: {
-  projectId: string;
-  rigId: string | null;
-  settings: ImageQualitySettings;
-  scaleArcsecPx: number | null;
-  rows: readonly ProjectImageRow[];
-  truncated: boolean;
-  canCorrect: boolean;
-}): ProjectImagesView {
-  const { settings, scaleArcsecPx: scale } = input;
-  const graded = input.rows.map((r) => ({ r, g: gradeInputOf(r.metrics) }));
+/** Ein bewertetes Light des Projekts (Qualität, Dateiliste). */
+export interface GradedLight {
+  readonly row: ProjectImageRow;
+  readonly grade: ImageGrade;
+  readonly flags: readonly GradeFlag[];
+  readonly hfr: number | null;
+  readonly stars: number | null;
+  readonly rmsArcsec: number | null;
+}
+
+/** Lights des Projekts mit Bewertung: Bezug je Filter aus den nicht verworfenen Lights des Projekts. */
+export function gradeProjectLights(
+  rows: readonly ProjectImageRow[],
+  settings: ImageQualitySettings,
+): GradedLight[] {
+  const graded = rows.map((r) => ({ r, g: gradeInputOf(r.metrics) }));
   const refs = gradeRefs(
     graded.map(({ r, g }) => ({
       filter: r.filter,
@@ -56,70 +60,113 @@ export function projectImagesView(input: {
       rejected: r.rejected,
     })),
   );
-  const rmsByFilter = new Map<string, number[]>();
-  for (const { r, g } of graded)
-    if (!r.rejected && g.rmsArcsec !== null)
-      rmsByFilter.set(r.filter, [...(rmsByFilter.get(r.filter) ?? []), g.rmsArcsec]);
-  const items: ProjectImage[] = graded.map(({ r, g }) => {
+  return graded.map(({ r, g }) => {
     const flags = gradeFlags(g, refs.get(r.filter) ?? null, settings);
-    const kept = r.metrics.qualityKept === true;
-    const m = r.metrics;
     return {
-      id: r.id,
-      sessionId: r.sessionId,
-      night: r.night,
-      capturedAt: r.capturedAt,
-      filter: r.filter,
-      exposureS: r.exposureS,
-      gain: r.gain,
-      offset: r.offset,
-      binning: r.binning,
-      isBonus: r.isBonus,
-      rejected: r.rejected,
-      rejectReason: r.rejectReason as ProjectImage['rejectReason'],
-      kept,
-      grade: imageGrade(g, flags, { rejected: r.rejected, kept }),
+      row: r,
+      grade: imageGrade(g, flags, { rejected: r.rejected, kept: r.metrics.qualityKept === true }),
       flags,
-      fileName: r.fileName,
-      relativePath: typeof m.relativePath === 'string' ? m.relativePath : null,
       hfr: g.hfr,
-      hfrArcsec: g.hfr !== null && scale ? round(g.hfr * scale * (r.binning ?? 1), 3) : null,
       stars: g.stars,
       rmsArcsec: g.rmsArcsec,
-      rmsRaArcsec: num(m, 'rmsRaArcsec'),
-      rmsDecArcsec: num(m, 'rmsDecArcsec'),
-      cloudCoverPct: g.cloudCoverPct,
-      skyQualityMag: num(m, 'skyQualityMag'),
-      altitudeDeg: num(m, 'altitudeDeg'),
-      airmass: num(m, 'airmass'),
-      focusPosition: num(m, 'focusPosition'),
-      focuserTemperatureC: num(m, 'focuserTemperatureC'),
-      medianAdu: num(m, 'medianAdu'),
-      saturatedPct: num(m, 'saturatedPct'),
-      sensorTempC: num(m, 'sensorTempC'),
-      setPointC: num(m, 'setPointC'),
     };
   });
+}
+
+const statsOf = (lights: readonly GradedLight[]) => qualityStats(lights);
+
+/** Gruppen in der Reihenfolge ihres ersten Auftretens. */
+function groupBy<T>(list: readonly T[], key: (x: T) => string): Map<string, T[]> {
+  const out = new Map<string, T[]>();
+  for (const x of list) out.set(key(x), [...(out.get(key(x)) ?? []), x]);
+  return out;
+}
+
+/**
+ * Reiter „Qualität“ des Projekts (AP-77, S-31): Anteile je Nacht und Filter, Summen je Nacht, je Filter, je Session und
+ * gesamt. Filter in der Reihenfolge ihres ersten Lights (älteste Nacht zuerst), Nächte neueste zuerst.
+ */
+export function projectQualityView(input: {
+  projectId: string;
+  rigId: string | null;
+  settings: ImageQualitySettings;
+  rows: readonly ProjectImageRow[];
+  truncated: boolean;
+}): ProjectQualityView {
+  const lights = gradeProjectLights(input.rows, input.settings);
+  const oldestFirst = [...lights].sort((a, b) => a.row.capturedAt.localeCompare(b.row.capturedAt));
+  const filterOrder = [...groupBy(oldestFirst, (l) => l.row.filter).keys()];
+  const byFilter = (list: readonly GradedLight[]) => {
+    const groups = groupBy(list, (l) => l.row.filter);
+    return filterOrder.flatMap((filter) => {
+      const g = groups.get(filter);
+      return g ? [{ filter, ...statsOf(g) }] : [];
+    });
+  };
+  const nights = [...groupBy(lights, (l) => l.row.night).entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([night, list]) => ({ night, filters: byFilter(list), total: statsOf(list) }));
+  const sessions = [...groupBy(lights, (l) => l.row.sessionId).entries()].map(
+    ([sessionId, list]) => ({ sessionId, ...statsOf(list) }),
+  );
   return {
     projectId: input.projectId,
     rigId: input.rigId,
-    settings,
-    scaleArcsecPx: scale,
+    settings: input.settings,
     minRef: GRADE_MIN_REF,
-    refs: [...refs.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([filter, ref]) => ({
-        filter,
-        hfr: ref.hfr,
-        hfrArcsec: ref.hfr !== null && scale ? round(ref.hfr * scale, 3) : null,
-        stars: ref.stars,
-        rmsArcsec: medianOf(rmsByFilter.get(filter) ?? []),
-        n: ref.n,
-      })),
-    items,
+    filters: byFilter(lights),
+    nights,
+    sessions,
+    total: statsOf(lights),
     truncated: input.truncated,
-    canCorrect: input.canCorrect,
   };
+}
+
+const csvCell = (v: string | number | boolean | null) => {
+  const text = v === null ? '' : String(v);
+  return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+/**
+ * Dateiliste zum Stacken (AP-77): je Light Nacht, Zeit, Filter, Belichtung, Qualität mit Gründen, Messwerte, relativer
+ * Pfad (zum NINA-Bildordner) und Dateiname; `good` = nur gute Lights. Semikolon, UTF-8 mit BOM (Excel).
+ */
+export function qualityFilesCsv(lights: readonly GradedLight[], good: boolean): string {
+  const head = [
+    'night',
+    'capturedAtUtc',
+    'filter',
+    'exposureS',
+    'quality',
+    'reasons',
+    'hfr',
+    'stars',
+    'guidingRmsArcsec',
+    'relativePath',
+    'fileName',
+  ];
+  const isGood = (l: GradedLight) => l.grade === 'ok' || l.grade === 'kept';
+  const rows = [...lights]
+    .filter((l) => !good || isGood(l))
+    .sort((a, b) => a.row.capturedAt.localeCompare(b.row.capturedAt))
+    .map((l) =>
+      [
+        l.row.night,
+        l.row.capturedAt,
+        l.row.filter,
+        l.row.exposureS,
+        isGood(l) ? 'good' : l.grade,
+        l.flags.map((f) => f.metric).join(','),
+        l.hfr,
+        l.stars,
+        l.rmsArcsec,
+        typeof l.row.metrics.relativePath === 'string' ? l.row.metrics.relativePath : null,
+        l.row.fileName,
+      ]
+        .map(csvCell)
+        .join(';'),
+    );
+  return `\uFEFF${[head.join(';'), ...rows].join('\r\n')}\r\n`;
 }
 
 /** Bezug je Projekt und Filter für mehrere Projekte (Session-Detail, Eingang). */

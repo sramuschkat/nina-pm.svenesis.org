@@ -3,17 +3,15 @@
  * AP-77 – die Nacht zeigt ihre Bedingungen automatisch (Detail `conditions`).
  * - `GET /web/v1/sites/{id}/clear-nights` (`session.read`): Klarnacht-Statistik je Monat, Nächte,
  *   Treffsicherheit der Vorhersage.
- * - `PUT`/`DELETE /web/v1/sites/{id}/clear-nights/{night}` (`sessionlog.write`): Nacht ohne Session als
- *   „bewölkt/nicht genutzt“ erfassen bzw. zurücknehmen.
+ * „bewölkt erfassen“ (`PUT`/`DELETE …/clear-nights/{night}`) entfällt seit AP-77: Nächte ohne Session stuft die Messung
+ * des Wettergeräts bzw. die Vorhersage ein.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { moonAt, nightBounds } from '@nina-pm/engine';
 import {
-  ClearNightMark,
   ClearNightQuery,
   ClearNightView,
   IMAGE_QUALITY_DEFAULTS,
-  NightKey,
   ProblemError,
   Uuid,
 } from '@nina-pm/shared';
@@ -54,47 +52,7 @@ export const clearNightsRoute = defineRoute(
   },
 );
 
-const nightParams = z.object({ id: Uuid, night: NightKey });
-
-export const clearNightMarkRoute = defineRoute(
-  { action: 'sessionlog.write', requirements: ['FA-AUS-17', 'S-64'] },
-  {
-    method: 'put',
-    path: '/api/web/v1/sites/{id}/clear-nights/{night}',
-    summary: 'Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen',
-    tags: ['sessions'],
-    request: { params: nightParams, body: { ...json(ClearNightMark), required: true } },
-    responses: {
-      204: { description: 'Erfasst' },
-      ...denied,
-      404: problemContent('resource.not_found'),
-      409: problemContent('site_night.has_session'),
-      422: problemContent('validation.failed'),
-    },
-  },
-);
-
-export const clearNightUnmarkRoute = defineRoute(
-  { action: 'sessionlog.write', requirements: ['FA-AUS-17', 'S-64'] },
-  {
-    method: 'delete',
-    path: '/api/web/v1/sites/{id}/clear-nights/{night}',
-    summary: 'Manuelle Erfassung einer Nacht zurücknehmen',
-    tags: ['sessions'],
-    request: { params: nightParams },
-    responses: {
-      204: { description: 'Zurückgenommen' },
-      ...denied,
-      404: problemContent('resource.not_found'),
-    },
-  },
-);
-
-export const SESSION_LOG_ROUTES = [
-  clearNightsRoute,
-  clearNightMarkRoute,
-  clearNightUnmarkRoute,
-] as const;
+export const SESSION_LOG_ROUTES = [clearNightsRoute] as const;
 
 export function webSessionLogRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
@@ -181,26 +139,6 @@ export function webSessionLogRoutes(services: () => Promise<ApiServices>) {
       }),
       200,
     );
-  });
-
-  app.openapi(clearNightMarkRoute, async (c) => {
-    const svc = await services();
-    const repo = svc.repositories(requireTenant(c).tenant).sessionLog();
-    const { id, night } = c.req.valid('param');
-    // Nur vergangene Nächte (Nacht-Schlüssel vor dem heutigen UTC-Tag): eine laufende Nacht ist offen.
-    if (night >= svc.now().toISOString().slice(0, 10)) throw new ProblemError('validation.failed');
-    const site = await repo.site(id);
-    await repo.markUnused(site.id, night);
-    return c.body(null, 204);
-  });
-
-  app.openapi(clearNightUnmarkRoute, async (c) => {
-    const svc = await services();
-    const repo = svc.repositories(requireTenant(c).tenant).sessionLog();
-    const { id, night } = c.req.valid('param');
-    const site = await repo.site(id);
-    await repo.unmarkUnused(site.id, night);
-    return c.body(null, 204);
   });
 
   return app;

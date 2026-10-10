@@ -2,14 +2,15 @@
  * Klarnacht-Statistik (AP-30; FA-AUS-16/17; S-64; TK 7.2) – das Sitzungsprotokoll zum Pflegen entfällt seit AP-77, die Tabelle
  * `session_log` bleibt mit ihren Altwerten stehen (Seeing/SQM/Transparenz der Klarnacht-Daten):
  * - Klarnacht-Daten je Standort und Zeitraum: `site_night_stat`, Sessions der Rigs des Standorts mit
- *   Schnappschuss, Protokoll und Verworfen-Quote; Nächte ohne Session manuell als „nicht genutzt“ erfassen.
+ *   Schnappschuss, Protokoll und Verworfen-Quote. Das manuelle Erfassen „nicht genutzt“ entfällt seit AP-77 (alte
+ *   Einträge `source = manual` bleiben gültig).
  * - Außerhalb des Mandanten-Repos: Schnappschuss zum Sessionbeginn speichern, Statistik am Sessionende
  *   schreiben (Jobs bzw. NINA-API), Vorhersage je Standort und Nacht aus dem Wetter-Cache festhalten
  *   (`site_night_forecast`, AP-64b, worker im `tick-5min`).
  */
 import { ProblemError, isUsableNight } from '@nina-pm/shared';
 import { sql, type Kysely } from 'kysely';
-import { withTx, retryOcc } from '../tx';
+import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
 
@@ -138,59 +139,6 @@ export class SessionLogRepository extends TenantRepo {
         overallScore: numOrNull(f.overallScore),
       })),
     };
-  }
-
-  /**
-   * Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen (FA-AUS-17). Gibt es eine Session-Zeile,
-   * bestimmt sie die Statistik – `409 site_night.has_session`.
-   */
-  async markUnused(siteId: string, night: string): Promise<void> {
-    const tenantId = this.ctx.tenantId;
-    await withTx(
-      this.db,
-      async (trx) => {
-        const row = await trx
-          .selectFrom('siteNightStat')
-          .select('source')
-          .where('tenantId', '=', tenantId)
-          .where('siteId', '=', siteId)
-          .where('night', '=', night)
-          .executeTakeFirst();
-        if (row?.source === 'session') throw new ProblemError('site_night.has_session');
-        // Auch eine noch nicht abgeschlossene Session der Nacht (Statistik folgt mit `session_close`).
-        const session = await trx
-          .selectFrom('session as s')
-          .innerJoin('rig as r', (j) =>
-            j.onRef('r.id', '=', 's.rigId').onRef('r.tenantId', '=', 's.tenantId'),
-          )
-          .select('s.id')
-          .where('s.tenantId', '=', tenantId)
-          .where('r.siteId', '=', siteId)
-          .where('s.night', '=', night)
-          .limit(1)
-          .executeTakeFirst();
-        if (session) throw new ProblemError('site_night.has_session');
-        if (row) return;
-        await trx
-          .insertInto('siteNightStat')
-          .values({ tenantId, siteId, night, usable: false, usableHours: 0, source: 'manual' })
-          .execute();
-      },
-      { guard: [{ table: 'site', id: siteId, tenantId }] },
-    );
-  }
-
-  /** Manuelle Erfassung zurücknehmen (nur `source = manual`). */
-  async unmarkUnused(siteId: string, night: string): Promise<void> {
-    await retryOcc(() =>
-      this.db
-        .deleteFrom('siteNightStat')
-        .where('tenantId', '=', this.ctx.tenantId)
-        .where('siteId', '=', siteId)
-        .where('night', '=', night)
-        .where('source', '=', 'manual')
-        .execute(),
-    );
   }
 }
 

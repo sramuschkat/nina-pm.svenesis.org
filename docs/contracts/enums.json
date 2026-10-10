@@ -35,7 +35,6 @@
   "session.read",
   "session.correct",
   "session.review",
-  "sessionlog.write",
   "transit.result.import",
   "project.note.write",
   "project.note.delete",
@@ -330,10 +329,6 @@
   "guiding",
   "other",
   "auto_quality"
- ],
- "imageQualityModes": [
-  "mark",
-  "reject"
  ],
  "imageGrades": [
   "ok",
