@@ -10227,6 +10227,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/reports/sky": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Himmel: Ganzhimmelkarte und Zeitachse je Rig (Zeitraum, Status, Rig)
+         * @description Aktion: `project.read` · FA-AUS-26, FA-AUS-27, FA-AUS-28, FA-AUS-29, S-65
+         */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    status?: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+                    /** @description UUID */
+                    rigId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Himmel */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SkyReport"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/reports/projects": {
         parameters: {
             query?: never;
@@ -19337,6 +19409,106 @@ export interface components {
                 /** @enum {string} */
                 twilight: "astronomical" | "nautical" | "civil";
             };
+        };
+        SkyReport: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            from: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            to: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            generatedAt: string;
+            rigs: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+            }[];
+            projects: components["schemas"]["SkyProject"][];
+            nights: components["schemas"]["SkyNight"][];
+            moon: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                illumPct: number;
+                phaseDeg: number;
+            }[];
+        };
+        SkyProject: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
+            /** @enum {string} */
+            projectType: "deep_sky" | "exoplanet";
+            /** @enum {string|null} */
+            status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived" | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string | null;
+            raDeg: number;
+            decDeg: number;
+            rotationDeg: number;
+            fov: {
+                widthDeg: number;
+                heightDeg: number;
+            } | null;
+            panels: {
+                raDeg: number;
+                decDeg: number;
+                rotationDeg: number;
+            }[];
+            periodIntegrationS: number;
+            totalIntegrationS: number;
+            plannedS: number;
+            percentDone: number;
+            byFilter: {
+                filter: string;
+                /** @enum {string|null} */
+                filterType: "broadband" | "narrowband" | "luminance" | "uv_ir_cut" | "light_pollution" | "photometric" | "other" | null;
+                integrationS: number;
+            }[];
+        };
+        SkyNight: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            projects: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string;
+                integrationS: number;
+            }[];
         };
         ProjectReport: {
             /**

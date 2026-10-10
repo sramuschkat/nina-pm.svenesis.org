@@ -1,0 +1,86 @@
+/* Auswertung „Himmel“ (AP-69, S-65): Legende, Ebenen und Tooltip; Farben nur über Tokens. */
+.fieldLabel {
+  font-weight: 600;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+
+.segmentButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.segmentButton[aria-pressed='true'] {
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-weight: 600;
+  box-shadow: var(--npm-shadow);
+}
+
+.below {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-3);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2) var(--npm-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--npm-border-strong);
+}
+
+.outline {
+  background: var(--npm-sky-bg);
+  border: 1.5px dashed var(--npm-sky-planned);
+}
+
+.layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: var(--npm-font-small);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.tip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tip em {
+  opacity: 0.8;
+}

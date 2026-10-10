@@ -568,7 +568,16 @@ export const reportsApi = {
     const s = p.toString();
     return apiFetch<ProjectReport>(`${V1}/reports/projects${s ? `?${s}` : ''}`);
   },
+  /** Auswertung „Himmel“ S-65 (AP-69): Karte und Zeitachse je Rig. */
+  sky: (q: { from: string; to: string; status?: string; rigId?: string }) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(q)) if (v) p.set(k, v);
+    return apiFetch<SkyReport>(`${V1}/reports/sky?${p.toString()}`);
+  },
 };
+
+export type SkyReport = Schemas['SkyReport'];
+export type SkyProject = Schemas['SkyProject'];
 
 export type ForecastView = Schemas['ForecastView'];
 export type ForecastProject = Schemas['ForecastProject'];

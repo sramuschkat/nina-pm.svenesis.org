@@ -36,6 +36,8 @@ export async function projectReportRows(
   projectIds: readonly string[],
   from: string | null,
   to: string | null,
+  /** `sessions: false` (Himmel, AP-69): nur die Aufnahmenächte, ohne Sessions und Wetter. */
+  options: { readonly sessions?: boolean } = {},
 ): Promise<ReportRows> {
   if (projectIds.length === 0) return { nights: [], sessions: [] };
   let nq = db
@@ -78,7 +80,10 @@ export async function projectReportRows(
     .groupBy(['s.id', 'c.projectId', 'c.exposureLineId', 's.night', 'r.name', 's.status']);
   if (from) sq = sq.where('s.night', '>=', from);
   if (to) sq = sq.where('s.night', '<=', to);
-  const [nights, sessions] = await Promise.all([nq.execute(), sq.execute()]);
+  const [nights, sessions] = await Promise.all([
+    nq.execute(),
+    options.sessions === false ? Promise.resolve([]) : sq.execute(),
+  ]);
   // Wetter-Schnappschuss je Session getrennt (kein GROUP BY über jsonb, DSQL).
   const sessionIds = [...new Set(sessions.map((x) => x.sessionId))];
   const snapshots =

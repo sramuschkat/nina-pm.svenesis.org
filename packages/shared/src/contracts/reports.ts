@@ -5,7 +5,7 @@
  * Kanalbalance-Hinweis. Druckansicht und CSV entstehen im Browser (kein PDF-Server).
  */
 import { z } from 'zod';
-import { approvalStatuses, projectStatuses, twilight } from '../generated/enums';
+import { approvalStatuses, filterTypes, projectStatuses, twilight } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
 export const ProjectReportQuery = z.object({
@@ -118,3 +118,80 @@ export const ProjectReport = z
   })
   .meta({ id: 'ProjectReport' });
 export type ProjectReport = z.infer<typeof ProjectReport>;
+
+/**
+ * Auswertung – Reiter „Himmel“ S-65 (AP-69; FA-AUS-26 … FA-AUS-29): Ganzhimmelkarte und Zeitachse je Rig aus einer
+ * Antwort. Zeitraum in Nacht-Schlüsseln (NT-04), höchstens 400 Nächte; Sichtbarkeit wie die Projektliste (FA-BER-02).
+ */
+export const SKY_REPORT_MAX_NIGHTS = 400;
+
+export const SkyReportQuery = z.object({
+  from: NightKey,
+  to: NightKey,
+  status: z.enum(projectStatuses).optional(),
+  rigId: Uuid.optional(),
+});
+
+export const SkyProject = z
+  .object({
+    id: Uuid,
+    name: z.string(),
+    createdBy: Uuid,
+    projectType: z.enum(['deep_sky', 'exoplanet']),
+    status: z.enum(projectStatuses).nullable(),
+    rigId: Uuid.nullable(),
+    /** Mitte und Positionswinkel des Projekts (J2000, Grad). */
+    raDeg: z.number(),
+    decDeg: z.number(),
+    rotationDeg: z.number(),
+    /** Bildfeld des Rigs; `null` ohne Rig bzw. ohne Teleskop/Kamera (dann nur als Punkt gezeichnet). */
+    fov: z.object({ widthDeg: z.number().positive(), heightDeg: z.number().positive() }).nullable(),
+    /** Panels (Mosaik) mit Mitte und Winkel; ein Panel bei Einzelfeldern. */
+    panels: z.array(z.object({ raDeg: z.number(), decDeg: z.number(), rotationDeg: z.number() })),
+    /** Akzeptierte Integration im Zeitraum bzw. insgesamt (s). */
+    periodIntegrationS: z.number().min(0),
+    totalIntegrationS: z.number().min(0),
+    /** Geplante Belichtung aller aktiven Zeilen (s). */
+    plannedS: z.number().min(0),
+    percentDone: z.number().min(0).max(100),
+    /** Integration im Zeitraum je Filter mit Filtertyp (Färbung „Filtermix“). */
+    byFilter: z.array(
+      z.object({
+        filter: z.string(),
+        filterType: z.enum(filterTypes).nullable(),
+        integrationS: z.number().min(0),
+      }),
+    ),
+  })
+  .meta({ id: 'SkyProject' });
+export type SkyProject = z.infer<typeof SkyProject>;
+
+export const SkyNight = z
+  .object({
+    rigId: Uuid,
+    night: NightKey,
+    /** Integration je Projekt in dieser Nacht (Rig = Rig des Projekts). */
+    projects: z.array(z.object({ projectId: Uuid, integrationS: z.number().min(0) })),
+  })
+  .meta({ id: 'SkyNight' });
+
+export const SkyReport = z
+  .object({
+    from: NightKey,
+    to: NightKey,
+    generatedAt: UtcInstant,
+    rigs: z.array(z.object({ id: Uuid, name: z.string() })),
+    projects: z.array(SkyProject),
+    /** Nur Nächte mit Aufnahmen, sortiert nach Rig und Nacht. */
+    nights: z.array(SkyNight),
+    /** Mond je Nacht des Zeitraums um Mitternacht (Zeitzone des Mandanten): Beleuchtung und Phasenwinkel (0 = Neumond). */
+    moon: z.array(
+      z.object({
+        night: NightKey,
+        illumPct: z.number().min(0).max(100),
+        phaseDeg: z.number().min(0).lt(360),
+      }),
+    ),
+  })
+  .meta({ id: 'SkyReport' });
+export type SkyReport = z.infer<typeof SkyReport>;
