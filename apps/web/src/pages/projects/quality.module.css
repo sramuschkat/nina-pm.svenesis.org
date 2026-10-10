@@ -1,0 +1,193 @@
+/* Reiter „Qualität“ im Projekt (AP-77): Matrix und Verlauf nebeneinander, wenn Platz ist, sonst untereinander; Dateiliste darunter. */
+.quality {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+  min-width: 0;
+}
+.columns {
+  display: grid;
+  /* Nach der verfügbaren Breite (der Reiter steht im Editor oft in der schmalen Spalte): nebeneinander erst ab 2 × 26rem. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+.card,
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+  padding: var(--npm-space-4);
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+}
+.files {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+.fileLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+}
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+}
+.title {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.muted {
+  margin: 0;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.tableWrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+.matrix {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.matrix th {
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+  color: var(--npm-text-light);
+  text-align: left;
+  white-space: nowrap;
+}
+.matrix thead th {
+  text-align: center;
+}
+.cell {
+  min-width: 5.5rem;
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-radius: var(--npm-radius);
+  text-align: center;
+  vertical-align: top;
+}
+.cellSub {
+  display: block;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.cell[data-tier='top'],
+.legendBox[data-tier='top'] {
+  background: var(--npm-success-bg);
+  box-shadow: inset 0 0 0 1px var(--npm-quality-good);
+}
+.cell[data-tier='good'],
+.legendBox[data-tier='good'] {
+  background: var(--npm-success-bg);
+}
+.cell[data-tier='fair'],
+.legendBox[data-tier='fair'] {
+  background: var(--npm-warning-bg);
+}
+.cell[data-tier='poor'],
+.legendBox[data-tier='poor'] {
+  background: var(--npm-danger-bg);
+}
+.cell[data-tier='none'] {
+  background: transparent;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.legendBox {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.legendLine {
+  display: inline-block;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+.toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+}
+.toggleButton,
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  text-decoration: none;
+  cursor: pointer;
+}
+.toggleButton[aria-pressed='true'] {
+  background: var(--npm-button);
+  border-color: var(--npm-button);
+  color: var(--npm-on-button);
+}
+.toggleButton:focus-visible,
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--npm-focus-ring);
+}
+.trend {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.grid {
+  stroke: var(--npm-border);
+  stroke-width: 1;
+}
+.axis {
+  fill: var(--npm-text-light);
+  font-size: 13px;
+}
+.line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+.dot {
+  fill: currentColor;
+  stroke: var(--npm-white);
+  stroke-width: 1;
+}

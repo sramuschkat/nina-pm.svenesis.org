@@ -1,51 +1,96 @@
 /**
- * Bausteine des Projektberichts (FA-AUS-10, FA-AUS-11, FA-AUS-13, FA-AUS-18; AP-34): Projektabschnitt (Reiter
- * *Sessions & Protokoll* im Projekt-Editor), Verlaufsgrafik (Balken je Nacht und Filter, kumulierte Integration) und CSV.
- * Seit AP-64 zeigt die Auswertung den Bericht im Reiter „Projekte“ (`ProjectsPage`).
+ * Bausteine des Projektberichts (FA-AUS-10, FA-AUS-11, FA-AUS-13, FA-AUS-18; AP-34): Projektabschnitt im Reiter
+ * *Sessions & Protokoll* des Projekt-Editors und Verlaufsgrafik (Balken je Nacht und Filter, kumulierte Integration).
+ * „Auswertung → Projekte“ (S-63) mit CSV und Drucken entfällt seit AP-77; Fortschritt steht in der Projektliste.
  */
-import { formatNightKey } from '@nina-pm/shared';
+import { formatNightKey, shareLabelPct } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import type { ProjectReport, ReportProject } from '../../api/client';
-import { ProjectCommentCount } from '../../lib/project-comments';
+import type { ProjectQualityView, ReportProject } from '../../api/client';
 import { FilterChip } from '../../components/FilterChip';
+import { QualityBar, QualityText } from '../../components/quality';
 import { useEquipmentList } from '../equipment/shared';
 import styles from './sessions.module.css';
 import { sessionPath } from './evaluation';
-import { Person } from '../../lib/member';
 
 const hours = (s: number) => s / 3600;
 
-/** Abschnitt eines Projekts (Bericht S-63; aufgeklappt im Reiter *Sessions & Protokoll* des Projekt-Editors). */
+/**
+ * Reiter *Sessions & Protokoll* des Projekts (S-31; seit AP-77 mit Qualität): je Filter eine Karte mit Fortschritt und
+ * Anteil guter Lights über alle Nächte (HFR, Guiding), Kanalbalance, Verlauf je Nacht, Sessions mit Lights je Filter,
+ * Qualität, HFR-Spanne, Guiding Ø und Wetter (Link auf die Nacht) und die Bedingungen des Projekts.
+ */
 export function ProjectSection({
   project: p,
-  open = false,
+  quality,
 }: {
   project: ReportProject;
-  open?: boolean;
+  quality?: ProjectQualityView | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const filters = useEquipmentList('filters');
   const colorOf = (short: string) =>
     (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
   const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
+  const n2 = (x: number) =>
+    x.toLocaleString(i18n.language, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const c = p.conditions;
+  const qualityOf = (filter: string) => quality?.filters.find((f) => f.filter === filter);
+  const sessionQuality = (id: string) => quality?.sessions.find((s) => s.sessionId === id);
+  const lights = p.filters.reduce((sum, f) => sum + f.accepted, 0);
+  const totalH = p.filters.reduce((sum, f) => sum + f.integrationS, 0) / 3600;
   return (
-    <details className={styles.reportSection} open={open}>
-      <summary>
-        <h2 className={styles.reportHeading}>
-          {p.name}{' '}
-          <span className={styles.reportCreator}>
-            <Person id={p.createdBy} compact />
-          </span>{' '}
-          <ProjectCommentCount projectId={p.projectId} count={p.commentCount} />
-          <span className={styles.muted}>
-            {' '}
-            · {p.rigName ?? '–'} · {n(p.percentDone)} % ·{' '}
-            {t('report.hours', { h: n(hours(p.periodIntegrationS)) })}
-          </span>
-        </h2>
-      </summary>
+    <section className={styles.reportSection} aria-label={p.name}>
+      <div className={styles.reportHead}>
+        <h2 className={styles.reportHeading}>{t('report.filtersQuality')}</h2>
+        <span className={styles.muted}>
+          {t('report.summary', {
+            nights: p.nights.length,
+            lights: lights.toLocaleString(i18n.language),
+            h: n(totalH),
+          })}
+          {quality?.total.sharePct != null
+            ? ` · ${t('report.qualityTotal', { pct: shareLabelPct(quality.total.sharePct) })}`
+            : ''}
+        </span>
+      </div>
+      <ul className={styles.filterCards} aria-label={t('report.filtersOf', { name: p.name })}>
+        {p.filters.map((f) => {
+          const q = qualityOf(f.filter);
+          return (
+            <li key={f.filter} className={styles.filterCard}>
+              <div className={styles.filterCardHead}>
+                <FilterChip shortName={f.filter} color={colorOf(f.filter)} size="sm" />
+                <span>
+                  {f.accepted}/{f.planned}
+                  {f.remaining === 0 ? ' ✓' : ''}
+                </span>
+              </div>
+              {q ? (
+                <>
+                  <QualityBar counts={q} />
+                  <QualityText counts={q} showCount={false} />
+                  <span className={styles.muted}>
+                    {[
+                      q.hfr ? t('report.hfr', { v: n2(q.hfr.median) }) : null,
+                      q.rmsArcsec ? t('report.rms', { v: n(q.rmsArcsec.median) }) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || t('sessionQuality.noMetrics')}
+                  </span>
+                </>
+              ) : null}
+              <span className={styles.muted}>
+                {t('report.filterLine', {
+                  h: n(hours(f.integrationS)),
+                  remaining: f.remaining,
+                  pct: n(f.percentDone, 0),
+                })}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       {p.channelBalance ? (
         <p className={styles.note} role="note">
           {t('report.balance', {
@@ -59,46 +104,6 @@ export function ProjectSection({
           })}
         </p>
       ) : null}
-      <h3 className={styles.subTitle}>{t('report.filters')}</h3>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <caption className={styles.srOnly}>{t('report.filtersOf', { name: p.name })}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{t('report.col.filter')}</th>
-              <th scope="col" className={styles.num}>
-                {t('report.col.planned')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('report.col.accepted')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('report.col.remaining')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('report.col.integration')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('report.col.done')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {p.filters.map((f) => (
-              <tr key={f.filter}>
-                <th scope="row">
-                  <FilterChip shortName={f.filter} color={colorOf(f.filter)} size="sm" />
-                </th>
-                <td className={styles.num}>{f.planned}</td>
-                <td className={styles.num}>{f.accepted}</td>
-                <td className={styles.num}>{f.remaining}</td>
-                <td className={styles.num}>{t('report.hours', { h: n(hours(f.integrationS)) })}</td>
-                <td className={styles.num}>{n(f.percentDone)} %</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       <h3 className={styles.subTitle}>{t('report.progress')}</h3>
       {p.nights.length === 0 ? (
         <p className={styles.muted}>{t('report.noNights')}</p>
@@ -117,39 +122,57 @@ export function ProjectSection({
                 <th scope="col">{t('report.col.night')}</th>
                 <th scope="col">{t('report.col.rig')}</th>
                 <th scope="col">{t('report.col.frames')}</th>
+                <th scope="col">{t('report.col.quality')}</th>
+                <th scope="col">{t('report.col.hfr')}</th>
                 <th scope="col" className={styles.num}>
-                  {t('report.col.rejected')}
+                  {t('report.col.rms')}
                 </th>
                 <th scope="col">{t('report.col.weather')}</th>
               </tr>
             </thead>
             <tbody>
-              {p.sessions.map((s) => (
-                <tr key={s.sessionId}>
-                  <th scope="row">
-                    <Link to={sessionPath(s.sessionId)}>{formatNightKey(s.night)}</Link>
-                  </th>
-                  <td>{s.rigName}</td>
-                  <td>
-                    <span className={styles.flags}>
-                      {s.filters.map((f) => (
-                        <span key={f.filter}>
-                          <FilterChip shortName={f.filter} color={colorOf(f.filter)} size="sm" />{' '}
-                          {f.frames}
-                        </span>
-                      ))}
-                    </span>
-                  </td>
-                  <td className={styles.num}>
-                    {s.rejectedPct === null ? '–' : `${n(s.rejectedPct)} %`}
-                  </td>
-                  <td>
-                    {s.weatherRatingIndex === null
-                      ? '–'
-                      : t(`weather.rating.${String(s.weatherRatingIndex)}`)}
-                  </td>
-                </tr>
-              ))}
+              {p.sessions.map((s) => {
+                const q = sessionQuality(s.sessionId);
+                return (
+                  <tr key={s.sessionId}>
+                    <th scope="row">
+                      <Link to={sessionPath(s.sessionId)}>{formatNightKey(s.night)}</Link>
+                    </th>
+                    <td>{s.rigName}</td>
+                    <td>
+                      <span className={styles.flags}>
+                        {s.filters.map((f) => (
+                          <span key={f.filter}>
+                            <FilterChip shortName={f.filter} color={colorOf(f.filter)} size="sm" />{' '}
+                            {f.frames}
+                          </span>
+                        ))}
+                      </span>
+                    </td>
+                    <td className={styles.qualityCell}>
+                      {q ? (
+                        <>
+                          <QualityBar counts={q} />
+                          <QualityText counts={q} showCount={false} />
+                        </>
+                      ) : (
+                        '–'
+                      )}
+                    </td>
+                    <td className={styles.nowrap}>
+                      {q?.hfr ? `${n2(q.hfr.min)}–${n2(q.hfr.max)} px` : '–'}
+                    </td>
+                    <td className={styles.num}>
+                      {q?.rmsArcsec ? `${n(q.rmsArcsec.median)}″` : '–'}
+                    </td>
+                    <td>
+                      {s.weatherRatingIndex === null
+                        ? '–'
+                        : t(`weather.rating.${String(s.weatherRatingIndex)}`)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -169,7 +192,7 @@ export function ProjectSection({
             : t('report.moonOff')}
         </dd>
       </dl>
-    </details>
+    </section>
   );
 }
 
@@ -262,74 +285,4 @@ export function ProgressChart({
       <figcaption className={styles.muted}>{summary}</figcaption>
     </figure>
   );
-}
-
-/** CSV des Berichts: Summen je Projekt und Filter sowie Verlauf je Nacht. */
-export function downloadReportCsv(report: ProjectReport, nameOf: (id: string) => string) {
-  const cell = (v: string | number | null) => {
-    const text = v === null ? '' : String(v);
-    return /[";\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  const head = [
-    'section',
-    'project',
-    'projectCreator',
-    'rig',
-    'status',
-    'filter',
-    'night',
-    'planned',
-    'accepted',
-    'remaining',
-    'acquired',
-    'rejected',
-    'integrationH',
-    'cumulativeH',
-  ];
-  const rows: (string | number | null)[][] = [];
-  const h = (s: number) => Math.round((s / 3600) * 100) / 100;
-  for (const p of report.projects) {
-    for (const f of p.filters)
-      rows.push([
-        'total',
-        p.name,
-        nameOf(p.createdBy),
-        p.rigName,
-        p.status,
-        f.filter,
-        null,
-        f.planned,
-        f.accepted,
-        f.remaining,
-        null,
-        null,
-        h(f.integrationS),
-        null,
-      ]);
-    for (const x of p.nights)
-      for (const f of x.filters)
-        rows.push([
-          'night',
-          p.name,
-          nameOf(p.createdBy),
-          p.rigName,
-          p.status,
-          f.filter,
-          x.night,
-          null,
-          f.accepted,
-          null,
-          f.acquired,
-          f.rejected,
-          h(f.integrationS),
-          h(f.cumulativeS),
-        ]);
-  }
-  const text = `\uFEFF${[head.join(';'), ...rows.map((r) => r.map(cell).join(';'))].join('\r\n')}\r\n`;
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `projektbericht-${report.from ?? 'alle'}${report.to ? `-${report.to}` : ''}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }

@@ -20250,6 +20250,7 @@ export interface components {
                  * @example 2026-09-18
                  */
                 night: string;
+                sessionIds: string[];
                 filters: components["schemas"]["FilterQuality"][];
                 total: components["schemas"]["QualityStats"];
             }[];

@@ -1363,3 +1363,16 @@ button.day {
   flex-wrap: wrap;
   gap: var(--npm-space-1);
 }
+
+/* Standort-Statistik (AP-77): Status mit Farbkästchen, Qualität mit Leiste. */
+.statusCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.qualityCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 7rem;
+}

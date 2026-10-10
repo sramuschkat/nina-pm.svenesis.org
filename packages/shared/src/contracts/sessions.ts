@@ -523,9 +523,14 @@ export const ProjectQualityView = z
     minRef: z.number().int(),
     /** Filter in der Reihenfolge ihres ersten Lights, je Filter über alle Nächte. */
     filters: z.array(FilterQuality),
-    /** Nächte, neueste zuerst; je Nacht die Filter mit Lights und die Summe. */
+    /** Nächte, neueste zuerst; je Nacht ihre Sessions (Link zur Nacht), die Filter mit Lights und die Summe. */
     nights: z.array(
-      z.object({ night: NightKey, filters: z.array(FilterQuality), total: QualityStats }),
+      z.object({
+        night: NightKey,
+        sessionIds: z.array(Uuid),
+        filters: z.array(FilterQuality),
+        total: QualityStats,
+      }),
     ),
     sessions: z.array(QualityStats.extend({ sessionId: Uuid })),
     total: QualityStats,

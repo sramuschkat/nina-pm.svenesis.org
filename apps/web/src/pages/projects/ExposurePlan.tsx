@@ -69,15 +69,15 @@ const PANELS_TAB = 'panels';
 /** Schlüssel des Reiters *Sessions & Protokoll* (S-31): Geplantes und Aufgenommenes in einem Bereich (Sven 04.10.2026). */
 const SESSIONS_TAB = 'sessions';
 
-/** Schlüssel des Reiters *Bilder* (AP-72b): Lights des Projekts mit Bewertung. */
-export const IMAGES_TAB = 'images';
+/** Schlüssel des Reiters *Qualität* (AP-77, vorher *Bilder* aus AP-72b): Anteile guter Lights je Nacht und Filter. */
+export const QUALITY_TAB = 'quality';
 
 export function ExposurePlan(
   props: ExposurePlanProps & {
     panelsTab?: ReactNode;
     sessionsTab?: ReactNode;
-    imagesTab?: ReactNode;
-    /** Anfangsreiter (z. B. `IMAGES_TAB` aus einem Link der Nacht). */
+    qualityTab?: ReactNode;
+    /** Anfangsreiter (z. B. `QUALITY_TAB` aus `?reiter=qualitaet`). */
     initialTab?: string | null;
   },
 ) {
@@ -111,10 +111,10 @@ export function ExposurePlan(
       ? PANELS_TAB
       : tab === SESSIONS_TAB && props.sessionsTab
         ? SESSIONS_TAB
-        : tab === IMAGES_TAB && props.imagesTab
-          ? IMAGES_TAB
+        : tab === QUALITY_TAB && props.qualityTab
+          ? QUALITY_TAB
           : ((project.panels.find((p) => p.id === tab) ?? project.panels[0])?.id ?? PANELS_TAB);
-  const panelTab = active !== PANELS_TAB && active !== SESSIONS_TAB && active !== IMAGES_TAB;
+  const panelTab = active !== PANELS_TAB && active !== SESSIONS_TAB && active !== QUALITY_TAB;
   const panelBody = (panelId: string) => {
     const panel = project.panels.find((p) => p.id === panelId);
     if (!panel) return null;
@@ -168,7 +168,9 @@ export function ExposurePlan(
           ...(props.sessionsTab
             ? [{ key: SESSIONS_TAB, label: t('projectEditor.tabs.sessions') }]
             : []),
-          ...(props.imagesTab ? [{ key: IMAGES_TAB, label: t('projectEditor.tabs.images') }] : []),
+          ...(props.qualityTab
+            ? [{ key: QUALITY_TAB, label: t('projectEditor.tabs.quality') }]
+            : []),
         ]}
         toolbar={
           canEdit && panelTab ? (
@@ -194,8 +196,8 @@ export function ExposurePlan(
             ) : null,
           ],
           [
-            IMAGES_TAB,
-            props.imagesTab ? <div className={styles.sessionsBody}>{props.imagesTab}</div> : null,
+            QUALITY_TAB,
+            props.qualityTab ? <div className={styles.sessionsBody}>{props.qualityTab}</div> : null,
           ],
         ])}
       />

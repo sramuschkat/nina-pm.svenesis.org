@@ -1,6 +1,6 @@
 /**
- * AP-64: Auswertung neu – Reiterwechsel Nächte | Projekte | Standort-Statistik mit erhaltenem Filter, alte Pfade leiten
- * um, Nacht öffnen (Session-Qualität, nicht zugeordnete Aufnahme zuordnen, Ereignisse), Kalender-Klick öffnet
+ * AP-64/AP-77: Auswertung – Reiterwechsel Nächte | Standort-Statistik (| Himmel) mit erhaltenem Filter, alte Pfade leiten
+ * um (Projekte → Projektliste), Nacht öffnen (Session-Qualität, nicht zugeordnete Aufnahme zuordnen, Ereignisse), Kalender-Klick öffnet
  * die Nacht; axe hell/dunkel ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen, Lage per
  * `boundingBox` gemessen (Karten, Kacheln, Kalender liegen im Fenster und nebeneinander, wo sie sollen).
  */
@@ -46,17 +46,16 @@ test('Reiterwechsel mit erhaltenem Filter; Standort-Statistik nimmt den Standort
   await admin.getByLabel('Zeitraum', { exact: true }).selectOption('90');
   await expect(admin).toHaveURL(`/auswertung/naechte?rig=${rigId}&zeitraum=90`);
   const tabs = admin.getByRole('navigation', { name: 'Bereiche der Auswertung' });
-  await tabs.getByRole('link', { name: 'Projekte' }).click();
-  await expect(admin).toHaveURL(`/auswertung/projekte?rig=${rigId}&zeitraum=90`);
-  await expect(admin.getByLabel('Rig', { exact: true })).toHaveValue(rigId);
-  await expect(admin.getByLabel('Zeitraum', { exact: true })).toHaveValue('90');
+  // „Projekte“ entfällt seit AP-77.
+  await expect(tabs.getByRole('link')).toHaveText(['Nächte', 'Standort-Statistik', 'Himmel']);
   await tabs.getByRole('link', { name: 'Standort-Statistik' }).click();
   await expect(admin).toHaveURL(`/auswertung/standort?rig=${rigId}&zeitraum=90`);
   await expect(admin.getByLabel('Standort', { exact: true })).toHaveValue(siteId);
   await expect(admin.getByLabel('Zeitraum', { exact: true })).toHaveValue('90');
   // Zurück: der Filter bleibt.
   await admin.goBack();
-  await expect(admin).toHaveURL(`/auswertung/projekte?rig=${rigId}&zeitraum=90`);
+  await expect(admin).toHaveURL(`/auswertung/naechte?rig=${rigId}&zeitraum=90`);
+  await expect(admin.getByLabel('Rig', { exact: true })).toHaveValue(rigId);
   // Menü „Auswertung“ führt auf Nächte.
   await admin
     .getByRole('navigation', { name: 'Hauptnavigation' })
@@ -72,8 +71,11 @@ test('alte Pfade leiten um', async ({ page }) => {
   await expect(page).toHaveURL(`/auswertung/naechte?rig=${id}`);
   await page.goto(`/auswertung/sessions/${id}`);
   await expect(page).toHaveURL(`/auswertung/naechte/${id}`);
+  // „Auswertung → Projekte“ und der Projektbericht führen seit AP-77 auf die Projektliste.
   await page.goto('/auswertung/projektbericht');
-  await expect(page).toHaveURL('/auswertung/projekte');
+  await expect(page).toHaveURL('/projekte');
+  await page.goto(`/auswertung/projekte?rig=${id}`);
+  await expect(page).toHaveURL('/projekte');
   await page.goto('/auswertung/klarnacht');
   await expect(page).toHaveURL('/auswertung/standort');
   await page.goto('/auswertung/folgeplanung');
@@ -156,17 +158,16 @@ test('Nacht öffnen: Session-Qualität, nicht zugeordnete Aufnahme zuordnen, Ere
 });
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`Projekte und Standort-Statistik ohne serious/critical (${theme})`, async ({ page }) => {
+  test(`Standort-Statistik ohne serious/critical (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => window.localStorage.setItem('npm.theme', t), theme);
     await testLogin(page, 'owner');
-    await page.goto('/auswertung/projekte?zeitraum=365');
-    await expect(page.getByRole('heading', { level: 1, name: 'Auswertung' })).toBeVisible();
-    await expect(page.getByRole('status')).toHaveCount(0);
-    await expectNoSerious(page, `Projekte ${theme}`);
     await page.goto('/auswertung/standort?zeitraum=90');
     await expect(page.getByRole('heading', { name: 'Nächte im Kalender' })).toBeVisible();
     // Eigene Klasse „klar, aber nicht genutzt“ (Entscheidung Sven 07.10.2026) in der Legende.
     await expect(page.getByRole('list', { name: 'Legende' })).toContainText('klar, nicht genutzt');
+    // Tabelle aller Nächte immer sichtbar (AP-77), ohne „bewölkt erfassen“.
+    await expect(page.getByRole('heading', { name: 'Alle Nächte' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /bewölkt erfassen/i })).toHaveCount(0);
     await expectNoSerious(page, `Standort-Statistik ${theme}`);
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 2, name: 'Nächste Nächte' })).toBeVisible();
@@ -198,9 +199,6 @@ for (const width of [768, 2400]) {
       expect((b?.x ?? 0) + (b?.width ?? 0)).toBeLessThanOrEqual(width);
       expect(b?.width ?? 0).toBeGreaterThan(width * 0.5);
     }
-    await page.goto('/auswertung/projekte?zeitraum=365');
-    await expect(page.getByRole('heading', { level: 1, name: 'Auswertung' })).toBeVisible();
-    expect(await overflow(page), `Projekte @ ${String(width)}`).toBeLessThanOrEqual(0);
     await page.goto('/auswertung/standort?zeitraum=90');
     await expect(page.getByRole('heading', { name: 'Nächte im Kalender' })).toBeVisible();
     expect(await overflow(page), `Standort-Statistik @ ${String(width)}`).toBeLessThanOrEqual(0);
@@ -211,6 +209,11 @@ for (const width of [768, 2400]) {
       Math.abs((calendar?.y ?? 0) - (side?.y ?? 0)) < 40,
       `nebeneinander @ ${String(width)}`,
     ).toBe(width >= 1280);
+    // Tabelle aller Nächte unter Kalender und Kacheln, so breit wie der Inhalt.
+    const table = await page.getByRole('region', { name: 'Alle Nächte' }).boundingBox();
+    if (!table || !calendar) throw new Error('Tabelle oder Kalender nicht sichtbar');
+    expect(table.y).toBeGreaterThan(calendar.y);
+    expect(table.x + table.width).toBeLessThanOrEqual(width);
     const months = page.locator('table caption');
     await expect(months.first()).toBeAttached();
     for (const t of await page.locator('table').all()) {

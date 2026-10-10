@@ -235,6 +235,7 @@ describe('Bildbewertung als Anteil (AP-72b, AP-77)', () => {
     expect(v.nights).toEqual([
       {
         night: NIGHT,
+        sessionIds: [sessionId],
         filters: [expect.objectContaining({ filter: 'Ha' })],
         total: expect.objectContaining(counts),
       },

@@ -34,6 +34,7 @@ import { SitesPage } from '../pages/equipment/SitesPage';
 import { TelescopesPage } from '../pages/equipment/TelescopesPage';
 import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
 import { ProjectListPage } from '../pages/projects/ProjectListPage';
+import { PROJECT_AREA } from '../pages/projects/ProjectsLayout';
 import { QueuePage } from '../pages/projects/QueuePage';
 import { DeliveryPage } from '../pages/nina/DeliveryPage';
 import { SequencerHelpPage } from '../pages/nina/SequencerHelpPage';
@@ -43,7 +44,6 @@ import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { EVALUATION_PATHS } from '../pages/sessions/evaluation';
 import { NightPage } from '../pages/sessions/NightPage';
 import { NightsPage } from '../pages/sessions/NightsPage';
-import { ProjectsPage as EvaluationProjectsPage } from '../pages/sessions/ProjectsPage';
 import { LegacyRedirect, SessionRedirect } from '../pages/sessions/redirects';
 import { SiteStatsPage } from '../pages/sessions/SiteStatsPage';
 import { SkyPage } from '../pages/sessions/SkyPage';
@@ -220,11 +220,12 @@ export function createRouter() {
               element: <RequireAction action="session.read" />,
               children: [
                 { index: true, element: <Navigate to={EVALUATION_PATHS.nights} replace /> },
-                // AP-64: Nächte | Projekte | Standort-Statistik (| Himmel, AP-69); alte Pfade leiten um (Suche bleibt erhalten).
+                // AP-64/AP-77: Nächte | Standort-Statistik | Himmel (AP-69); alte Pfade leiten um (Suche bleibt erhalten).
                 { path: 'naechte', element: <NightsPage /> },
                 { path: 'naechte/:id', element: <SessionRedirect /> },
                 { path: 'naechte/:rigId/:night', element: <NightPage /> },
-                { path: 'projekte', element: <EvaluationProjectsPage /> },
+                // „Auswertung → Projekte“ (S-63) entfällt seit AP-77: Fortschritt steht in der Projektliste.
+                { path: 'projekte', element: <Navigate to={PROJECT_AREA.list} replace /> },
                 { path: 'standort', element: <SiteStatsPage /> },
                 // AP-69: Ganzhimmelkarte und Zeitachse je Rig (Entscheidung Sven 10.10.2026: in der Auswertung).
                 { path: 'himmel', element: <SkyPage /> },
@@ -233,10 +234,7 @@ export function createRouter() {
                   path: 'sessions/:id',
                   element: <LegacyRedirect to={EVALUATION_PATHS.nights} withId />,
                 },
-                {
-                  path: 'projektbericht',
-                  element: <LegacyRedirect to={EVALUATION_PATHS.projects} />,
-                },
+                { path: 'projektbericht', element: <Navigate to={PROJECT_AREA.list} replace /> },
                 { path: 'klarnacht', element: <LegacyRedirect to={EVALUATION_PATHS.site} /> },
                 {
                   path: 'folgeplanung',

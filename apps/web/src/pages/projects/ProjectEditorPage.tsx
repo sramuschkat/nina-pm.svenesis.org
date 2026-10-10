@@ -63,7 +63,7 @@ import {
   validate,
   type FieldErrors,
 } from '../equipment/shared';
-import { ExposurePlan, IMAGES_TAB } from './ExposurePlan';
+import { ExposurePlan, QUALITY_TAB } from './ExposurePlan';
 import {
   applyCatalogPick,
   changedFields,
@@ -84,7 +84,7 @@ import { PanelList } from './PanelList';
 import { ChangeRequestsTab } from './ChangeRequestsTab';
 import { CommentsTab } from './CommentsTab';
 import { ChartArea, HistoryTab, ProjectSessionsTab } from './ProjectTabs';
-import { ProjectImagesTab } from './ProjectImagesTab';
+import { ProjectQualityTab } from './ProjectQualityTab';
 import { SkyLocation } from './SkyLocation';
 import { SubmitPanel } from './SubmitPanel';
 import { ProjectImage } from './ProjectImage';
@@ -1173,14 +1173,17 @@ function Editor({
                   <ProjectSessionsTab projectId={saved.id} />
                 ) : undefined
               }
-              // Bilder (AP-72b): Lights mit Bewertung; `?bild=` aus der Nacht öffnet den Reiter mit diesem Bild.
-              imagesTab={
+              // Qualität (AP-77): Anteile guter Lights je Nacht und Filter; alte Links auf „Bilder“
+              // (`?reiter=bilder`, `?bild=`) öffnen ebenfalls diesen Reiter.
+              qualityTab={
                 saved.approvalStatus === 'approved' ? (
-                  <ProjectImagesTab projectId={saved.id} initialImageId={params.get('bild')} />
+                  <ProjectQualityTab projectId={saved.id} />
                 ) : undefined
               }
               initialTab={
-                params.get('bild') || params.get('reiter') === 'bilder' ? IMAGES_TAB : null
+                params.get('bild') || ['bilder', 'qualitaet'].includes(params.get('reiter') ?? '')
+                  ? QUALITY_TAB
+                  : null
               }
               panelsTab={
                 <PanelList

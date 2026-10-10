@@ -3,7 +3,6 @@
  * einem eigenen Rig erscheint als Karte und vollständig in der Nacht: Session-Qualität, Hinweise (Kennzeichen Temperatur
  * und Einstellungen, nicht zugeordnet mit Zuordnen), Qualitätskurve, Qualität je Filter und Korrektur in den Details je
  * Projekt, Ereignisse eingeklappt; axe hell/dunkel, 768/2400 px ohne horizontales Scrollen, Lage per `boundingBox`.
- * AP-34/AP-64: Reiter „Projekte“ nach der Nacht.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -202,40 +201,3 @@ for (const width of [768, 2400]) {
     }
   });
 }
-
-test('Projekte (S-63 neu) nach einer Fake-Plugin-Nacht – Verlauf, axe hell/dunkel, 768/2400 px', async ({
-  browser,
-  baseURL,
-}) => {
-  const admin = await (await browser.newContext({ viewport: WIDE })).newPage();
-  await testLogin(admin, 'owner');
-  const user = await (await browser.newContext()).newPage();
-  await testLogin(user, 'user1');
-  const { rigId, projectName } = await nightOnOwnRig(admin, user, baseURL ?? '');
-
-  await admin.goto(`/auswertung/projekte?rig=${rigId}`);
-  await expect(admin.getByRole('heading', { level: 1, name: 'Auswertung' })).toBeVisible();
-  const row = admin.getByRole('article', { name: projectName });
-  await expect(row).toBeVisible();
-  await expect(row.getByRole('list', { name: `Filter von ${projectName}` })).toBeVisible();
-  await row.getByRole('button', { name: 'Verlauf' }).click();
-  await expect(row.getByRole('img', { name: /Nächte mit Aufnahmen, kumuliert/ })).toBeVisible();
-  await expect(row.getByRole('link', { name: /\d\d\.\/\d\d\.\d\d\./ }).first()).toBeVisible();
-  await expectNoSerious(admin, 'Projekte light');
-  const download = admin.waitForEvent('download');
-  await admin.getByRole('button', { name: 'CSV exportieren' }).click();
-  expect((await download).suggestedFilename()).toMatch(/^projektbericht-.*\.csv$/);
-
-  for (const width of [768, 2400]) {
-    await admin.setViewportSize({ width, height: 900 });
-    const overflow = await admin.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow, `Projekte @ ${String(width)}`).toBeLessThanOrEqual(0);
-  }
-
-  await admin.evaluate(() => window.localStorage.setItem('npm.theme', 'dark'));
-  await admin.reload();
-  await expect(admin.getByRole('article', { name: projectName })).toBeVisible();
-  await expectNoSerious(admin, 'Projekte dark');
-});

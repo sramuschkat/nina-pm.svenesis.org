@@ -105,7 +105,12 @@ export function projectQualityView(input: {
   };
   const nights = [...groupBy(lights, (l) => l.row.night).entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([night, list]) => ({ night, filters: byFilter(list), total: statsOf(list) }));
+    .map(([night, list]) => ({
+      night,
+      sessionIds: [...new Set(list.map((l) => l.row.sessionId))],
+      filters: byFilter(list),
+      total: statsOf(list),
+    }));
   const sessions = [...groupBy(lights, (l) => l.row.sessionId).entries()].map(
     ([sessionId, list]) => ({ sessionId, ...statsOf(list) }),
   );

@@ -290,22 +290,57 @@
   align-items: center;
   gap: var(--npm-space-2);
 }
-/* Projektbericht S-63 (AP-34): aufklappbare Abschnitte, Verlauf, Druckansicht. */
+/* Projekt-Reiter *Sessions & Protokoll* (AP-34, AP-77): Qualitätskarten je Filter, Verlauf, Sessions. */
 .reportSection {
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-2);
-  padding: var(--npm-space-2) 0;
-  border-bottom: 1px solid var(--npm-border);
+  min-width: 0;
 }
-.reportSection > summary {
-  cursor: pointer;
-  list-style-position: inside;
+.reportHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
 }
 .reportHeading {
-  display: inline;
   margin: 0;
   font-size: var(--npm-font-h3);
+}
+.filterCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.filterCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.filterCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+  font-variant-numeric: tabular-nums;
+}
+.qualityCell {
+  min-width: 9rem;
+}
+.qualityCell > * + * {
+  margin-top: 3px;
+}
+.nowrap {
+  white-space: nowrap;
 }
 .reportFacts {
   display: grid;

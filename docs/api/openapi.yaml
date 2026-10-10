@@ -12666,6 +12666,12 @@ components:
                 type: string
                 format: date
                 example: 2026-09-18
+              sessionIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                  description: UUID
               filters:
                 type: array
                 items:
@@ -12674,6 +12680,7 @@ components:
                 $ref: "#/components/schemas/QualityStats"
             required:
               - night
+              - sessionIds
               - filters
               - total
         sessions:
