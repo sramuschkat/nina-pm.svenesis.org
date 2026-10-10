@@ -30,7 +30,6 @@ import {
   efficiencyBar,
   groupNights,
   projectChips,
-  weatherTone,
   type NightGroup,
   type ProjectChip,
 } from './night-model';
@@ -226,7 +225,6 @@ function NightCard({
   const { t, i18n } = useTranslation();
   const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
   const bar = efficiencyBar(s.efficiency);
-  const tone = weatherTone(s.weather);
   // Sessionqualität der Nacht (AP-77) aus den Sessions; die Vorhersage steht klar beschriftet darunter.
   const quality = combineQualityCounts(s.sessions.flatMap((x) => (x.quality ? [x.quality] : [])));
   const grade = sessionGrade(quality.sharePct);
@@ -241,28 +239,17 @@ function NightCard({
       <div className={styles.cardStart}>
         <NightDate night={s.night} />
         {grade && quality.sharePct !== null ? (
-          <span className={styles.quality} data-grade={grade}>
-            <span className={styles.weatherDot} aria-hidden="true" />
+          <span className={styles.cardQuality} data-grade={grade}>
+            <span className={styles.cardQualityDot} aria-hidden="true" />
             {t('evaluation.nights.quality', {
               grade: t(`evaluation.quality.grade.${grade}`),
               pct: shareLabelPct(quality.sharePct),
             })}
-            <span className={styles.qualityMini}>
+            <span className={styles.cardQualityBar}>
               <QualityBar counts={quality} />
             </span>
           </span>
         ) : null}
-        <span className={styles.weather} data-tone={tone}>
-          <span className={styles.weatherDot} aria-hidden="true" />
-          {s.weather && s.weather.ratingIndex !== null
-            ? s.weather.nightMean !== null
-              ? t('evaluation.nights.weather', {
-                  rating: t(`weather.rating.${String(s.weather.ratingIndex)}`),
-                  pct: n(s.weather.nightMean * 100, 0),
-                })
-              : t(`weather.rating.${String(s.weather.ratingIndex)}`)
-            : t('evaluation.nights.noWeather')}
-        </span>
         <span className={styles.cardMeta}>
           {showRig ? `${s.rigName} · ` : ''}
           {time(s.startedAt)} – {s.endedAt ? time(s.endedAt) : t('sessions.running')}
@@ -354,8 +341,8 @@ function CloudyCard({ night }: { night: string }) {
     >
       <div className={styles.cardStart}>
         <NightDate night={night} />
-        <span className={styles.weather} data-tone="none">
-          <span className={styles.weatherDot} aria-hidden="true" />
+        <span className={styles.cardQuality}>
+          <span className={styles.cardQualityDot} aria-hidden="true" />
           {t('evaluation.nights.cloudy')}
         </span>
       </div>

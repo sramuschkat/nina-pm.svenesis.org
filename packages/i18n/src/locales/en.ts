@@ -2449,8 +2449,6 @@ export const en: Messages = {
       empty: 'No nights with a session in this period.',
       more: 'Load more nights',
       cardLabel: 'Night {{night}} · {{rig}}',
-      weather: 'Forecast: {{rating}} · {{pct}} %',
-      noWeather: 'no forecast',
       quality: 'Quality {{grade}} · {{pct}} %',
       eff: '{{exposure}} of {{dark}} h · {{pct}} %',
       effNoDark: '{{exposure}} h exposed · no dark time in the plan',
@@ -2583,8 +2581,7 @@ export const en: Messages = {
       rejectedCount: '{{count}} rejected',
       hfrRange: 'HFR {{min}}–{{max}} px',
       rms: 'guiding avg. {{rms}}″',
-      definition:
-        'Quality: share of lights within the rig limits (reference: non-rejected lights of the last 30 nights)',
+      definition: 'Quality = share of lights within the rig limits',
       perFilter: 'Image quality per filter',
       tableOf: 'Image quality per filter of {{name}}',
       col: {

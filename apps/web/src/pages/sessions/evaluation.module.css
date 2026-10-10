@@ -238,47 +238,33 @@
   font-size: var(--npm-font-label);
   color: var(--npm-text-light);
 }
-.weather {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--npm-space-2);
-  font-size: var(--npm-font-small);
-}
-.weatherDot {
+.cardQualityDot {
   flex: none;
   width: 0.65rem;
   height: 0.65rem;
   border-radius: 50%;
   background: var(--npm-border-strong);
 }
-.weather[data-tone='good'] .weatherDot {
-  background: var(--npm-success);
-}
-.weather[data-tone='fair'] .weatherDot {
-  background: var(--npm-warning);
-}
-.weather[data-tone='poor'] .weatherDot {
-  background: var(--npm-danger);
-}
-/* Sessionqualität auf der Karte (AP-77): Hauptwert über der Vorhersage. */
-.quality {
+/* Sessionqualität auf der Karte (AP-77); eigene Klassen, `.quality` gehört der Qualitätskurve. */
+.cardQuality {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--npm-space-1) var(--npm-space-2);
+  font-size: var(--npm-font-small);
   font-weight: 600;
 }
-.quality[data-grade='very_good'] .weatherDot,
-.quality[data-grade='good'] .weatherDot {
+.cardQuality[data-grade='very_good'] .cardQualityDot,
+.cardQuality[data-grade='good'] .cardQualityDot {
   background: var(--npm-quality-good);
 }
-.quality[data-grade='fair'] .weatherDot {
+.cardQuality[data-grade='fair'] .cardQualityDot {
   background: var(--npm-quality-flagged);
 }
-.quality[data-grade='poor'] .weatherDot {
+.cardQuality[data-grade='poor'] .cardQualityDot {
   background: var(--npm-quality-rejected);
 }
-.qualityMini {
+.cardQualityBar {
   display: inline-flex;
   width: 4rem;
 }
