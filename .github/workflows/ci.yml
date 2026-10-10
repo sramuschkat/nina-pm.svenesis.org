@@ -13,7 +13,7 @@
 # Pflicht-Prüfungen in den Branch-Regeln bleiben damit gültig. Playwright verteilt beim Sharden einzelne Tests
 # (`fullyParallel`).
 # Öffentliches Repo (seit 26.09.2026): Standard-Runner mit 4 vCPU und ohne Minutenbegrenzung. Deshalb
-# `test` in 3 und E2E in 6 Shards (13 gleichzeitige Jobs, Grenze 20), Vitest mit 3 Workern (vitest.config.ts),
+# `test` in 3 und E2E in 6 Shards (seit 10.10.2026: 7 und Prüfstand extra, s. u.), Vitest mit 3 Workern (vitest.config.ts),
 # Typecheck inkrementell und Lint/Prettier mit Cache (aus dem letzten Lauf auf `main`), und Tests samt E2E
 # wieder auch auf `main` – ein Fehler durch zwei einzeln grüne PRs fällt so sofort auf.
 # Tempo (03.10.2026, Sven): PRs, die nur Plugin, dessen Test-Werkzeuge oder plugin.yml ändern (`web=false`), lassen
@@ -21,6 +21,12 @@
 # Ergebnis eines vollständig grünen PR-Laufs aus diesem Repo, der genau denselben Dateistand geprüft hat (Artefakt
 # `tested-tree`, Git-Tree des Merge-Refs) – Tests, Build und E2E entfallen dann; `pnpm deploy:prod` akzeptiert das
 # ebenso (tools/deploy/src/ci-gate.ts). Ist zwischen PR-Lauf und Merge etwas anderes gelandet, läuft alles.
+# Tempo (10.10.2026, Sven): Messung der PR-Läufe #329–#339 – Wandzeit 255–272 s, kritischer Pfad war `test (2/3)` mit
+# 235–250 s, weil Vitest nach Dateien statt nach Dauer verteilt und dort `bench-real-server.test.ts` (Prüfstand, 7
+# Szenarien nacheinander, 97 s) landete. Der Prüfstand läuft deshalb als eigener Job `test (Prüfstand)` parallel und
+# ist aus den drei Shards ausgenommen; E2E in 7 statt 6 Shards (17 Jobs je vollem Lauf, Grenze 20 je Repo). Reine
+# Doku-PRs (`code=false`) prüfen in `lint · typecheck` nur die Formatierung (Prettier) – ESLint, DSQL-Lint und
+# Typecheck sehen keine geänderte Datei.
 name: ci
 
 on:
@@ -128,6 +134,7 @@ jobs:
 
   static:
     name: lint · typecheck
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -151,8 +158,14 @@ jobs:
           restore-keys: |
             static-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
             static-${{ runner.os }}-
-      - run: pnpm lint
-      - run: pnpm typecheck
+      # Reine Doku-PRs: nur Prettier (Markdown, JSON, YAML); alles andere ist unverändert.
+      - name: Formatierung (nur Doku geändert)
+        if: needs.changes.outputs.code != 'true'
+        run: pnpm exec prettier --check . --cache --cache-strategy content --cache-location node_modules/.cache/prettier/cache.json
+      - if: needs.changes.outputs.code == 'true'
+        run: pnpm lint
+      - if: needs.changes.outputs.code == 'true'
+        run: pnpm typecheck
       - uses: actions/cache/save@v4
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
@@ -205,23 +218,42 @@ jobs:
           WEB: ${{ needs.changes.outputs.web }}
           SHARD: ${{ matrix.shard }}
         run: |
-          if [ "$WEB" = "true" ]; then pnpm test --shard="$SHARD/3"
+          # Der Prüfstand läuft im eigenen Job `test (Prüfstand)`.
+          if [ "$WEB" = "true" ]; then pnpm test --shard="$SHARD/3" --exclude apps/api/test/bench-real-server.test.ts
           elif [ "$SHARD" = "1" ]; then pnpm vitest run tools
           else echo "Nur Plugin geändert – Werkzeug-Tests laufen in Shard 1"; fi
 
+  # Prüfstand gegen den echten Server (VM-Prüfstand Stufe 2a, PGlite, ohne Postgres-Dienst): 7 Szenarien à 15–20 s.
+  test-bench:
+    name: test (Prüfstand)
+    needs: changes
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.reuse != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run apps/api/test/bench-real-server.test.ts
+
   test:
     name: test
-    needs: test-shard
+    needs: [test-shard, test-bench]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Alle Test-Shards grün?
+      - name: Alle Test-Shards und der Prüfstand grün?
         env:
           RESULT: ${{ needs.test-shard.result }}
+          BENCH: ${{ needs.test-bench.result }}
         run: |
-          echo "Shards: $RESULT"
-          [ "$RESULT" = "success" ] || [ "$RESULT" = "skipped" ]
+          echo "Shards: $RESULT, Prüfstand: $BENCH"
+          { [ "$RESULT" = "success" ] || [ "$RESULT" = "skipped" ]; } && { [ "$BENCH" = "success" ] || [ "$BENCH" = "skipped" ]; }
 
   build:
     name: build · cdk synth
@@ -242,7 +274,7 @@ jobs:
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   e2e-shard:
-    name: e2e (${{ matrix.shard }}/6)
+    name: e2e (${{ matrix.shard }}/7)
     needs: changes
     if: needs.changes.outputs.web == 'true' && needs.changes.outputs.reuse != 'true'
     runs-on: ubuntu-latest
@@ -250,7 +282,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7]
     # Prod-naher Stack: gebaute SPA hinter den Headern aus iam.md §10 + API im Node-Adapter mit Test-Login
     # und PGlite (TK 17); kein AWS, kein Docker. Enthält `pnpm test:a11y` (a11y.spec.ts, TK 18).
     steps:
@@ -319,7 +351,7 @@ jobs:
       - name: Chromium installieren (nur ohne Cache)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install chromium
-      - name: E2E (Shard ${{ matrix.shard }}/6)
+      - name: E2E (Shard ${{ matrix.shard }}/7)
         shell: bash
         # Diagnose (Wunsch Sven 02.10.2026): Mehrfach hing ein Shard nach „N passed“ bis zum Job-Limit (zuletzt
         # e2e 6/6 auf main, 20 min). Playwright selbst endet spätestens 30 s nach dem Ergebnis – vermutlich hält ein
@@ -358,7 +390,7 @@ jobs:
           ) 2>/dev/null &
           watchdog=$!
           status=0
-          pnpm e2e --shard=${{ matrix.shard }}/6 2>&1 | tee "$log" || status=$?
+          pnpm e2e --shard=${{ matrix.shard }}/7 2>&1 | tee "$log" || status=$?
           # Wächter samt seinem `sleep` beenden – sonst hielte er selbst die Ausgabe offen.
           pkill -P "$watchdog" || true
           kill "$watchdog" 2>/dev/null || true
