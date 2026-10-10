@@ -263,6 +263,46 @@ export function NumberField({
   unit?: string;
 }) {
   const id = useId();
+  return (
+    <FieldShell id={id} {...base} unit={unit}>
+      <NumberInput
+        id={id}
+        value={value}
+        onChange={onChange}
+        step={step}
+        min={min}
+        max={max}
+        disabled={base.disabled}
+        aria-invalid={base.error ? true : undefined}
+        aria-describedby={describedBy(id, base.hint, base.error)}
+      />
+    </FieldShell>
+  );
+}
+
+/**
+ * Zahleneingabe ohne Rahmen (Beschriftung, Einheit, Hinweis setzt der Aufrufer, z. B. Zeilen der
+ * Scheduler-Einstellungen). Leer ergibt `null`; eine laufende Eingabe („1,“) bleibt stehen.
+ */
+export function NumberInput({
+  value,
+  onChange,
+  step = 'any',
+  className,
+  ...rest
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+  step?: number | 'any';
+  min?: number | undefined;
+  max?: number | undefined;
+  id?: string;
+  className?: string;
+  disabled?: boolean | undefined;
+  'aria-label'?: string;
+  'aria-invalid'?: boolean | undefined;
+  'aria-describedby'?: string | undefined;
+}) {
   const [text, setText] = useState(value === null ? '' : String(value));
   const [last, setLast] = useState(value);
   // Externe Änderung (anderes Objekt gewählt) übernehmen, ohne die laufende Eingabe zu stören.
@@ -272,29 +312,22 @@ export function NumberField({
       setText(value === null ? '' : String(value));
   }
   return (
-    <FieldShell id={id} {...base} unit={unit}>
-      <input
-        id={id}
-        className={styles.input}
-        type="number"
-        inputMode="decimal"
-        step={step}
-        min={min}
-        max={max}
-        value={text}
-        disabled={base.disabled}
-        aria-invalid={base.error ? true : undefined}
-        aria-describedby={describedBy(id, base.hint, base.error)}
-        onChange={(e) => {
-          setText(e.target.value);
-          const raw = e.target.value.trim();
-          const n = raw === '' ? null : Number(raw);
-          const next = n === null || Number.isFinite(n) ? n : null;
-          setLast(next);
-          onChange(next);
-        }}
-      />
-    </FieldShell>
+    <input
+      {...rest}
+      className={className ?? styles.input}
+      type="number"
+      inputMode="decimal"
+      step={step}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        const raw = e.target.value.trim();
+        const n = raw === '' ? null : Number(raw);
+        const next = n === null || Number.isFinite(n) ? n : null;
+        setLast(next);
+        onChange(next);
+      }}
+    />
   );
 }
 

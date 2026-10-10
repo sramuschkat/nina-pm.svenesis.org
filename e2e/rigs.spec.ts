@@ -78,9 +78,11 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
   await scheduler.getByLabel('Autofokus alle (min)').fill('0');
   await expect(scheduler.getByText('Autofokus aus')).toBeVisible();
   await scheduler.getByRole('button', { name: '„meiste Restarbeit“ nach oben' }).click();
-  await expect(scheduler.getByLabel('Flat-Quelle')).toBeDisabled();
-  await scheduler.getByLabel('Automatische Flats am Ende der Session').check();
-  await scheduler.getByLabel('Flat-Quelle').selectOption({ label: 'Himmel' });
+  const source = scheduler.getByRole('group', { name: 'Flat-Quelle' });
+  await expect(source.getByRole('button', { name: 'Himmel' })).toBeDisabled();
+  await scheduler.getByRole('switch', { name: 'Automatische Flats' }).check();
+  await source.getByRole('button', { name: 'Himmel' }).click();
+  await expect(scheduler.getByRole('status')).toHaveText('Nicht gespeicherte Änderungen: 5');
   await scheduler.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(scheduler.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
 
@@ -128,6 +130,58 @@ test('S-10: paralleles Speichern → 412 mit „Neu laden“, danach speicherbar
   await formB.getByLabel('Überschuss (%)').fill('20');
   await formB.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(formB.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
+});
+
+test('S-40: Scheduler-Einstellungen – drei Spalten bei voller Breite, eine bei 768 px; Leiste klebt bei Änderungen', async ({
+  page,
+}) => {
+  await testLogin(page, 'owner');
+  const id = await rigId(page, 'Rig B');
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await page.goto(`/nina/simulator?rig=${id}&einstellungen=1`);
+  const form = page.getByRole('form', { name: 'Scheduler-Einstellungen' });
+  await expect(form).toBeVisible();
+  const x = async (name: string) => {
+    const box = await form.getByRole('region', { name, exact: true }).boundingBox();
+    if (!box) throw new Error(name);
+    return box;
+  };
+  const columns = [
+    ['Planung', 'Reihenfolge'],
+    ['Ablauf in NINA', 'Meridian-Flip', 'Bildbewertung'],
+    ['Flats', 'Zeiten für die Planung'],
+  ];
+  const spread = (v: number[]) => Math.max(...v) - Math.min(...v);
+  const lefts: number[] = [];
+  for (const col of columns) {
+    const boxes = await Promise.all(col.map(x));
+    expect(spread(boxes.map((b) => b.x)), col.join()).toBeLessThan(2);
+    const ys = boxes.map((b) => b.y);
+    expect(ys, col.join()).toEqual([...ys].sort((a, b) => a - b));
+    lefts.push(Math.min(...boxes.map((b) => b.x)));
+  }
+  const [left1 = 0, left2 = 0, left3 = 0] = lefts;
+  expect(left2).toBeGreaterThan(left1 + 300);
+  expect(left3).toBeGreaterThan(left2 + 300);
+
+  // Änderung: Leiste mit Verwerfen klebt unter der App-Leiste, auch ganz unten.
+  await form.getByLabel('Überschuss (%)').fill('7');
+  await form.getByRole('region', { name: 'Zeiten für die Planung' }).scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 3000);
+  const discard = form.getByRole('button', { name: 'Verwerfen' });
+  await expect(discard).toBeInViewport();
+  const bar = await discard.boundingBox();
+  expect(bar?.y ?? Infinity).toBeLessThan(160);
+  await discard.click();
+  await expect(form.getByText('Alles gespeichert')).toBeVisible();
+
+  await page.setViewportSize({ width: 768, height: 1000 });
+  const narrow = await Promise.all(columns.flat().map(x));
+  expect(spread(narrow.map((b) => b.x))).toBeLessThan(2);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test('FA-RIG-14: Filterradbelegung mit Vorschlägen bestätigen; User nur lesend', async ({
