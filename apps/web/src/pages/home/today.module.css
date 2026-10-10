@@ -71,7 +71,9 @@
   gap: var(--npm-space-1) var(--npm-space-5);
 }
 .foldButton {
-  padding: var(--npm-space-1) 0;
+  /* Touch-Ziel ≥ 44 px (iPad, Rückmeldung Sven 10.10.2026). */
+  min-height: 44px;
+  padding: 0 var(--npm-space-2);
   border: 0;
   background: none;
   color: var(--npm-link);

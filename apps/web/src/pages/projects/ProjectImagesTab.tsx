@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { problemCode } from '../equipment/shared';
+import { sessionPath } from '../sessions/evaluation';
 import {
   filtersOf,
   gradeCounts,
@@ -503,10 +504,7 @@ function ImagesView({
                     {selected.grade === 'kept' ? t('images.unkeep') : t('images.keep')}
                   </button>
                 ) : null}
-                <Link
-                  className={styles.sideLink}
-                  to={`/auswertung/sitzungen/${selected.sessionId}`}
-                >
+                <Link className={styles.sideLink} to={sessionPath(selected.sessionId)}>
                   {t('images.openNight')}
                 </Link>
               </div>
